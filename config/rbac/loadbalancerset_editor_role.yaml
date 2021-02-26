@@ -1,0 +1,24 @@
+# permissions for end users to edit loadbalancersets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: loadbalancerset-editor-role
+rules:
+- apiGroups:
+  - yawol.stackit.de
+  resources:
+  - loadbalancersets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - yawol.stackit.de
+  resources:
+  - loadbalancersets/status
+  verbs:
+  - get

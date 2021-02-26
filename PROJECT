@@ -1,0 +1,13 @@
+domain: stackit.de
+repo: yawol
+resources:
+- group: yawol
+  kind: LoadBalancer
+  version: v1beta1
+- group: yawol
+  kind: LoadBalancerSet
+  version: v1beta1
+- group: yawol
+  kind: LoadBalancerMachine
+  version: v1beta1
+version: "2"

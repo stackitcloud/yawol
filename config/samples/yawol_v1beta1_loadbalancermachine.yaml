@@ -1,0 +1,7 @@
+apiVersion: yawol.stackit.de/v1beta1
+kind: LoadBalancerMachine
+metadata:
+  name: loadbalancermachine-sample
+spec:
+  # Add fields here
+  foo: bar
