@@ -5,7 +5,7 @@ metadata:
   name: loadbalancerset-viewer-role
 rules:
 - apiGroups:
-  - yawol.stackit.de
+  - yawol.stackit.cloud
   resources:
   - loadbalancersets
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - yawol.stackit.de
+  - yawol.stackit.cloud
   resources:
   - loadbalancersets/status
   verbs:

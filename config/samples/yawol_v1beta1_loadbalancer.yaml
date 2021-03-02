@@ -1,4 +1,4 @@
-apiVersion: yawol.stackit.de/v1beta1
+apiVersion: yawol.stackit.cloud/v1beta1
 kind: LoadBalancer
 metadata:
   name: loadbalancer-sample

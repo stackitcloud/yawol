@@ -46,7 +46,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "9f73a84b.stackit.de",
+		LeaderElectionID:   "9f73a84b.stackit.cloud",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

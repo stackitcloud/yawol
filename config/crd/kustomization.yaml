@@ -2,9 +2,9 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/yawol.stackit.de_loadbalancers.yaml
-- bases/yawol.stackit.de_loadbalancersets.yaml
-- bases/yawol.stackit.de_loadbalancermachines.yaml
+- bases/yawol.stackit.cloud_loadbalancers.yaml
+- bases/yawol.stackit.cloud_loadbalancersets.yaml
+- bases/yawol.stackit.cloud_loadbalancermachines.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
