@@ -1,5 +1,5 @@
 domain: stackit.cloud
-repo: yawol
+repo: github.com/stackitcloud/yawol
 resources:
 - group: yawol
   kind: LoadBalancer

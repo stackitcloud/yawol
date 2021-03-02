@@ -1,4 +1,4 @@
-module yawol
+module github.com/stackitcloud/yawol
 
 go 1.13
 

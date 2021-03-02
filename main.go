@@ -14,7 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	yawolv1beta1 "yawol/api/v1beta1"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 
