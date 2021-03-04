@@ -222,8 +222,14 @@ func (in *LoadBalancerMachineStatus) DeepCopyInto(out *LoadBalancerMachineStatus
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = new(v1.NodeCondition)
-		(*in).DeepCopyInto(*out)
+		*out = new([]v1.NodeCondition)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]v1.NodeCondition, len(*in))
+			for i := range *in {
+				(*in)[i].DeepCopyInto(&(*out)[i])
+			}
+		}
 	}
 	if in.Metrics != nil {
 		in, out := &in.Metrics, &out.Metrics
