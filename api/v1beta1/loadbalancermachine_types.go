@@ -50,7 +50,7 @@ type LoadBalancerMachineTemplateSpec struct {
 type LoadBalancerMachineStatus struct {
 	// Conditions contains condition information for a LoadBalancerMachine.
 	// +optional
-	Conditions *corev1.NodeCondition `json:"conditions,omitempty"`
+	Conditions *[]corev1.NodeCondition `json:"conditions,omitempty"`
 	// Metrics contains metrics for a LoadBalancerMachine.
 	// +optional
 	Metrics *[]LoadBalancerMachineMetric `json:"metrics,omitempty"`
