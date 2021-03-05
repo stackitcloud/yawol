@@ -68,8 +68,8 @@ type LoadBalancerMachineMetric struct {
 	Type string `json:"type"`
 	// Value is the value of a metric
 	Value string `json:"value"`
-	// Timestamp is the timestamp if the metric
-	Timestamp metav1.Timestamp `json:"timestamp"`
+	// Time is the timestamp if the metric
+	Time metav1.Time `json:"timestamp"`
 }
 
 func init() {
