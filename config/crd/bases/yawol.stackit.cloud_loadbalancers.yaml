@@ -183,8 +183,54 @@ spec:
                   run.
                 minimum: 0
                 type: integer
+              selector:
+                description: This label selector matches the load balancer sets deriving
+                  from the load balancer
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
             required:
             - infrastructure
+            - selector
             type: object
           status:
             description: LoadBalancerStatus defines the observed state of LoadBalancer.
@@ -195,6 +241,9 @@ spec:
                 type: string
               floatingID:
                 description: FloatingID is the current openstack ID from the FloatingIP.
+                type: string
+              floatingName:
+                description: FloatingName is the current openstack name from the FloatingIP.
                 type: string
               nodeRoleRef:
                 description: NodeRole is the current role metadata that is used by
@@ -217,6 +266,10 @@ spec:
               portID:
                 description: PortID is the current openstack ID from the virtual Port.
                 type: string
+              portName:
+                description: PortName is the current openstack name from the virtual
+                  Port.
+                type: string
               readyReplicas:
                 description: ReadyReplicas are the current running replicas.
                 type: integer
@@ -224,6 +277,14 @@ spec:
                 description: Replicas displays the running lb replicas under this
                   deployment
                 type: integer
+              security_group_id:
+                description: SecurityGroupID is the current security group ID mapped
+                  to the port
+                type: string
+              security_group_name:
+                description: SecurityGroupName is the current security group name
+                  mapped to the port
+                type: string
             type: object
         required:
         - metadata

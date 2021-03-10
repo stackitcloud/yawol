@@ -38,10 +38,8 @@ type LoadBalancerMachineSpec struct {
 
 // LoadBalancerMachineTemplateSpec defines the desired state of LoadBalancerSet.
 type LoadBalancerMachineTemplateSpec struct {
-	// Standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	// Labels for the LoadBalancerMachine
+	Labels map[string]string `json:"labels"`
 	// Spec is the spec for the LoadBalancerMachine.
 	Spec LoadBalancerMachineSpec `json:"spec"`
 }

@@ -29,6 +29,8 @@ type LoadBalancerList struct {
 
 // LoadBalancerSpec defines the desired state of LoadBalancer
 type LoadBalancerSpec struct {
+	// This label selector matches the load balancer sets deriving from the load balancer
+	Selector metav1.LabelSelector `json:"selector"`
 	// Replicas defines the number of LoadBalancers that should run.
 	// +kubebuilder:default:=1
 	// +kubebuilder:validation:Minimum:=0
@@ -129,9 +131,21 @@ type LoadBalancerStatus struct {
 	// FloatingID is the current openstack ID from the FloatingIP.
 	// +optional
 	FloatingID *string `json:"floatingID,omitempty"`
+	// FloatingName is the current openstack name from the FloatingIP.
+	// +optional
+	FloatingName *string `json:"floatingName,omitempty"`
 	// PortID is the current openstack ID from the virtual Port.
 	// +optional
 	PortID *string `json:"portID,omitempty"`
+	// PortName is the current openstack name from the virtual Port.
+	// +optional
+	PortName *string `json:"portName,omitempty"`
+	// SecurityGroupID is the current security group ID mapped to the port
+	// +optional
+	SecurityGroupID *string `json:"security_group_id,omitempty"`
+	// SecurityGroupName is the current security group name mapped to the port
+	// +optional
+	SecurityGroupName *string `json:"security_group_name,omitempty"`
 	// NodeRole is the current role metadata that is used by the LB machine's ServiceAccounts.
 	// +optional
 	NodeRoleRef *rbacv1.RoleRef `json:"nodeRoleRef,omitempty"`
