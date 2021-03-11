@@ -11,7 +11,6 @@ package v1beta1
 import (
 	"k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -244,8 +243,7 @@ func (in *LoadBalancerMachineStatus) DeepCopyInto(out *LoadBalancerMachineStatus
 	}
 	if in.CreationTimestamp != nil {
 		in, out := &in.CreationTimestamp, &out.CreationTimestamp
-		*out = new(metav1.Timestamp)
-		**out = **in
+		*out = (*in).DeepCopy()
 	}
 	if in.ServerID != nil {
 		in, out := &in.ServerID, &out.ServerID

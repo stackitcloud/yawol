@@ -54,7 +54,7 @@ type LoadBalancerMachineStatus struct {
 	Metrics *[]LoadBalancerMachineMetric `json:"metrics,omitempty"`
 	// CreationTimestamp contains the creation timestamp a LoadBalancerMachine.
 	// +optional
-	CreationTimestamp *metav1.Timestamp `json:"creationTimestamp,omitempty"`
+	CreationTimestamp *metav1.Time `json:"creationTimestamp,omitempty"`
 	// ServerID contains the openstack server ID for a LoadBalancerMachine.
 	// +optional
 	ServerID *string `json:"serverID,omitempty"`
