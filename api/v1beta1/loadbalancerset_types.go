@@ -5,6 +5,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=lbs
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
 // LoadBalancerSet is the Schema for the LoadBalancerSet's API.

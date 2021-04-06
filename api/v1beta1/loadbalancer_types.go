@@ -7,6 +7,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=lb
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
 // LoadBalancer is the Schema for the YAWOL LoadBalancer API
