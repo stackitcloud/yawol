@@ -6,6 +6,7 @@ import (
 )
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=lbm
 // +kubebuilder:subresource:status
 // LoadBalancerMachine is the Schema for the LoadBalancerMachine's API.
 type LoadBalancerMachine struct {

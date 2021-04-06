@@ -13,6 +13,8 @@ spec:
     kind: LoadBalancerMachine
     listKind: LoadBalancerMachineList
     plural: loadbalancermachines
+    shortNames:
+    - lbm
     singular: loadbalancermachine
   scope: Namespaced
   versions:

@@ -13,6 +13,8 @@ spec:
     kind: LoadBalancerSet
     listKind: LoadBalancerSetList
     plural: loadbalancersets
+    shortNames:
+    - lbs
     singular: loadbalancerset
   scope: Namespaced
   versions:

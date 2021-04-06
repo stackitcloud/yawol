@@ -13,6 +13,8 @@ spec:
     kind: LoadBalancer
     listKind: LoadBalancerList
     plural: loadbalancers
+    shortNames:
+    - lb
     singular: loadbalancer
   scope: Namespaced
   versions:
