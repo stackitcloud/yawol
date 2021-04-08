@@ -10,6 +10,9 @@ import (
 // +kubebuilder:resource:shortName=lb
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
+// +kubebuilder:printcolumn:name="DESIRED",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="CURRENT",type=string,JSONPath=`.status.replicas`
+// +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.readyReplicas`
 // LoadBalancer is the Schema for the YAWOL LoadBalancer API
 type LoadBalancer struct {
 	metav1.TypeMeta   `json:",inline"`

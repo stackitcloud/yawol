@@ -8,6 +8,7 @@ import (
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=lbm
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="creationTimestamp",type=string,JSONPath=`.status.creationTimestamp`
 // LoadBalancerMachine is the Schema for the LoadBalancerMachine's API.
 type LoadBalancerMachine struct {
 	metav1.TypeMeta   `json:",inline"`

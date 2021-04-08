@@ -8,6 +8,9 @@ import (
 // +kubebuilder:resource:shortName=lbs
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
+// +kubebuilder:printcolumn:name="DESIRED",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="CURRENT",type=string,JSONPath=`.status.replicas`
+// +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.readyReplicas`
 // LoadBalancerSet is the Schema for the LoadBalancerSet's API.
 type LoadBalancerSet struct {
 	metav1.TypeMeta   `json:",inline"`

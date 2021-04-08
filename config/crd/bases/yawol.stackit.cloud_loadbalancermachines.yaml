@@ -18,7 +18,11 @@ spec:
     singular: loadbalancermachine
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.creationTimestamp
+      name: creationTimestamp
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: LoadBalancerMachine is the Schema for the LoadBalancerMachine's

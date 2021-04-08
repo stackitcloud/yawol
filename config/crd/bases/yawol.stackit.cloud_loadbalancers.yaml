@@ -18,7 +18,17 @@ spec:
     singular: loadbalancer
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.replicas
+      name: DESIRED
+      type: string
+    - jsonPath: .status.replicas
+      name: CURRENT
+      type: string
+    - jsonPath: .status.readyReplicas
+      name: READY
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: LoadBalancer is the Schema for the YAWOL LoadBalancer API
