@@ -22,6 +22,9 @@ spec:
     - jsonPath: .status.creationTimestamp
       name: creationTimestamp
       type: string
+    - jsonPath: .status.conditions[?(@.type=="EnvoyUpToDate")].status
+      name: EnvoyUpToDate
+      type: string
     name: v1beta1
     schema:
       openAPIV3Schema:

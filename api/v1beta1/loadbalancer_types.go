@@ -13,6 +13,8 @@ import (
 // +kubebuilder:printcolumn:name="DESIRED",type=string,JSONPath=`.spec.replicas`
 // +kubebuilder:printcolumn:name="CURRENT",type=string,JSONPath=`.status.replicas`
 // +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="externalIP",type=string,JSONPath=`.status.externalIP`
+
 // LoadBalancer is the Schema for the YAWOL LoadBalancer API
 type LoadBalancer struct {
 	metav1.TypeMeta   `json:",inline"`

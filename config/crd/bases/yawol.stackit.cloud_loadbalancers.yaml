@@ -28,6 +28,9 @@ spec:
     - jsonPath: .status.readyReplicas
       name: READY
       type: string
+    - jsonPath: .status.externalIP
+      name: externalIP
+      type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
