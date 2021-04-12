@@ -230,10 +230,6 @@ spec:
               replicas:
                 description: Replicas are the desired replicas.
                 type: integer
-              test:
-                default: fafa
-                description: AvailableReplicas are the current running replicas.
-                type: string
             type: object
         type: object
     served: true

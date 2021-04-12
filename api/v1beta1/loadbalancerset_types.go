@@ -47,9 +47,6 @@ type LoadBalancerSetStatus struct {
 	// AvailableReplicas are the current running replicas.
 	// +optional
 	AvailableReplicas *int `json:"availableReplicas,omitempty"`
-	// AvailableReplicas are the current running replicas.
-	// +kubebuilder:default:="fafa"
-	Test string `json:"test,omitempty"`
 	// ReadyReplicas are the current ready replicas.
 	// +optional
 	ReadyReplicas *int `json:"readyReplicas,omitempty"`
