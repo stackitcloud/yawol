@@ -59,6 +59,9 @@ type LoadBalancerMachineStatus struct {
 	// CreationTimestamp contains the creation timestamp a LoadBalancerMachine.
 	// +optional
 	CreationTimestamp *metav1.Time `json:"creationTimestamp,omitempty"`
+	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.
+	// +optional
+	LastOpenstackReconcile *metav1.Time `json:"lastOpenstackReconcile,omitempty"`
 	// ServerID contains the openstack server ID for a LoadBalancerMachine.
 	// +optional
 	ServerID *string `json:"serverID,omitempty"`

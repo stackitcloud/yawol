@@ -245,6 +245,10 @@ func (in *LoadBalancerMachineStatus) DeepCopyInto(out *LoadBalancerMachineStatus
 		in, out := &in.CreationTimestamp, &out.CreationTimestamp
 		*out = (*in).DeepCopy()
 	}
+	if in.LastOpenstackReconcile != nil {
+		in, out := &in.LastOpenstackReconcile, &out.LastOpenstackReconcile
+		*out = (*in).DeepCopy()
+	}
 	if in.ServerID != nil {
 		in, out := &in.ServerID, &out.ServerID
 		*out = new(string)
