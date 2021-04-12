@@ -1,0 +1,24 @@
+replicas: 1
+podAnnotations: {}
+podLabels: {}
+featureGates: {}
+proxy: {}
+namespace: kube-system
+images:
+  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.1.6
+  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.1.13
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+yawolOSSecretName: foobar
+yawolFloatingID: foobar
+yawolNetworkID: foobar
+yawolFlavorID: foobar
+yawolImageID: foobar
+yawolAPIHost: foobar
+migrateFromOctavia: true
+yawolDebug: false
