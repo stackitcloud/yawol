@@ -260,6 +260,11 @@ spec:
               floatingName:
                 description: FloatingName is the current openstack name from the FloatingIP.
                 type: string
+              lastOpenstackReconcile:
+                description: LastOpenstackReconcile contains the timestamp of the
+                  last openstack reconciliation.
+                format: date-time
+                type: string
               nodeRoleRef:
                 description: NodeRole is the current role metadata that is used by
                   the LB machine's ServiceAccounts.

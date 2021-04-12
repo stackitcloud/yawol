@@ -155,6 +155,9 @@ type LoadBalancerStatus struct {
 	// NodeRole is the current role metadata that is used by the LB machine's ServiceAccounts.
 	// +optional
 	NodeRoleRef *rbacv1.RoleRef `json:"nodeRoleRef,omitempty"`
+	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.
+	// +optional
+	LastOpenstackReconcile *metav1.Time `json:"lastOpenstackReconcile,omitempty"`
 }
 
 func init() {
