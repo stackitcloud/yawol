@@ -5,8 +5,8 @@ featureGates: {}
 proxy: {}
 namespace: kube-system
 images:
-  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.1.6
-  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.1.13
+  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.1.8
+  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.1.18
 resources:
   requests:
     cpu: 100m

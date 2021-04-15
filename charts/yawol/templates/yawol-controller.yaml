@@ -28,7 +28,7 @@ spec:
     spec:
       serviceAccountName: yawol-controller
       containers:
-        - name: yawol-controller
+        - name: yawol-controller-loadbalancer
           image: {{ index .Values.images "yawol-controller" }}
           imagePullPolicy: Always
           ports:
@@ -37,6 +37,7 @@ spec:
           command:
             - /bin/yawol-controller
             - -enable-leader-election
+            - -enable-loadbalancer-controller
           {{- if .Values.migrateFromOctavia }}
             - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
@@ -48,8 +49,51 @@ spec:
           - name: CLUSTER_NAMESPACE
             value: {{ .Values.namespace }}
           {{- end }}
+        - name: yawol-controller-loadbalancerset
+          image: {{ index .Values.images "yawol-controller" }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: metrics
+          command:
+            - /bin/yawol-controller
+            - -enable-leader-election
+            - -enable-loadbalancerset-controller
+            {{- if .Values.migrateFromOctavia }}
+            - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+            {{- end }}
+            {{- if .Values.yawolDebug }}
+            - --debug={{ .Values.yawolDebug }}
+            {{- end }}
+          env:
+            {{- if .Values.namespace }}
+            - name: CLUSTER_NAMESPACE
+              value: {{ .Values.namespace }}
+            {{- end }}
+        - name: yawol-controller-loadbalancermachine
+          image: {{ index .Values.images "yawol-controller" }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+              name: metrics
+          command:
+            - /bin/yawol-controller
+            - -enable-leader-election
+            - -enable-loadbalancermachine-controller
+            {{- if .Values.migrateFromOctavia }}
+            - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+            {{- end }}
+            {{- if .Values.yawolDebug }}
+            - --debug={{ .Values.yawolDebug }}
+            {{- end }}
+          env:
+            {{- if .Values.namespace }}
+            - name: CLUSTER_NAMESPACE
+              value: {{ .Values.namespace }}
+              {{- end }}
             {{- if .Values.yawolAPIHost }}
-          - name: API_ENDPOINT
-            value: {{ .Values.yawolAPIHost }}
-          {{- end }}
+            - name: API_ENDPOINT
+              value: {{ .Values.yawolAPIHost }}
+            {{- end }}
       restartPolicy: Always
+
