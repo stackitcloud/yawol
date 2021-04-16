@@ -51,6 +51,16 @@ spec:
           spec:
             description: LoadBalancerSpec defines the desired state of LoadBalancer
             properties:
+              debugSettings:
+                description: Debug are settings for debugging an loadbalancer.
+                properties:
+                  enabled:
+                    description: Enabled defines if debugging is enabled
+                    type: boolean
+                  sshkeyName:
+                    description: SshKey is a openstack sshkey name for debugging
+                    type: string
+                type: object
               endpoints:
                 description: Endpoints defines the Endpoints for the LoadBalancer.
                 items:

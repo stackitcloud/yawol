@@ -49,12 +49,25 @@ type LoadBalancerSpec struct {
 	// +kubebuilder:default:=false
 	// +optional
 	InternalLB bool `json:"internalLB,omitempty"`
+	// Debug are settings for debugging an loadbalancer.
+	// +optional
+	DebugSettings LoadBalancerDebugSettings `json:"debugSettings,omitempty"`
 	// Endpoints defines the Endpoints for the LoadBalancer.
 	Endpoints []LoadBalancerEndpoint `json:"endpoints,omitempty"`
 	// Ports defines the Ports for the LoadBalancer (copy from service)
 	Ports []corev1.ServicePort `json:"ports,omitempty"`
 	// Infrastructure defines parameters for the Infrastructure
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
+}
+
+// LoadBalancerDebugSettings defines debug settings for the LoadBalancer
+type LoadBalancerDebugSettings struct {
+	// Enabled defines if debugging is enabled
+	// +optional
+	Enabled bool `json:"enabled"`
+	// SshKey is a openstack sshkey name for debugging
+	// +optional
+	SshkeyName string `json:"sshkeyName,omitempty"`
 }
 
 // LoadBalancerEndpoint defines a Endpoint for the LoadBalancer
