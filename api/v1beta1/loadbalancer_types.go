@@ -6,6 +6,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+
+// Annotation for settings in svc object
+const (
+	// ServiceImageID overwrite default imageID
+	ServiceImageID = "yawol.stackit.cloud/imageId"
+	// ServiceDebug set in lb object an debug setting
+	ServiceDebug = "yawol.stackit.cloud/debug"
+	// ServiceDebugSSHKey set an sshkey
+	ServiceDebugSSHKey = "yawol.stackit.cloud/debugsshkey"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=lb
 // +kubebuilder:subresource:status
