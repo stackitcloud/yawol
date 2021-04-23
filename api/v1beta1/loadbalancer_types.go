@@ -11,6 +11,8 @@ import (
 const (
 	// ServiceImageID overwrite default imageID
 	ServiceImageID = "yawol.stackit.cloud/imageId"
+	// ServiceFlavorID overwrite default flavorID
+	ServiceFlavorID = "yawol.stackit.cloud/flavorId"
 	// ServiceDebug set in lb object an debug setting
 	ServiceDebug = "yawol.stackit.cloud/debug"
 	// ServiceDebugSSHKey set an sshkey
