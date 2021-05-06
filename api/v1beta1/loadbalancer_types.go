@@ -13,6 +13,8 @@ const (
 	ServiceImageID = "yawol.stackit.cloud/imageId"
 	// ServiceFlavorID overwrite default flavorID
 	ServiceFlavorID = "yawol.stackit.cloud/flavorId"
+	// ServiceInternalLoadbalancer sets the internal flag in LB objects
+	ServiceInternalLoadbalancer = "yawol.stackit.cloud/internalLB"
 	// ServiceDebug set in lb object an debug setting
 	ServiceDebug = "yawol.stackit.cloud/debug"
 	// ServiceDebugSSHKey set an sshkey
