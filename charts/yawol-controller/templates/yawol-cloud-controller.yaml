@@ -37,7 +37,7 @@ spec:
           name: metrics
         command:
         - /bin/yawol-cloud-controller
-        - -enable-leader-election
+        - -leader-elect
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE

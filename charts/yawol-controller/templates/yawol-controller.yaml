@@ -36,7 +36,7 @@ spec:
             name: metrics
           command:
             - /bin/yawol-controller
-            - -enable-leader-election
+            - -leader-elect
             - -enable-loadbalancer-controller
           {{- if .Values.migrateFromOctavia }}
             - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
@@ -57,7 +57,7 @@ spec:
               name: metrics
           command:
             - /bin/yawol-controller
-            - -enable-leader-election
+            - -leader-elect
             - -enable-loadbalancerset-controller
             {{- if .Values.migrateFromOctavia }}
             - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
@@ -78,7 +78,7 @@ spec:
               name: metrics
           command:
             - /bin/yawol-controller
-            - -enable-leader-election
+            - -leader-elect
             - -enable-loadbalancermachine-controller
             {{- if .Values.migrateFromOctavia }}
             - --migrate-from-octavia={{ .Values.migrateFromOctavia }}

@@ -1,13 +1,31 @@
 domain: stackit.cloud
+layout:
+- go.kubebuilder.io/v3
+projectName: yawol
 repo: github.com/stackitcloud/yawol
 resources:
-- group: yawol
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: stackit.cloud
+  group: yawol
   kind: LoadBalancer
+  path: github.com/stackitcloud/yawol/api/v1beta1
   version: v1beta1
-- group: yawol
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: stackit.cloud
+  group: yawol
   kind: LoadBalancerSet
+  path: github.com/stackitcloud/yawol/api/v1beta1
   version: v1beta1
-- group: yawol
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: stackit.cloud
+  group: yawol
   kind: LoadBalancerMachine
+  path: github.com/stackitcloud/yawol/api/v1beta1
   version: v1beta1
-version: "2"
+version: "3"
