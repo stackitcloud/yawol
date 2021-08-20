@@ -18,6 +18,8 @@ const (
 	ServiceDebug = "yawol.stackit.cloud/debug"
 	// ServiceDebugSSHKey set an sshkey
 	ServiceDebugSSHKey = "yawol.stackit.cloud/debugsshkey"
+	// ServiceClassName for filtering services in cloud-controller
+	ServiceClassName = "yawol.stackit.cloud/className"
 )
 
 // +kubebuilder:object:root=true
