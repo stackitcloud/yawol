@@ -1,0 +1,23 @@
+name: crd-test
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+      - main
+  pull_request:
+jobs:
+  crd-test:
+    name: test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.YAWOLGITHUB }}
+        run: git config --global url."https://${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: run tests
+        run: make test
+        env:
+          GOPRIVATE: github.com/stackitcloud
