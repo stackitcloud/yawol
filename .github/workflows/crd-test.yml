@@ -1,0 +1,24 @@
+name: crd-test
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+      - main
+  pull_request:
+jobs:
+  generate:
+    name: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v1
+        with:
+          go-version: 1.16
+      - uses: actions/checkout@v2
+      - name: run-generate
+        run: |
+          make generate
+          make manifests
+          git diff --name-only --exit-code
+          git diff --name-only --staged --exit-code
