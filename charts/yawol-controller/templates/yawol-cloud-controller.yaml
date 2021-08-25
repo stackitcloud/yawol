@@ -38,6 +38,9 @@ spec:
         command:
         - /bin/yawol-cloud-controller
         - -leader-elect
+        {{- if .Values.yawolClassName }}
+        - -classname={{ .Values.yawolClassName }}
+        {{- end }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE

@@ -14,6 +14,7 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+#yawolClassName: debug
 yawolOSSecretName: foobar
 yawolFloatingID: foobar
 yawolNetworkID: foobar
