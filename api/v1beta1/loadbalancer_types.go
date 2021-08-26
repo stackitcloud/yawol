@@ -72,6 +72,9 @@ type LoadBalancerSpec struct {
 	Endpoints []LoadBalancerEndpoint `json:"endpoints,omitempty"`
 	// Ports defines the Ports for the LoadBalancer (copy from service)
 	Ports []corev1.ServicePort `json:"ports,omitempty"`
+	// LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
+	// +optional
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// Infrastructure defines parameters for the Infrastructure
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
 }
@@ -187,6 +190,9 @@ type LoadBalancerStatus struct {
 	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.
 	// +optional
 	LastOpenstackReconcile *metav1.Time `json:"lastOpenstackReconcile,omitempty"`
+	// OpenstackReconcileHash contains a hash of openstack related settings to reset the LastOpenstackReconcile timer if needed.
+	// +optional
+	OpenstackReconcileHash *string `json:"openstackReconcileHash,omitempty"`
 }
 
 func init() {

@@ -448,6 +448,11 @@ func (in *LoadBalancerSpec) DeepCopyInto(out *LoadBalancerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.LoadBalancerSourceRanges != nil {
+		in, out := &in.LoadBalancerSourceRanges, &out.LoadBalancerSourceRanges
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.Infrastructure.DeepCopyInto(&out.Infrastructure)
 }
 
@@ -517,6 +522,11 @@ func (in *LoadBalancerStatus) DeepCopyInto(out *LoadBalancerStatus) {
 	if in.LastOpenstackReconcile != nil {
 		in, out := &in.LastOpenstackReconcile, &out.LastOpenstackReconcile
 		*out = (*in).DeepCopy()
+	}
+	if in.OpenstackReconcileHash != nil {
+		in, out := &in.OpenstackReconcileHash, &out.OpenstackReconcileHash
+		*out = new(string)
+		**out = **in
 	}
 }
 
