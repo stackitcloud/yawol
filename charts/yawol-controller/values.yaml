@@ -4,16 +4,44 @@ podLabels: {}
 featureGates: {}
 proxy: {}
 namespace: kube-system
+vpa:
+  enabled: true
+  yawolCloudController:
+    mode: Auto
+  yawolController:
+    mode: Auto
 images:
-  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.1.8
-  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.1.18
+  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.3.1
+  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.3.0
 resources:
-  requests:
-    cpu: 100m
-    memory: 64Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
+  yawolCloudController:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  yawolControllerLoadbalancer:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  yawolControllerLoadbalancerset:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  yawolControllerLoadbalancermachine:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 #yawolClassName: debug
 yawolOSSecretName: foobar
 yawolFloatingID: foobar
