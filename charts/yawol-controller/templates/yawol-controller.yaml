@@ -28,72 +28,84 @@ spec:
     spec:
       serviceAccountName: yawol-controller
       containers:
-        - name: yawol-controller-loadbalancer
-          image: {{ index .Values.images "yawol-controller" }}
-          imagePullPolicy: Always
-          ports:
-          - containerPort: 8080
+      - name: yawol-controller-loadbalancer
+        image: {{ index .Values.images "yawol-controller" }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: metrics
+        command:
+          - /bin/yawol-controller
+          - -leader-elect
+          - -enable-loadbalancer-controller
+        {{- if .Values.migrateFromOctavia }}
+          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+        {{- end }}
+        {{- if .Values.yawolDebug }}
+          - --debug={{ .Values.yawolDebug }}
+        {{- end }}
+        env:
+        {{- if .Values.namespace }}
+        - name: CLUSTER_NAMESPACE
+          value: {{ .Values.namespace }}
+        {{- end }}
+        {{- if .Values.resources.yawolControllerLoadbalancer }}
+        resources:
+{{ toYaml .Values.resources.yawolControllerLoadbalancer | indent 10 }}
+        {{- end }}
+      - name: yawol-controller-loadbalancerset
+        image: {{ index .Values.images "yawol-controller" }}
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8081
             name: metrics
-          command:
-            - /bin/yawol-controller
-            - -leader-elect
-            - -enable-loadbalancer-controller
+        command:
+          - /bin/yawol-controller
+          - -leader-elect
+          - -enable-loadbalancerset-controller
           {{- if .Values.migrateFromOctavia }}
-            - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
           {{- if .Values.yawolDebug }}
-            - --debug={{ .Values.yawolDebug }}
+          - --debug={{ .Values.yawolDebug }}
           {{- end }}
-          env:
+        env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
             value: {{ .Values.namespace }}
           {{- end }}
-        - name: yawol-controller-loadbalancerset
-          image: {{ index .Values.images "yawol-controller" }}
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8081
-              name: metrics
-          command:
-            - /bin/yawol-controller
-            - -leader-elect
-            - -enable-loadbalancerset-controller
-            {{- if .Values.migrateFromOctavia }}
-            - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+        {{- if .Values.resources.yawolControllerLoadbalancerset }}
+        resources:
+{{ toYaml .Values.resources.yawolControllerLoadbalancerset | indent 10 }}
+        {{- end }}
+      - name: yawol-controller-loadbalancermachine
+        image: {{ index .Values.images "yawol-controller" }}
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8082
+            name: metrics
+        command:
+          - /bin/yawol-controller
+          - -leader-elect
+          - -enable-loadbalancermachine-controller
+          {{- if .Values.migrateFromOctavia }}
+          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+          {{- end }}
+          {{- if .Values.yawolDebug }}
+          - --debug={{ .Values.yawolDebug }}
+          {{- end }}
+        env:
+          {{- if .Values.namespace }}
+          - name: CLUSTER_NAMESPACE
+            value: {{ .Values.namespace }}
             {{- end }}
-            {{- if .Values.yawolDebug }}
-            - --debug={{ .Values.yawolDebug }}
-            {{- end }}
-          env:
-            {{- if .Values.namespace }}
-            - name: CLUSTER_NAMESPACE
-              value: {{ .Values.namespace }}
-            {{- end }}
-        - name: yawol-controller-loadbalancermachine
-          image: {{ index .Values.images "yawol-controller" }}
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8082
-              name: metrics
-          command:
-            - /bin/yawol-controller
-            - -leader-elect
-            - -enable-loadbalancermachine-controller
-            {{- if .Values.migrateFromOctavia }}
-            - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
-            {{- end }}
-            {{- if .Values.yawolDebug }}
-            - --debug={{ .Values.yawolDebug }}
-            {{- end }}
-          env:
-            {{- if .Values.namespace }}
-            - name: CLUSTER_NAMESPACE
-              value: {{ .Values.namespace }}
-              {{- end }}
-            {{- if .Values.yawolAPIHost }}
-            - name: API_ENDPOINT
-              value: {{ .Values.yawolAPIHost }}
-            {{- end }}
+          {{- if .Values.yawolAPIHost }}
+          - name: API_ENDPOINT
+            value: {{ .Values.yawolAPIHost }}
+          {{- end }}
+        {{- if .Values.resources.yawolControllerLoadbalancermachine }}
+        resources:
+{{ toYaml .Values.resources.yawolControllerLoadbalancermachine | indent 10 }}
+        {{- end }}
       restartPolicy: Always
 

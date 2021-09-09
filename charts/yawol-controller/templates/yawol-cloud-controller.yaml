@@ -66,9 +66,9 @@ spec:
         - name: IMAGE_ID
           value: {{ .Values.yawolImageID }}
         {{- end }}
-        {{- if .Values.resources }}
+        {{- if .Values.resources.yawolCloudController }}
         resources:
-{{ toYaml .Values.resources | indent 10 }}
+{{ toYaml .Values.resources.yawolCloudController | indent 10 }}
         {{- end }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
