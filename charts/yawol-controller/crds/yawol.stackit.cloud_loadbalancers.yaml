@@ -155,6 +155,12 @@ spec:
                 description: InternalLB is a bool for internal LoadBalancer. If set
                   to false a FloatingIP will be assigned to the LB. Defaults to false.
                 type: boolean
+              loadBalancerSourceRanges:
+                description: LoadBalancerSourceRanges restrict traffic to IP ranges
+                  for the LoadBalancer (copy from service)
+                items:
+                  type: string
+                type: array
               ports:
                 description: Ports defines the Ports for the LoadBalancer (copy from
                   service)
@@ -303,6 +309,10 @@ spec:
                 - kind
                 - name
                 type: object
+              openstackReconcileHash:
+                description: OpenstackReconcileHash contains a hash of openstack related
+                  settings to reset the LastOpenstackReconcile timer if needed.
+                type: string
               portID:
                 description: PortID is the current openstack ID from the virtual Port.
                 type: string
