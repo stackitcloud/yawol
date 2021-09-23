@@ -35,6 +35,11 @@ spec:
         ports:
         - containerPort: 8080
           name: metrics
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          drop:
+            - ALL
         command:
         - /bin/yawol-cloud-controller
         - -leader-elect

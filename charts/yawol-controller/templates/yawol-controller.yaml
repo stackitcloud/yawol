@@ -44,6 +44,11 @@ spec:
         {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
         {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          drop:
+            - ALL
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -69,6 +74,11 @@ spec:
           {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
           {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          drop:
+            - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -94,6 +104,11 @@ spec:
           {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
           {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          drop:
+            - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
