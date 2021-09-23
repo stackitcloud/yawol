@@ -10,9 +10,17 @@ vpa:
     mode: Auto
   yawolController:
     mode: Auto
-images:
-  yawol-cloud-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller:v0.3.1
-  yawol-controller: registry.ske.eu01.stackit.cloud/yawol/yawol-controller:v0.3.0
+
+yawolCloudController:
+  image:
+    repository: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
+    tag: v0.3.1
+
+yawolController:
+  image:
+    repository: registry.ske.eu01.stackit.cloud/yawol/yawol-controller
+    tag: v0.3.0
+
 resources:
   yawolCloudController:
     requests:
