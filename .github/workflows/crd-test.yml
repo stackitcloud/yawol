@@ -19,6 +19,6 @@ jobs:
       - name: run-generate
         run: |
           make generate
-          make manifests
+          make crd
           git diff --name-only --exit-code
           git diff --name-only --staged --exit-code

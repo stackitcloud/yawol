@@ -1,75 +1,97 @@
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+SHELL=/bin/bash -e -o pipefail
+PWD = $(shell pwd)
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
+# constants
+GOLANGCI_VERSION = 1.42.1
+CRD_OPTIONS ?= "crd:trivialVersions=true"
+KUBERNETES_VERSION = 1.19.x
 
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
+all: git-hooks ## Initializes all tools and files
 
-all: generate manifests
+out:
+	@mkdir -pv "$(@)"
 
-##@ General
+test-build: ## Tests whether the code compiles
+	@go build -o /dev/null ./...
 
-help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+build: out/bin ## Builds all binaries
 
-##@ Development
+GO_BUILD = mkdir -pv "$(@)" && go build -ldflags="-w -s" -o "$(@)" ./...
+.PHONY: out/bin
+out/bin:
+	$(GO_BUILD)
 
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=charts/yawol-controller/crds
+git-hooks:
+	@git config --local core.hooksPath .githooks/
 
-fmt: ## Run go fmt against code.
-	go fmt ./...
+download: ## Downloads the dependencies
+	@go mod download
 
-vet: ## Run go vet against code.
-	go vet ./...
+fmt: ## Formats all code with go fmt
+	@go fmt ./...
 
-lint: golangci-lint ## Run go lint against code.
-	$(GOLANGCI_LINT) run
+GOLANGCI_LINT = bin/golangci-lint-$(GOLANGCI_VERSION)
+$(GOLANGCI_LINT):
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -b bin v$(GOLANGCI_VERSION)
+	@mv bin/golangci-lint "$(@)"
 
-ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: generate fmt vet lint manifests ## Run tests.
-	mkdir -p ${ENVTEST_ASSETS_DIR}
-	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+lint: fmt $(GOLANGCI_LINT) download ## Lints all code with golangci-lint
+	@$(GOLANGCI_LINT) run
 
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+lint-reports: out/lint.xml
 
-##@ Deployment
+.PHONY: out/lint.xml
+out/lint.xml: $(GOLANGCI_LINT) out download
+	$(GOLANGCI_LINT) run ./... --out-format checkstyle | tee "$(@)"
 
-install: manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+RUN_ENVTEST = bin/setup-envtest --bin-dir $(PWD)/bin
+SOURCE_ENVTEST = eval `$(RUN_ENVTEST) use -p env $(KUBERNETES_VERSION)`
+test: crd bin/setup-envtest ## Runs all tests
+	@$(SOURCE_ENVTEST) && go test ./...
+
+test-reports: out/report.json
+
+.PHONY: out/report.json
+out/report.json: out bin/setup-envtest crd
+	@$(SOURCE_ENVTEST) && go test ./... -coverprofile=out/cover.out --json | tee "$(@)"
+
+clean-envtest:
+	@$(RUN_ENVTEST) cleanup "<=$(KUBERNETES_VERSION)" 2> /dev/null || echo "skipping envtest cleanup"
+
+clean: clean-envtest ## Cleans up everything
+	@rm -rf bin out
+
+crd: charts/yawol-controller/crds
+
+.PHONY: charts/yawol-controller/crds
+charts/yawol-controller/crds: bin/controller-gen
+	bin/controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config="$(@)"
+
+generate: bin/controller-gen
+	bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+install: charts/yawol-controller/crds ## Installs crds in kubernetes cluster
 	kubectl apply -f charts/yawol-controller/crds
 
-uninstall: manifests ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	kubectl delete -f charts/yawol-controller/crds
+ci: lint-reports test-reports
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+help:
+	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
+	@echo ''
+	@echo 'Available targets are:'
+	@echo ''
+	@grep -E '^[ a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@echo ''
 
-GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-golangci-lint: ## Download golangci-lint locally if necessary.
-	$(call go-get-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint@v1.29.0)
+# Go dependencies versioned through tools.go
+GO_DEPENDENCIES = sigs.k8s.io/controller-tools/cmd/controller-gen sigs.k8s.io/controller-runtime/tools/setup-envtest
 
-# go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
+define make-go-dependency
+# target template for go tools, can be referenced e.g. via /bin/<tool>
+bin/$(notdir $1):
+	GOBIN=$(PWD)/bin go install $1
 endef
+
+# this creates a target for each go dependency to be referenced in other targets
+$(foreach dep, $(GO_DEPENDENCIES), $(eval $(call make-go-dependency, $(dep))))

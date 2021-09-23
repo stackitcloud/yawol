@@ -22,5 +22,3 @@ jobs:
         env:
           GOPRIVATE: github.com/stackitcloud
           GO111MODULE: "on"
-        with:
-          version: v1.29
