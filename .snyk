@@ -14,7 +14,7 @@ ignore:
         created: 2021-09-23T06:20:44.445Z
   SNYK-CC-K8S-47:
     - '*':
-        reason: None Given
+        reason: Permissions needed for K8s controller
         expires: 2021-10-23T06:21:16.725Z
         created: 2021-09-23T06:21:16.730Z
 patch: {}
