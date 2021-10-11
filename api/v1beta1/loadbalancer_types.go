@@ -20,6 +20,8 @@ const (
 	ServiceDebugSSHKey = "yawol.stackit.cloud/debugsshkey"
 	// ServiceClassName for filtering services in cloud-controller
 	ServiceClassName = "yawol.stackit.cloud/className"
+	// ServiceReplicas for setting loadbalancer replicas in cloud-controller
+	ServiceReplicas = "yawol.stackit.cloud/replicas"
 )
 
 // +kubebuilder:object:root=true

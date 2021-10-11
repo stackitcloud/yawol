@@ -35,6 +35,7 @@ type LoadBalancerMachineSpec struct {
 	// FloatingID defines the  openstack ID from the FloatingIP.
 	FloatingID string `json:"floatingID"`
 	// PortID defines the openstack ID from the Port.
+	// TODO deprecated -> remove this field in future versions
 	PortID string `json:"portID"`
 	// LoadBalancerRef defines a reference to the LoadBalancer Object.
 	LoadBalancerRef LoadBalancerRef `json:"loadBalancerRef"`
@@ -65,6 +66,9 @@ type LoadBalancerMachineStatus struct {
 	// ServerID contains the openstack server ID for a LoadBalancerMachine.
 	// +optional
 	ServerID *string `json:"serverID,omitempty"`
+	// PortID contains the openstack port ID for a LoadBalancerMachine.
+	// +optional
+	PortID *string `json:"portID,omitempty"`
 }
 
 // LoadBalancerMachineMetric describes a metric of the LoadBalancerMachine

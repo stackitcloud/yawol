@@ -203,6 +203,7 @@ spec:
                         type: object
                       portID:
                         description: PortID defines the openstack ID from the Port.
+                          TODO deprecated -> remove this field in future versions
                         type: string
                     required:
                     - floatingID

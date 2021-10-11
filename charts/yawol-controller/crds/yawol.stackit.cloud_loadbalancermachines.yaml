@@ -132,7 +132,8 @@ spec:
                 - namespace
                 type: object
               portID:
-                description: PortID defines the openstack ID from the Port.
+                description: PortID defines the openstack ID from the Port. TODO deprecated
+                  -> remove this field in future versions
                 type: string
             required:
             - floatingID
@@ -207,6 +208,9 @@ spec:
                   - value
                   type: object
                 type: array
+              portID:
+                description: PortID contains the openstack port ID for a LoadBalancerMachine.
+                type: string
               serverID:
                 description: ServerID contains the openstack server ID for a LoadBalancerMachine.
                 type: string
