@@ -38,8 +38,9 @@ spec:
         securityContext:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
-          drop:
-            - ALL
+          capabilities:
+            drop:
+              - ALL
         command:
         - /bin/yawol-cloud-controller
         - -leader-elect

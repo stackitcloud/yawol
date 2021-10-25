@@ -47,8 +47,9 @@ spec:
         securityContext:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
-          drop:
-            - ALL
+          capabilities:
+            drop:
+              - ALL
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -77,8 +78,9 @@ spec:
         securityContext:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
-          drop:
-            - ALL
+          capabilities:
+            drop:
+              - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -107,8 +109,9 @@ spec:
         securityContext:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
-          drop:
-            - ALL
+          capabilities:
+            drop:
+              - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
