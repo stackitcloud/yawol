@@ -9,8 +9,8 @@ import (
 // +kubebuilder:resource:shortName=lbm
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="EnvoyUpToDate",type=string,JSONPath=`.status.conditions[?(@.type=="EnvoyUpToDate")].status`
-// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 // +kubebuilder:printcolumn:name="creationTimestamp",type=string,JSONPath=`.status.creationTimestamp`
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // LoadBalancerMachine is the Schema for the LoadBalancerMachine's API.
 type LoadBalancerMachine struct {
