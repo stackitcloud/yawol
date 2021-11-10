@@ -8,8 +8,9 @@ import (
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=lbm
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="creationTimestamp",type=string,JSONPath=`.status.creationTimestamp`
 // +kubebuilder:printcolumn:name="EnvoyUpToDate",type=string,JSONPath=`.status.conditions[?(@.type=="EnvoyUpToDate")].status`
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="creationTimestamp",type=string,JSONPath=`.status.creationTimestamp`
 
 // LoadBalancerMachine is the Schema for the LoadBalancerMachine's API.
 type LoadBalancerMachine struct {
@@ -34,9 +35,6 @@ type LoadBalancerMachineSpec struct {
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
 	// FloatingID defines the  openstack ID from the FloatingIP.
 	FloatingID string `json:"floatingID"`
-	// PortID defines the openstack ID from the Port.
-	// TODO deprecated -> remove this field in future versions
-	PortID string `json:"portID"`
 	// LoadBalancerRef defines a reference to the LoadBalancer Object.
 	LoadBalancerRef LoadBalancerRef `json:"loadBalancerRef"`
 }

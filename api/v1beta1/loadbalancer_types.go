@@ -32,6 +32,7 @@ const (
 // +kubebuilder:printcolumn:name="CURRENT",type=string,JSONPath=`.status.replicas`
 // +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.readyReplicas`
 // +kubebuilder:printcolumn:name="externalIP",type=string,JSONPath=`.status.externalIP`
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // LoadBalancer is the Schema for the YAWOL LoadBalancer API
 type LoadBalancer struct {

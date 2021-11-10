@@ -31,6 +31,9 @@ spec:
     - jsonPath: .status.externalIP
       name: externalIP
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:

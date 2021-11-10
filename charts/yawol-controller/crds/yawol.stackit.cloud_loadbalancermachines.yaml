@@ -19,11 +19,14 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.creationTimestamp
-      name: creationTimestamp
-      type: string
     - jsonPath: .status.conditions[?(@.type=="EnvoyUpToDate")].status
       name: EnvoyUpToDate
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - jsonPath: .status.creationTimestamp
+      name: creationTimestamp
       type: string
     name: v1beta1
     schema:
@@ -131,15 +134,10 @@ spec:
                 - name
                 - namespace
                 type: object
-              portID:
-                description: PortID defines the openstack ID from the Port. TODO deprecated
-                  -> remove this field in future versions
-                type: string
             required:
             - floatingID
             - infrastructure
             - loadBalancerRef
-            - portID
             type: object
           status:
             description: LoadBalancerMachineStatus defines the observed state of LoadBalancerMachine.

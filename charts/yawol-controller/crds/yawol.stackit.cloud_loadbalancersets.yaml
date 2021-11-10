@@ -28,6 +28,9 @@ spec:
     - jsonPath: .status.readyReplicas
       name: READY
       type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -201,15 +204,10 @@ spec:
                         - name
                         - namespace
                         type: object
-                      portID:
-                        description: PortID defines the openstack ID from the Port.
-                          TODO deprecated -> remove this field in future versions
-                        type: string
                     required:
                     - floatingID
                     - infrastructure
                     - loadBalancerRef
-                    - portID
                     type: object
                 required:
                 - labels
