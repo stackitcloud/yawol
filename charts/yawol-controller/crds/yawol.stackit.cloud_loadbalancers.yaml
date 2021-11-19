@@ -157,13 +157,21 @@ spec:
                 default: false
                 description: InternalLB is a bool for internal LoadBalancer. If set
                   to false a FloatingIP will be assigned to the LB. Defaults to false.
+                  TODO move to LoadBalancerOptions
                 type: boolean
               loadBalancerSourceRanges:
                 description: LoadBalancerSourceRanges restrict traffic to IP ranges
-                  for the LoadBalancer (copy from service)
+                  for the LoadBalancer (copy from service) TODO move to LoadBalancerOptions
                 items:
                   type: string
                 type: array
+              options:
+                description: Options for additional LoadBalancer settings
+                properties:
+                  tcpProxyProtocol:
+                    description: TCPProxyProtocol enable HAProxy TCP Proxy Protocol
+                    type: boolean
+                type: object
               ports:
                 description: Ports defines the Ports for the LoadBalancer (copy from
                   service)

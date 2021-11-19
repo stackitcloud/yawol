@@ -75,6 +75,7 @@ rules:
       - ""
     resources:
       - services
+      - services/status
     verbs:
       - get
       - list
@@ -86,6 +87,7 @@ rules:
       - ""
     resources:
       - nodes
+      - nodes/status
     verbs:
       - get
       - list

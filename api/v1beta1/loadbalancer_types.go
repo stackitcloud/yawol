@@ -22,6 +22,8 @@ const (
 	ServiceClassName = "yawol.stackit.cloud/className"
 	// ServiceReplicas for setting loadbalancer replicas in cloud-controller
 	ServiceReplicas = "yawol.stackit.cloud/replicas"
+	// ServiceTCPProxyProtocol enables the HAProxy TCP Proxy Protocol for all TCP connections
+	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 )
 
 // +kubebuilder:object:root=true
@@ -65,6 +67,7 @@ type LoadBalancerSpec struct {
 	// +optional
 	ExternalIP *string `json:"externalIP,omitempty"`
 	// InternalLB is a bool for internal LoadBalancer. If set to false a FloatingIP will be assigned to the LB. Defaults to false.
+	// TODO move to LoadBalancerOptions
 	// +kubebuilder:default:=false
 	// +optional
 	InternalLB bool `json:"internalLB,omitempty"`
@@ -76,10 +79,20 @@ type LoadBalancerSpec struct {
 	// Ports defines the Ports for the LoadBalancer (copy from service)
 	Ports []corev1.ServicePort `json:"ports,omitempty"`
 	// LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
+	// TODO move to LoadBalancerOptions
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// Infrastructure defines parameters for the Infrastructure
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
+	// Options for additional LoadBalancer settings
+	// +optional
+	Options LoadBalancerOptions `json:"options,omitempty"`
+}
+
+type LoadBalancerOptions struct {
+	// TCPProxyProtocol enable HAProxy TCP Proxy Protocol
+	// +optional
+	TCPProxyProtocol bool `json:"tcpProxyProtocol,omitempty"`
 }
 
 // LoadBalancerDebugSettings defines debug settings for the LoadBalancer
