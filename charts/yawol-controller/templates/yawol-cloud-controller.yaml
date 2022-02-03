@@ -1,3 +1,4 @@
+{{- if .Values.yawolCloudController.enabled }}
 apiVersion: {{ include "deploymentversion" . }}
 kind: Deployment
 metadata:
@@ -35,14 +36,11 @@ spec:
         ports:
         - containerPort: 8080
           name: metrics
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
         command:
         - /bin/yawol-cloud-controller
+{{- if .Values.yawolCloudController.additionalArguments }}
+{{ toYaml .Values.yawolCloudController.additionalArguments | indent 8 }}
+{{- end }}
         - -leader-elect
         {{- if .Values.yawolClassName }}
         - -classname={{ .Values.yawolClassName }}
@@ -76,5 +74,20 @@ spec:
         resources:
 {{ toYaml .Values.resources.yawolCloudController | indent 10 }}
         {{- end }}
+{{- if .Values.yawolCloudController.additionalVolumeMounts }}
+        volumeMounts:
+{{ toYaml .Values.yawolCloudController.additionalVolumeMounts | indent 8 }}
+{{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
       dnsPolicy: ClusterFirst
       restartPolicy: Always
+{{- if .Values.yawolCloudController.additionalVolumes }}
+      volumes:
+{{ toYaml .Values.yawolCloudController.additionalVolumes | indent 6 }}
+{{- end }}
+{{- end }}

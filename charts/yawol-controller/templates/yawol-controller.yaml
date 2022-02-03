@@ -38,18 +38,12 @@ spec:
           - /bin/yawol-controller
           - -leader-elect
           - -enable-loadbalancer-controller
-        {{- if .Values.migrateFromOctavia }}
+          {{- if .Values.migrateFromOctavia }}
           - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
-        {{- end }}
-        {{- if .Values.yawolDebug }}
+          {{- end }}
+          {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
-        {{- end }}
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
+          {{- end }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -59,6 +53,12 @@ spec:
         resources:
 {{ toYaml .Values.resources.yawolControllerLoadbalancer | indent 10 }}
         {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
       - name: yawol-controller-loadbalancerset
         image: "{{ .Values.yawolController.image.repository }}:{{ .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
@@ -75,12 +75,6 @@ spec:
           {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
           {{- end }}
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -90,6 +84,12 @@ spec:
         resources:
 {{ toYaml .Values.resources.yawolControllerLoadbalancerset | indent 10 }}
         {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
       - name: yawol-controller-loadbalancermachine
         image: "{{ .Values.yawolController.image.repository }}:{{ .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
@@ -106,12 +106,6 @@ spec:
           {{- if .Values.yawolDebug }}
           - --debug={{ .Values.yawolDebug }}
           {{- end }}
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -125,5 +119,10 @@ spec:
         resources:
 {{ toYaml .Values.resources.yawolControllerLoadbalancermachine | indent 10 }}
         {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
       restartPolicy: Always
-

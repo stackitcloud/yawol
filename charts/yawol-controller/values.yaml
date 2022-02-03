@@ -12,14 +12,24 @@ vpa:
     mode: Auto
 
 yawolCloudController:
+  enabled: true
+  additionalArguments:
+    - -target-kubeconfig=/var/lib/cloud-controller-manager/kubeconfig
+  additionalVolumes:
+    - name: cloud-controller-manager
+      secret:
+        secretName: cloud-controller-manager
+  additionalVolumeMounts:
+    - mountPath: /var/lib/cloud-controller-manager
+      name: cloud-controller-manager
   image:
     repository: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
-    tag: v0.3.1
+    tag: 0.4.1
 
 yawolController:
   image:
     repository: registry.ske.eu01.stackit.cloud/yawol/yawol-controller
-    tag: v0.3.0
+    tag: 0.4.1
 
 resources:
   yawolCloudController:
@@ -50,6 +60,7 @@ resources:
     limits:
       cpu: 500m
       memory: 512Mi
+
 #yawolClassName: debug
 yawolOSSecretName: foobar
 yawolFloatingID: foobar
