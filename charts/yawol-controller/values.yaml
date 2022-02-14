@@ -13,6 +13,7 @@ vpa:
 
 yawolCloudController:
   enabled: true
+  clusterRoleEnabled: true
   additionalArguments:
     - -target-kubeconfig=/var/lib/cloud-controller-manager/kubeconfig
   additionalVolumes:

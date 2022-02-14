@@ -65,6 +65,7 @@ subjects:
   - kind: ServiceAccount
     name: yawol-cloud-controller
     namespace: {{ .Values.namespace }}
+{{- if .Values.yawolCloudController.clusterRoleEnabled }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -105,3 +106,4 @@ subjects:
   - kind: ServiceAccount
     name: yawol-cloud-controller
     namespace: {{ .Values.namespace }}
+{{- end }}
