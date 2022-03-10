@@ -38,7 +38,9 @@ spec:
           - /bin/yawol-controller
           - -leader-elect
           - -enable-loadbalancer-controller
+          {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
+          {{- end }}
           {{- if .Values.migrateFromOctavia }}
           - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
