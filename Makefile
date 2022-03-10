@@ -4,7 +4,7 @@ PWD = $(shell pwd)
 # constants
 GOLANGCI_VERSION = 1.42.1
 CRD_OPTIONS ?= "crd:trivialVersions=true"
-KUBERNETES_VERSION = 1.19.x
+KUBERNETES_VERSION = 1.21.x
 
 all: git-hooks ## Initializes all tools and files
 

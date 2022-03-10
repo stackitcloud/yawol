@@ -24,13 +24,14 @@ yawolCloudController:
     - mountPath: /var/lib/cloud-controller-manager
       name: cloud-controller-manager
   image:
-    repository: registry.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
-    tag: 0.4.1
+    repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
+    tag: 0.5.0
 
 yawolController:
+  gardenerMonitoringEnabled: false
   image:
-    repository: registry.ske.eu01.stackit.cloud/yawol/yawol-controller
-    tag: 0.4.1
+    repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-controller
+    tag: 0.5.0
 
 resources:
   yawolCloudController:
@@ -70,4 +71,5 @@ yawolFlavorID: foobar
 yawolImageID: foobar
 yawolAPIHost: foobar
 migrateFromOctavia: true
+#openstackTimeout: 20
 yawolDebug: false
