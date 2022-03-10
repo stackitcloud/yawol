@@ -38,11 +38,12 @@ spec:
           - /bin/yawol-controller
           - -leader-elect
           - -enable-loadbalancer-controller
+          - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- if .Values.migrateFromOctavia }}
-          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
           {{- if .Values.yawolDebug }}
-          - --debug={{ .Values.yawolDebug }}
+          - -debug={{ .Values.yawolDebug }}
           {{- end }}
         env:
         {{- if .Values.namespace }}
@@ -69,11 +70,12 @@ spec:
           - /bin/yawol-controller
           - -leader-elect
           - -enable-loadbalancerset-controller
+          - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- if .Values.migrateFromOctavia }}
-          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
           {{- if .Values.yawolDebug }}
-          - --debug={{ .Values.yawolDebug }}
+          - -debug={{ .Values.yawolDebug }}
           {{- end }}
         env:
           {{- if .Values.namespace }}
@@ -100,11 +102,12 @@ spec:
           - /bin/yawol-controller
           - -leader-elect
           - -enable-loadbalancermachine-controller
+          - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- if .Values.migrateFromOctavia }}
-          - --migrate-from-octavia={{ .Values.migrateFromOctavia }}
+          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
           {{- if .Values.yawolDebug }}
-          - --debug={{ .Values.yawolDebug }}
+          - -debug={{ .Values.yawolDebug }}
           {{- end }}
         env:
           {{- if .Values.namespace }}
