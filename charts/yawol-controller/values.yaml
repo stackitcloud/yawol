@@ -31,7 +31,7 @@ yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-controller
-    tag: 90a3dda
+    tag: 0.5.0
 
 resources:
   yawolCloudController:
