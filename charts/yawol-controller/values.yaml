@@ -25,7 +25,7 @@ yawolCloudController:
       name: cloud-controller-manager
   image:
     repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
-    tag: cba7dae
+    tag: 0.5.0
 
 yawolController:
   gardenerMonitoringEnabled: false
