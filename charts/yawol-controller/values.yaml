@@ -13,6 +13,7 @@ vpa:
 
 yawolCloudController:
   enabled: true
+  gardenerMonitoringEnabled: false
   clusterRoleEnabled: true
   additionalArguments:
     - -target-kubeconfig=/var/lib/cloud-controller-manager/kubeconfig
