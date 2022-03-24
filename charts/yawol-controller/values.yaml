@@ -25,13 +25,13 @@ yawolCloudController:
     - mountPath: /var/lib/cloud-controller-manager
       name: cloud-controller-manager
   image:
-    repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-cloud-controller
+    repository: reg.infra.ske.eu01.stackit.cloud/stackitcloud/yawol-cloud-controller
     tag: 0.5.0
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
-    repository: reg.infra.ske.eu01.stackit.cloud/yawol/yawol-controller
+    repository: reg.infra.ske.eu01.stackit.cloud/stackitcloud/yawol-controller
     tag: 0.5.0
 
 resources:
