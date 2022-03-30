@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	yawollet "github.com/stackitcloud/yawollet/controllers"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,7 +15,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	yawollet "github.com/stackitcloud/yawol/controllers/yawollet"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

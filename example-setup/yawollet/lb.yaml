@@ -1,0 +1,27 @@
+apiVersion: yawol.stackit.cloud/v1beta1
+kind: LoadBalancer
+metadata:
+  name: loadbalancer-sample
+spec:
+  selector:
+    matchLabels:
+      yawol.stackit.cloud/loadbalancer: test
+  replicas: 1
+  endpoints:
+    - name: node1
+      addresses:
+        - 127.0.0.1
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8085
+      nodePort: 9000
+    - name: dns
+      protocol: UDP
+      port: 8086
+      nodePort: 9001
+  infrastructure:
+    networkID: none
+    authSecretRef:
+      name: none
+      namespace: none

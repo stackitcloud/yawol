@@ -1,0 +1,15 @@
+apiVersion: yawol.stackit.cloud/v1beta1
+kind: LoadBalancerMachine
+metadata:
+  name: loadbalancermachine-sample
+spec:
+  infrastructure:
+    networkID: none
+    authSecretRef:
+      name: none
+      namespace: none
+  floatingID: none
+  portID: none
+  loadBalancerRef:
+    name: loadbalancer-sample
+    namespace: default

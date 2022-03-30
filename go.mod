@@ -3,13 +3,16 @@ module github.com/stackitcloud/yawol
 go 1.17
 
 require (
+	github.com/envoyproxy/go-control-plane v0.9.9
 	github.com/go-logr/logr v0.4.0
+	github.com/golang/protobuf v1.5.2
 	github.com/gophercloud/gophercloud v0.15.1-0.20210202035223-633d73521055
 	github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.11.1
-	github.com/stackitcloud/yawollet v0.5.0
+	google.golang.org/grpc v1.38.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0
 	k8s.io/api v0.22.7
 	k8s.io/apimachinery v0.22.7
@@ -33,7 +36,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cncf/xds/go v0.0.0-20210312221358-fbca930ec8ed // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/envoyproxy/go-control-plane v0.9.9 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
 	github.com/evanphx/json-patch v4.11.0+incompatible // indirect
 	github.com/fatih/color v1.12.0 // indirect
@@ -43,7 +45,6 @@ require (
 	github.com/gobuffalo/flect v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect
@@ -82,8 +83,6 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
-	google.golang.org/grpc v1.38.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

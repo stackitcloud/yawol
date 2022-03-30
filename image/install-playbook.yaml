@@ -1,0 +1,151 @@
+---
+- name: install dependencies and envoy to machine
+  hosts: default
+  become: true
+  tasks:
+    - name: perform a dist-upgrade
+      apt:
+        upgrade: dist
+        update_cache: yes
+
+    - name: autoremove packages
+      apt:
+        autoremove: yes
+
+    - name: Install dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg2
+        - software-properties-common
+        - keepalived
+
+    - name: Add an apt key for getenvoy
+      apt_key:
+        url: 'https://getenvoy.io/gpg'
+
+    - name: add envoy repos
+      apt_repository:
+        repo: "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb buster stable"
+        state: present
+        filename: envoy
+        update_cache: yes
+
+    - name: Install envoy packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - getenvoy-envoy
+
+    - name: Creating yawol user
+      user:
+        name: "yawol"
+        shell: /bin/bash
+
+    - name: Create a directory for yawol
+      file:
+        path: /etc/yawol
+        state: directory
+        mode: '0755'
+
+    - name: Create a directory for systemd yawollet
+      file:
+        path: /etc/systemd/system/yawollet.d
+        state: directory
+        mode: '0755'
+
+    - name: Reset machine-id
+      copy:
+        content: ""
+        dest: /etc/machine-id
+
+    - name: Delete folder with wrong permissions
+      file:
+        path: /dev/shm/envoy_shared_memory_0
+        state: absent
+        mode: '0755'
+
+    - name: add envoy config
+      copy:
+        src: ./envoy-config.yaml
+        dest: /etc/yawol/envoy.yaml
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: add systemd file envoy
+      copy:
+        src: ./envoy.service
+        dest: /etc/systemd/system/envoy.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: enable envoy
+      systemd:
+        daemon_reload: yes
+        enabled: yes
+        name: envoy
+
+    - name: add cap_net_bind_service for envoy
+      capabilities:
+        path: /usr/bin/envoy
+        capability: cap_net_bind_service=ep
+        state: present
+
+    - name: enable keepalived
+      systemd:
+        daemon_reload: yes
+        enabled: yes
+        name: keepalived
+
+    - name: upload yawollet
+      copy:
+        src: ../bin/manager
+        dest: /usr/local/bin/yawollet
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: add systemd file
+      copy:
+        src: ./yawollet.service
+        dest: /etc/systemd/system/yawollet.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: enable yawollet
+      systemd:
+        daemon_reload: yes
+        enabled: yes
+        name: yawollet
+
+    - name: add sysctl file
+      copy:
+        src: ./sysctl-yawollet.conf
+        dest: /etc/sysctl.d/yawollet.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: disable ssh service
+      systemd:
+        daemon_reload: yes
+        enabled: false
+        name: sshd
+
+    - name: Remove useless packages from the cache
+      apt:
+        autoclean: yes
+
+    - name: Remove dependencies that are no longer required
+      apt:
+        autoremove: yes
+
+    - command: apt-get clean

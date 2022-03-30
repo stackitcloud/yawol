@@ -1,0 +1,24 @@
+{
+  "builders": [{
+      "type": "openstack",
+      "image_name": "yawol-{{user `version`}}",
+      "source_image": "{{user `sourceImage`}}",
+      "flavor": "c1.2",
+      "floating_ip_network": "{{user `fipID`}}",
+      "networks": ["{{user `network`}}"],
+      "security_groups": ["{{user `secgroup`}}"],
+      "ssh_username": "alpine",
+      "volume_size": 1,
+      "volume_type": "storage_premium_perf6",
+      "use_blockstorage_volume": true,
+      "image_visibility": "{{user `visibility`}}",
+      "image_tags":["os_type='linux'", "os_distro='alpine'"]
+  }],
+  "provisioners": [ {
+    "type": "ansible",
+    "playbook_file": "./image/install-alpine.yaml",
+    "user": "alpine",
+    "ansible_ssh_extra_args": "-oHostKeyAlgorithms=+ssh-rsa",
+    "use_proxy": false
+  }]
+}

@@ -1,0 +1,16 @@
+#/etc/systemd/system/yawollet.service
+[Unit]
+Description=yawollet
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=yawol
+EnvironmentFile=-/etc/yawol/env.conf
+ExecStart=/usr/local/bin/yawollet $YAWOLLET_ARGS
+
+[Install]
+WantedBy=multi-user.target

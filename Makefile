@@ -7,6 +7,7 @@ CONTAINER_REGISTRY = reg.infra.ske.eu01.stackit.cloud/ske
 CONTAINER_TAG = dev
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 KUBERNETES_VERSION = 1.21.x
+ENVOY_VERSION = 1.21.1
 
 all: git-hooks ## Initializes all tools and files
 
@@ -40,6 +41,20 @@ $(GOLANGCI_LINT):
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -b bin v$(GOLANGCI_VERSION)
 	@mv bin/golangci-lint "$(@)"
 
+OS = linux
+ifeq ($(shell uname -s),Darwin)
+	OS = darwin
+endif
+ENVOY = bin/envoy-$(ENVOY_VERSION)
+ENVOY_PATH=envoy-v$(ENVOY_VERSION)-$(OS)-amd64
+$(ENVOY): ## Download envoy binary for linux
+	mkdir -p bin
+	wget -qO- https://github.com/tetratelabs/archive-envoy/releases/download/v$(ENVOY_VERSION)/$(ENVOY_PATH).tar.xz | tar xfvJ - -C bin
+	ln -sf "$(ENVOY_PATH)/bin/envoy" "$(@)"
+	ln -sf "envoy-$(ENVOY_VERSION)" "bin/envoy"
+
+get-envoy: $(ENVOY) ## alias to install latest envoy version
+
 lint: fmt $(GOLANGCI_LINT) download ## Lints all code with golangci-lint
 	@$(GOLANGCI_LINT) run
 
@@ -51,8 +66,9 @@ out/lint.xml: $(GOLANGCI_LINT) out download
 
 RUN_ENVTEST = bin/setup-envtest --bin-dir $(PWD)/bin
 SOURCE_ENVTEST = eval `$(RUN_ENVTEST) use -p env $(KUBERNETES_VERSION)`
-test: crd bin/setup-envtest ## Runs all tests
-	@$(SOURCE_ENVTEST) && go test ./...
+GO_TEST = PATH=$(PWD)/bin:$$PATH go test ./...
+test: crd $(ENVOY) bin/setup-envtest ## Runs all tests
+	@$(SOURCE_ENVTEST) && $(GO_TEST)
 
 test-reports: out/report.json
 

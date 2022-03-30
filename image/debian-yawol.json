@@ -1,0 +1,23 @@
+{
+  "builders": [{
+      "type": "openstack",
+      "image_name": "yawol-{{user `version`}}",
+      "external_source_image_url": "http://cloud.debian.org/images/cloud/OpenStack/current/debian-10-openstack-amd64.qcow2",
+      "flavor": "c1.2",
+      "floating_ip_network": "{{user `fipID`}}",
+      "networks": ["{{user `network`}}"],
+      "security_groups": ["{{user `secgroup`}}"],
+      "ssh_username": "debian",
+      "volume_size": 2,
+      "use_blockstorage_volume": true,
+      "image_visibility": "{{user `visibility`}}",
+      "image_tags":["os_type='linux'", "os_distro='debian'"]
+
+  }
+  ],
+  "provisioners": [ {
+    "type": "ansible",
+    "playbook_file": "./image/install-playbook.yaml",
+    "user": "debian"
+  }]
+}
