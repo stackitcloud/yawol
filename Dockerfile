@@ -7,7 +7,7 @@ ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 
 WORKDIR /src
-COPY go.* .
+COPY go.* ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
