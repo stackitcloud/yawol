@@ -68,7 +68,7 @@ stages:
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
     - job: build_yawol_cloud_controller
-      displayName: yawol-controller
+      displayName: yawol-cloud-controller
       pool:
         vmImage: ubuntu-latest
       steps:
@@ -76,7 +76,7 @@ stages:
           displayName: image
           inputs:
             command: buildAndPush
-            arguments: "--target yawol-controller"
+            arguments: "--target yawol-cloud-controller"
             dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
             containerRegistry: ske-reg-yawol
             repository: ske/yawol-cloud-controller
