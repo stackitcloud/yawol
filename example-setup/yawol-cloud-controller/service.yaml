@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx2
+  name: loadbalancer
+  namespace: default
+spec:
+  externalTrafficPolicy: Cluster
+  loadBalancerSourceRanges:
+  - 193.148.1.1/24
+  ports:
+  - nodePort: 32404
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  #- nodePort: 32405
+    #port: 8080
+    #protocol: UDP
+    #targetPort: 8080
+  selector:
+    app: nginx2
+  type: LoadBalancer

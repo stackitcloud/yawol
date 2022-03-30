@@ -3,6 +3,8 @@ PWD = $(shell pwd)
 
 # constants
 GOLANGCI_VERSION = 1.42.1
+CONTAINER_REGISTRY = reg.infra.ske.eu01.stackit.cloud/ske
+CONTAINER_TAG = dev
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 KUBERNETES_VERSION = 1.21.x
 
@@ -15,6 +17,9 @@ test-build: ## Tests whether the code compiles
 	@go build -o /dev/null ./...
 
 build: out/bin ## Builds all binaries
+
+container-yawol-cloud-controller: ## Builds docker image
+	docker buildx build -t $(CONTAINER_REGISTRY)/yawol-cloud-controller:$(CONTAINER_TAG) .
 
 GO_BUILD = mkdir -pv "$(@)" && go build -ldflags="-w -s" -o "$(@)" ./...
 .PHONY: out/bin
