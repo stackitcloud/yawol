@@ -1,0 +1,30 @@
+apiVersion: yawol.stackit.cloud/v1beta1
+kind: LoadBalancerSet
+metadata:
+  name: test-lb-set
+  labels:
+    app: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+  template:
+    lables:
+      app: test
+    spec:
+      floatingID: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+      infrastructure:
+        authSecretRef:
+          name: cloud-provider-config
+          namespace: default
+        flavor:
+          flavor_id: osAyv1W3z2TU5D6h
+        floatingNetID: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+        image:
+          image_id: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+        networkID: a9d32d04-87f1-47ef-8da4-a8fda4353bc1
+      loadBalancerRef:
+        name: lb1
+        namespace: default
+      portID: 72cf7a7e-0b35-4cbc-aa20-8c6c1be90713

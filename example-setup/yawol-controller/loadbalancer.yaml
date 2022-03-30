@@ -1,0 +1,32 @@
+apiVersion: yawol.stackit.cloud/v1beta1
+kind: LoadBalancer
+metadata:
+  name: lb1
+  namespace: default
+spec:
+  replicas: 1
+  endpoints:
+    - name: node1
+      addresses:
+        - 127.0.0.1
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      nodePort: 9000
+  infrastructure:
+    authSecretRef:
+      name: cloud-provider-config
+      namespace: default
+    flavor:
+      flavor_id: FLAVOR-ID
+    floatingNetID: FLOATINGNET-ID
+    image:
+      image_id: IMAGE-ID-FOR-YAWOLLET-IMAGE
+    networkID: NETWORK-ID
+  debugSettings:
+    enabled: false
+    sshkeyName: ske-key
+  selector:
+    matchLabels:
+      yawol.stackit.cloud/loadbalancer: lb1
