@@ -48,7 +48,7 @@ stages:
 
   - stage: build
     dependsOn: test
-    displayName: Build image yawol-controller
+    displayName: Build container image
     jobs:
     - job: build_yawol_controller
       displayName: yawol-controller
@@ -58,7 +58,7 @@ stages:
       - task: Docker@2
         displayName: image
         inputs:
-          command: build
+          command: buildAndPush
           arguments: "--target yawol-controller"
           dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
           containerRegistry: ske-reg-yawol
@@ -75,7 +75,7 @@ stages:
         - task: Docker@2
           displayName: image
           inputs:
-            command: build
+            command: buildAndPush
             arguments: "--target yawol-controller"
             dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
             containerRegistry: ske-reg-yawol
@@ -84,3 +84,22 @@ stages:
               tags: $(Build.SourceBranchName)
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
               tags: $(Build.BuildNumber)
+  - stage: packer
+    dependsOn: test
+    displayName: build yawollet image
+    jobs:
+    - job: build_packer
+      displayName: packer
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - task: GoTool@0
+          displayName: Install Go Binary
+          inputs:
+            version: $(goVersion)
+        - bash: make download
+          displayName: Downloads the dependencies
+        - bash: make get-envoy
+          displayName: Downloads envoy
+        - bash: CGO_ENABLED=0 go build -o bin/manager ./cmd/yawollet/main.go
+          displayName: build yawollet
