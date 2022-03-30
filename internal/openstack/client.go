@@ -31,8 +31,8 @@ type OSClient struct {
 //	username="itmyuser"
 //	password="suupersecret"
 //	region="eu01"
-func (r *OSClient) Configure(ini []byte) error {
-	r.ini = ini
+func (r *OSClient) Configure(iniBytes []byte) error {
+	r.ini = iniBytes
 	return nil
 }
 
@@ -66,7 +66,6 @@ func (r *OSClient) PortClient() (PortClient, error) {
 
 	client := &OSPortClient{}
 	return client.Configure(r.networkV2), nil
-
 }
 
 // Returns a configured OSGroupClient as GroupClient.

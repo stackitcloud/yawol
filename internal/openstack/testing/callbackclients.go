@@ -196,7 +196,11 @@ func (r CallbackLoadBalancerClient) Get(ctx context.Context, id string) (*loadba
 	return r.GetFunc(ctx, id)
 }
 
-func (r CallbackLoadBalancerClient) Update(ctx context.Context, id string, opts loadbalancers.UpdateOpts) (*loadbalancers.LoadBalancer, error) {
+func (r CallbackLoadBalancerClient) Update(
+	ctx context.Context,
+	id string,
+	opts loadbalancers.UpdateOpts,
+) (*loadbalancers.LoadBalancer, error) {
 	return r.UpdateFunc(ctx, id, opts)
 }
 

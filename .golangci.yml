@@ -20,9 +20,15 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-      - hugeParam # TODO maybe pass all by pointer?
-      - rangeValCopy # TODO fix in the future maybe
-      - sloppyReassign # TODO fix in the future maybe
+      # TODO fix all below
+      - hugeParam
+      - rangeValCopy
+      - sloppyReassign
+      - paramTypeCombine
+      - ptrToRefParam
+      - unnecessaryBlock
+      - singleCaseSwitch
+
   gocyclo:
     min-complexity: 30 # decrease this
       # gci:
@@ -62,23 +68,17 @@ linters:
     - deadcode
     - depguard
     - dogsled
-    - dupl
-    - exportloopref
     - goconst
     - gocritic
-    - gocyclo
     - gofmt
     - goimports
     - goprintffuncname
-    - gosec
     - gosimple
     - govet
     - ineffassign
     - lll
     - misspell
     - nakedret
-    - noctx
-    - nolintlint
     - rowserrcheck
     - staticcheck
     - structcheck
@@ -89,11 +89,17 @@ linters:
     - unused
     - varcheck
     - whitespace
-    - prealloc
 
   # don't enable:
   # - funlen # TODO reconcile functions are way too large
   # - revive # TODO disable underscore in package name
+  # - dupl # TODO remove duplicated code
+  # - gocyclo # TODO remove complexity of functions
+  # - gosec # TODO fix
+  # - nolintlint # TODO fix
+  # - noctx # TODO fix
+  # - prealloc
+  # - exportloopref
   # - gomnd # magic number detected -> sometimes useful
   # - golint # is deprecated
   # - goerr113 # we have some dynamic errors
@@ -124,6 +130,7 @@ issues:
         - goerr113
         - goconst
         - dupl
+        - unparam
 
     # https://github.com/go-critic/go-critic/issues/926
     - linters:

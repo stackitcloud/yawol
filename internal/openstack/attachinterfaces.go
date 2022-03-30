@@ -42,7 +42,10 @@ func (r *OSAttachInterfacesClient) Get(ctx context.Context, serverID, portID str
 }
 
 // Invokes attachinterfaces.Create() in gophercloud's attachinterfaces package. Uses the computeV2 client provided in Configure().
-func (r *OSAttachInterfacesClient) Create(ctx context.Context, serverID string, opts attachinterfaces.CreateOptsBuilder) (*attachinterfaces.Interface, error) {
+func (r *OSAttachInterfacesClient) Create(ctx context.Context,
+	serverID string,
+	opts attachinterfaces.CreateOptsBuilder,
+) (*attachinterfaces.Interface, error) {
 	r.computeV2.Context = ctx
 	i, err := attachinterfaces.Create(r.computeV2, serverID, opts).Extract()
 	r.computeV2.Context = nil
