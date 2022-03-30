@@ -7,8 +7,8 @@ trigger:
 resources:
   - repo: self
 
-variables:
-  containerRegistry: 'reg.infra.ske.eu01.stackit.cloud/ske'
+#variables:
+#  containerRegistry: 'reg.infra.ske.eu01.stackit.cloud/ske'
 
 stages:
   - stage: Build
@@ -24,7 +24,7 @@ stages:
             inputs:
               command: build
               dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-              containerRegistry: ${{ variables.containerRegistry }}
+              #containerRegistry: ${{ variables.containerRegistry }}
               ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
                 tags: $(Build.SourceBranchName)
               ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
