@@ -1,0 +1,31 @@
+trigger:
+  branches:
+    include:
+      - master
+      - feature/*
+
+resources:
+  - repo: self
+
+variables:
+  containerRegistry: 'reg.infra.ske.eu01.stackit.cloud/ske'
+
+stages:
+  - stage: Build
+    displayName: Build image
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: Build an image
+            inputs:
+              command: build
+              dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+              containerRegistry: ${{ variables.containerRegistry }}
+              ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
+                tags: $(Build.SourceBranchName)
+              ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
+                tags: $(Build.BuildNumber)
