@@ -20,8 +20,8 @@ stages:
           - task: Docker@2
             displayName: image
             inputs:
-              command: buildx
-              arguments: "build --target yawol-controller"
+              command: build
+              arguments: "--target yawol-controller"
               dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
               #containerRegistry: reg.infra.ske.eu01.stackit.cloud/ske/yawol-controller
               ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
