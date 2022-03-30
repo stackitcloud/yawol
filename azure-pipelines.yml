@@ -11,7 +11,7 @@ resources:
 stages:
   - stage: test
     jobs:
-    - job: goTests
+    - job: go_tests
       displayName: Lint & Test Go Application
       steps:
        - task: GoTool@0
@@ -44,7 +44,7 @@ stages:
         displayName: Semgrep
 
   - stage: build
-    dependsOn: goTests
+    dependsOn: test
     displayName: Build image yawol-controller
     jobs:
     - job: build_yawol_controller
