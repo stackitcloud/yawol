@@ -9,7 +9,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/openstack"
-	os "github.com/stackitcloud/yawol/internal/openstack/fake"
+	"github.com/stackitcloud/yawol/internal/openstack/testing"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,7 +145,7 @@ var _ = Describe("LB Status update", func() {
 		By("Setup - Mocks")
 
 		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
-			return os.GetFakeClient(), nil
+			return testing.GetFakeClient(), nil
 		}
 
 		By("Setup - Enable reconciliation loop")

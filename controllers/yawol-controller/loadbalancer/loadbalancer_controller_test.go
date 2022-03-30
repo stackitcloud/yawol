@@ -10,8 +10,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	os "github.com/stackitcloud/yawol/internal/openstack/fake"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
@@ -57,7 +55,7 @@ var _ = Describe("loadbalancer controller", func() {
 	BeforeEach(func() {
 		lb = getMockLB(lbNN)
 
-		client = os.GetFakeClient()
+		client = testing.GetFakeClient()
 		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			return client, nil
 		}
@@ -722,7 +720,7 @@ var _ = Describe("loadbalancer controller", func() {
 			By("cleaning up")
 			loadBalancerReconciler.MigrateFromOctavia = false
 			// create a new client so all os resources are already cleaned up
-			client = os.GetFakeClient()
+			client = testing.GetFakeClient()
 		})
 	}) // migrate from octavia context
 }) // load balancer describe

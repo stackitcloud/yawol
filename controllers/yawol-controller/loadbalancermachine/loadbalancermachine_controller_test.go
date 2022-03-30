@@ -10,7 +10,6 @@ import (
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	os "github.com/stackitcloud/yawol/internal/openstack/fake"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,7 +63,7 @@ var _ = Describe("load balancer machine", func() {
 		lb = getMockLB()
 		lbm = getMockLBM(lb)
 
-		client = os.GetFakeClient()
+		client = testing.GetFakeClient()
 		// create the port used for the lb fip
 		client.PortClientObj.Create(ctx, ports.CreateOpts{
 			Name:      "port-id",
@@ -203,7 +202,7 @@ var _ = Describe("load balancer machine", func() {
 
 		AfterEach(func() {
 			// so the cleanup can run properly
-			client = os.GetFakeClient()
+			client = testing.GetFakeClient()
 		})
 
 		It("should throw error events", func() {

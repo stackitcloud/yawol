@@ -1,4 +1,4 @@
-package fake
+package testing
 
 import (
 	"context"
@@ -13,11 +13,10 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/stackitcloud/yawol/internal/openstack/testing"
 )
 
-func GetFakeClient() *testing.MockClient {
-	client := testing.MockClient{}
+func GetFakeClient() *MockClient {
+	client := MockClient{}
 
 	client.StoredValues = map[string]interface{}{
 		"id":      0, // used to generate unique ids across resources
@@ -28,7 +27,7 @@ func GetFakeClient() *testing.MockClient {
 		"servers": make(map[string]*servers.Server),
 	}
 
-	client.GroupClientObj = &testing.CallbackGroupClient{
+	client.GroupClientObj = &CallbackGroupClient{
 		ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
 			grps := client.StoredValues["groups"].(map[string]*groups.SecGroup)
 
@@ -73,7 +72,7 @@ func GetFakeClient() *testing.MockClient {
 		},
 	}
 
-	client.RuleClientObj = &testing.CallbackRuleClient{
+	client.RuleClientObj = &CallbackRuleClient{
 		ListFunc: func(ctx context.Context, opts rules.ListOpts) ([]rules.SecGroupRule, error) {
 			rls := client.StoredValues["rules"].(map[string]*rules.SecGroupRule)
 
@@ -139,7 +138,7 @@ func GetFakeClient() *testing.MockClient {
 		},
 	}
 
-	client.FipClientObj = &testing.CallbackFipClient{
+	client.FipClientObj = &CallbackFipClient{
 		ListFunc: func(ctx context.Context, optsBuilder floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error) {
 			opts := optsBuilder.(floatingips.ListOpts)
 			fips := client.StoredValues["fips"].(map[string]*floatingips.FloatingIP)
@@ -209,7 +208,7 @@ func GetFakeClient() *testing.MockClient {
 		},
 	}
 
-	client.PortClientObj = &testing.CallbackPortClient{
+	client.PortClientObj = &CallbackPortClient{
 		ListFunc: func(ctx context.Context, optsBuilder ports.ListOptsBuilder) ([]ports.Port, error) {
 			opts := optsBuilder.(ports.ListOpts)
 			prts := client.StoredValues["ports"].(map[string]*ports.Port)
@@ -277,7 +276,7 @@ func GetFakeClient() *testing.MockClient {
 		},
 	}
 
-	client.ServerClientObj = &testing.CallbackServerClient{
+	client.ServerClientObj = &CallbackServerClient{
 		ListFunc: func(ctx context.Context, optsBuilder servers.ListOptsBuilder) ([]servers.Server, error) {
 			opts := optsBuilder.(servers.ListOpts)
 			srvs := client.StoredValues["servers"].(map[string]*servers.Server)
@@ -331,7 +330,7 @@ func GetFakeClient() *testing.MockClient {
 	return &client
 }
 
-func getID(client *testing.MockClient) string {
+func getID(client *MockClient) string {
 	id := client.StoredValues["id"].(int)
 	client.StoredValues["id"] = id + 1
 	return strconv.Itoa(id)
