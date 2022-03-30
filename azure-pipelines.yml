@@ -61,8 +61,26 @@ stages:
           command: build
           arguments: "--target yawol-controller"
           dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-          #containerRegistry: reg.infra.ske.eu01.stackit.cloud/ske/yawol-controller
+          containerRegistry: reg.infra.ske.eu01.stackit.cloud
+          repository: ske/yawol-controller
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
             tags: $(Build.SourceBranchName)
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
+    - job: build_yawol_cloud-controller
+      displayName: yawol-controller
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - task: Docker@2
+          displayName: image
+          inputs:
+            command: build
+            arguments: "--target yawol-controller"
+            dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+            containerRegistry: reg.infra.ske.eu01.stackit.cloud
+            repository: ske/yawol-cloud-controller
+            ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
+              tags: $(Build.SourceBranchName)
+            ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
+              tags: $(Build.BuildNumber)
