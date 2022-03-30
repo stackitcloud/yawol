@@ -61,7 +61,7 @@ stages:
           command: build
           arguments: "--target yawol-controller"
           dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-          containerRegistry: reg.infra.ske.eu01.stackit.cloud
+          containerRegistry: ske-reg-yawol
           repository: ske/yawol-controller
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
             tags: $(Build.SourceBranchName)
@@ -78,7 +78,7 @@ stages:
             command: build
             arguments: "--target yawol-controller"
             dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-            containerRegistry: reg.infra.ske.eu01.stackit.cloud
+            containerRegistry: ske-reg-yawol
             repository: ske/yawol-cloud-controller
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
               tags: $(Build.SourceBranchName)
