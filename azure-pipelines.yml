@@ -12,7 +12,7 @@ stages:
   - stage: build
     displayName: Build image yawol-controller
     jobs:
-      - job: build-yawol-controller
+      - job: build_yawol_controller
         displayName: yawol-controller
         pool:
           vmImage: ubuntu-latest
