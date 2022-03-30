@@ -20,7 +20,10 @@ test-build: ## Tests whether the code compiles
 build: out/bin ## Builds all binaries
 
 container-yawol-cloud-controller: ## Builds docker image
-	docker buildx build -t $(CONTAINER_REGISTRY)/yawol-cloud-controller:$(CONTAINER_TAG) .
+	docker buildx build --target yawol-cloud-controller -t $(CONTAINER_REGISTRY)/yawol-cloud-controller:$(CONTAINER_TAG) .
+
+container-yawol-controller: ## Builds docker image
+	docker buildx build --target yawol-controller -t $(CONTAINER_REGISTRY)/yawol-controller:$(CONTAINER_TAG) .
 
 GO_BUILD = mkdir -pv "$(@)" && go build -ldflags="-w -s" -o "$(@)" ./...
 .PHONY: out/bin
