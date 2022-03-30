@@ -67,7 +67,7 @@ stages:
             tags: $(Build.SourceBranchName)
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
-    - job: build_yawol_cloud-controller
+    - job: build_yawol_cloud_controller
       displayName: yawol-controller
       pool:
         vmImage: ubuntu-latest
