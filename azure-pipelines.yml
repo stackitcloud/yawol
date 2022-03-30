@@ -7,6 +7,9 @@ trigger:
 resources:
   - repo: self
 
+variables:
+  - name: goVersion
+    value: 1.17
 
 stages:
   - stage: test
