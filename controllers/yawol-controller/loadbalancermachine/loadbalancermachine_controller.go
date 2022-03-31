@@ -13,16 +13,16 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	os "github.com/stackitcloud/yawol/internal/openstack"
+	os "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

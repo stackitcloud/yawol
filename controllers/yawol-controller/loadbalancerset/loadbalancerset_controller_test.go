@@ -16,8 +16,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	yawollet "github.com/stackitcloud/yawol/controllers/yawollet"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	yawollet "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

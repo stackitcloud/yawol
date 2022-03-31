@@ -14,8 +14,8 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	controllers "github.com/stackitcloud/yawol/controllers/yawollet"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	controllers "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

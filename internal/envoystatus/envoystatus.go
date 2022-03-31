@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

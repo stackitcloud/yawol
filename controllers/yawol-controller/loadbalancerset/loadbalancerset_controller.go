@@ -9,9 +9,9 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	yawollet "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
 	"github.com/go-logr/logr"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	yawollet "github.com/stackitcloud/yawol/controllers/yawollet"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

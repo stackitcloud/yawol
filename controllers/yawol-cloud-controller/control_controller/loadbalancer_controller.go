@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"strings"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
 	"github.com/go-logr/logr"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/target_controller"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"

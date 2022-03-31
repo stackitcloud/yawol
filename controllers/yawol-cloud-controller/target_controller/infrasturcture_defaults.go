@@ -3,7 +3,7 @@ package target_controller
 import (
 	"strconv"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
 )
 

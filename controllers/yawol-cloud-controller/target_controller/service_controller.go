@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	"github.com/go-logr/logr"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

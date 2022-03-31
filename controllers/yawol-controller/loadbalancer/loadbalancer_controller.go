@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
@@ -20,9 +21,8 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stackitcloud/yawol/internal/openstack"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	coreV1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"

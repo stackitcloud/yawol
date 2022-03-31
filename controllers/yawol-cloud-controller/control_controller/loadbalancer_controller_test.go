@@ -6,15 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
 	. "github.com/onsi/ginkgo"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/target_controller"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	. "github.com/onsi/gomega"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 )
 
 var _ = Describe("Check loadbalancer reconcile", func() {

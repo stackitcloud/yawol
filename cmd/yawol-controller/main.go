@@ -12,12 +12,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancer"
-	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancermachine"
-	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancerset"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-controller/loadbalancer"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-controller/loadbalancermachine"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-controller/loadbalancerset"
 
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

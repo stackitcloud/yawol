@@ -18,7 +18,7 @@ Example usage
 */
 package testing
 
-import "github.com/stackitcloud/yawol/internal/openstack"
+import "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 
 type MockClient struct {
 	StoredValues             map[string]interface{}

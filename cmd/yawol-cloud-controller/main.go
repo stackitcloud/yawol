@@ -14,9 +14,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/control_controller"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/target_controller"
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/control_controller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
