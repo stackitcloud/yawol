@@ -16,14 +16,28 @@ yawolCloudController:
   gardenerMonitoringEnabled: false
   clusterRoleEnabled: true
   additionalArguments:
-    - -target-kubeconfig=/var/lib/cloud-controller-manager/kubeconfig
+    - -target-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
   additionalVolumes:
-    - name: cloud-controller-manager
-      secret:
-        secretName: cloud-controller-manager
+    - name: kubeconfig                                                                                                                                                            
+      projected:                                                                                                                                                                  
+        defaultMode: 420                                                                                                                                                          
+        sources:                                                                                                                                                                  
+        - secret:                                                                                                                                                                 
+            items:                                                                                                                                                                
+            - key: kubeconfig                                                                                                                                                     
+              path: kubeconfig                                                                                                                                                    
+            name: generic-token-kubeconfig                                                                                                                                        
+            optional: false                                                                                                                                                       
+        - secret:                                                                                                                                                                 
+            items:                                                                                                                                                                
+            - key: token                                                                                                                                                          
+              path: token                                                                                                                                                         
+            name: shoot-access-cloud-controller-manager                                                                                                                           
+            optional: false
   additionalVolumeMounts:
-    - mountPath: /var/lib/cloud-controller-manager
-      name: cloud-controller-manager
+    - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+      name: kubeconfig
+      readOnly: true
   image:
     repository: reg.infra.ske.eu01.stackit.cloud/stackitcloud/yawol-cloud-controller
     tag: 0.5.0
