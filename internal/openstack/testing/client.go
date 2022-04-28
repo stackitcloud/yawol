@@ -18,7 +18,12 @@ Example usage
 */
 package testing
 
-import "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+import (
+	"context"
+	"time"
+
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+)
 
 type MockClient struct {
 	StoredValues             map[string]interface{}
@@ -32,31 +37,31 @@ type MockClient struct {
 	LoadBalancerClientObj    openstack.LoadBalancerClient
 }
 
-func (r *MockClient) Configure(ini []byte) error {
+func (r *MockClient) Configure(ini []byte, timeout time.Duration) error {
 	r.StoredValues = make(map[string]interface{})
 	return nil
 }
-func (r *MockClient) FipClient() (openstack.FipClient, error) {
+func (r *MockClient) FipClient(ctx context.Context) (openstack.FipClient, error) {
 	return r.FipClientObj, nil
 }
-func (r *MockClient) PortClient() (openstack.PortClient, error) {
+func (r *MockClient) PortClient(ctx context.Context) (openstack.PortClient, error) {
 	return r.PortClientObj, nil
 }
-func (r *MockClient) GroupClient() (openstack.GroupClient, error) {
+func (r *MockClient) GroupClient(ctx context.Context) (openstack.GroupClient, error) {
 	return r.GroupClientObj, nil
 }
-func (r *MockClient) RuleClient() (openstack.RuleClient, error) {
+func (r *MockClient) RuleClient(ctx context.Context) (openstack.RuleClient, error) {
 	return r.RuleClientObj, nil
 }
-func (r *MockClient) ServerClient() (openstack.ServerClient, error) {
+func (r *MockClient) ServerClient(ctx context.Context) (openstack.ServerClient, error) {
 	return r.ServerClientObj, nil
 }
-func (r *MockClient) KeyPairClient() (openstack.KeyPairClient, error) {
+func (r *MockClient) KeyPairClient(ctx context.Context) (openstack.KeyPairClient, error) {
 	return r.KeyPairClientObj, nil
 }
-func (r *MockClient) AttachInterfaceClient() (openstack.AttachInterfaceClient, error) {
+func (r *MockClient) AttachInterfaceClient(ctx context.Context) (openstack.AttachInterfaceClient, error) {
 	return r.AttachInterfaceClientObj, nil
 }
-func (r *MockClient) LoadBalancerClient() (openstack.LoadBalancerClient, error) {
+func (r *MockClient) LoadBalancerClient(ctx context.Context) (openstack.LoadBalancerClient, error) {
 	return r.LoadBalancerClientObj, nil
 }

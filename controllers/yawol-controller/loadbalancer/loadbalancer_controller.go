@@ -162,7 +162,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 		} else {
 			var fipClient openstack.FipClient
-			fipClient, err = osClient.FipClient()
+			fipClient, err = osClient.FipClient(ctx)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -245,7 +245,7 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData)
+			err := osClient.Configure(iniData, r.OpenstackTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -288,15 +288,15 @@ func (r *LoadBalancerReconciler) reconcileFIP(
 	var requeue bool
 	{
 		var err error
-		fipClient, err = osClient.FipClient()
+		fipClient, err = osClient.FipClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		lbClient, err = osClient.LoadBalancerClient()
+		lbClient, err = osClient.LoadBalancerClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -587,7 +587,7 @@ func (r *LoadBalancerReconciler) reconcilePort(
 	var portClient openstack.PortClient
 	{
 		var err error
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -726,7 +726,7 @@ func (r *LoadBalancerReconciler) reconcileSecGroup(
 	var groupClient openstack.GroupClient
 	{
 		var err error
-		groupClient, err = osClient.GroupClient()
+		groupClient, err = osClient.GroupClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -735,7 +735,7 @@ func (r *LoadBalancerReconciler) reconcileSecGroup(
 	var ruleClient openstack.RuleClient
 	{
 		var err error
-		ruleClient, err = osClient.RuleClient()
+		ruleClient, err = osClient.RuleClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -847,7 +847,7 @@ func (r *LoadBalancerReconciler) reconcileSecGroup(
 				EtherType:    string(etherType),
 				Direction:    string(rules.DirIngress),
 				Protocol:     string(rules.ProtocolICMP),
-				PortRangeMin: 0,
+				PortRangeMin: 1,
 				PortRangeMax: 8,
 			},
 		)
@@ -1019,7 +1019,7 @@ func (r *LoadBalancerReconciler) reconcileFIPAssociate(
 	var fipClient openstack.FipClient
 	{
 		var err error
-		fipClient, err = osClient.FipClient()
+		fipClient, err = osClient.FipClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1505,17 +1505,17 @@ func (r *LoadBalancerReconciler) deletionRoutine(
 	var groupClient openstack.GroupClient
 	{
 		var err error
-		fipClient, err = osClient.FipClient()
+		fipClient, err = osClient.FipClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		groupClient, err = osClient.GroupClient()
+		groupClient, err = osClient.GroupClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

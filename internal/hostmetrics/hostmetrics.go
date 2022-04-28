@@ -2,13 +2,13 @@
 package hostmetrics
 
 import (
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strings"
 )
 
 func GetLoad() (load1 string, load5 string, load15 string, err error) {
-	loadFile, err := ioutil.ReadFile("/proc/loadavg")
+	loadFile, err := os.ReadFile("/proc/loadavg")
 	if err != nil {
 		return "", "", "", err
 	}
@@ -26,7 +26,7 @@ func GetCPUNum() int {
 
 // GetCPUStealTime returns aggregated cpu steal time of all cpus for node
 func GetCPUStealTime() (string, error) {
-	statFile, err := ioutil.ReadFile("/proc/stat")
+	statFile, err := os.ReadFile("/proc/stat")
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +61,7 @@ func GetMem() (
 	availableMemory string,
 	err error,
 ) {
-	memFile, err := ioutil.ReadFile("/proc/meminfo")
+	memFile, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
 		return "", "", "", err
 	}

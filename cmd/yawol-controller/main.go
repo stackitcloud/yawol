@@ -72,7 +72,7 @@ func main() {
 	var lbSetController bool
 	var lbMachineController bool
 
-	var openstackTimeout int
+	var openstackTimeout time.Duration
 
 	// settings for leases
 	var leasesDurationInt int
@@ -103,7 +103,7 @@ func main() {
 	flag.BoolVar(&lbMachineController, "enable-loadbalancermachine-controller", false,
 		"Enable loadbalancer-machine controller manager. ")
 
-	flag.IntVar(&openstackTimeout, "openstack-timeout", 20, "Timeout in seconds for all requests against Openstack.")
+	flag.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
 	flag.IntVar(&leasesDurationInt, "leases-duration", 60,
 		"Is the time in seconds a non-leader will wait until forcing to acquire leadership.")
@@ -140,7 +140,6 @@ func main() {
 	var loadBalancerMgr manager.Manager
 	var loadBalancerSetMgr manager.Manager
 	var loadBalancerMachineMgr manager.Manager
-	openstackTimeoutDuration := time.Duration(openstackTimeout) * time.Second
 
 	// Controller 2
 	if lbController {
@@ -170,7 +169,7 @@ func main() {
 			Recorder:           loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
 			OpenstackMetrics:   *openstackMetrics,
 			MigrateFromOctavia: migrateFromOctavia,
-			OpenstackTimeout:   openstackTimeoutDuration,
+			OpenstackTimeout:   openstackTimeout,
 		}).SetupWithManager(loadBalancerMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)
@@ -262,7 +261,7 @@ func main() {
 			ApiEndpoint:      apiEndpoint,
 			MachineMetrics:   *machineMetrics,
 			OpenstackMetrics: *openstackMetrics,
-			OpenstackTimeout: openstackTimeoutDuration,
+			OpenstackTimeout: openstackTimeout,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)
