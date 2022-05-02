@@ -344,7 +344,7 @@ func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (os.Client, error) {
 			osClient := os.OSClient{}
-			err := osClient.Configure(iniData)
+			err := osClient.Configure(iniData, r.OpenstackTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -398,7 +398,7 @@ func (r *LoadBalancerMachineReconciler) checkServer(
 	var srvClient os.ServerClient
 	{
 		var err error
-		srvClient, err = osClient.ServerClient()
+		srvClient, err = osClient.ServerClient(ctx)
 		if err != nil {
 			return servers.Server{}, err
 		}
@@ -437,7 +437,7 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	var server *servers.Server
 	{
 		var err error
-		srvClient, err = osClient.ServerClient()
+		srvClient, err = osClient.ServerClient(ctx)
 		if err != nil {
 			return servers.Server{}, err
 		}
@@ -480,7 +480,7 @@ func (r *LoadBalancerMachineReconciler) deleteServer(ctx context.Context, osClie
 	var srvClient os.ServerClient
 	{
 		var err error
-		srvClient, err = osClient.ServerClient()
+		srvClient, err = osClient.ServerClient(ctx)
 		if err != nil {
 			return err
 		}
@@ -515,7 +515,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 	var portClient os.PortClient
 	{
 		var err error
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return err
 		}
@@ -595,7 +595,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePortAddressPair(
 	var portClient os.PortClient
 	{
 		var err error
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -705,7 +705,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 	var portClient os.PortClient
 	{
 		var err error
-		portClient, err = osClient.PortClient()
+		portClient, err = osClient.PortClient(ctx)
 		if err != nil {
 			return err
 		}

@@ -28,6 +28,7 @@ package openstack
 
 import (
 	"context"
+	"time"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
@@ -42,23 +43,23 @@ import (
 // Client provides a interface to configure and use different OpenStack clients.
 type Client interface {
 	// Takes the content of an ini-file, to configure the openstack client
-	Configure(ini []byte) error
+	Configure(ini []byte, timeout time.Duration) error
 	// Returns the FipClient created from the configured ini
-	FipClient() (FipClient, error)
+	FipClient(ctx context.Context) (FipClient, error)
 	// Returns the PortClient created from the configured ini
-	PortClient() (PortClient, error)
+	PortClient(ctx context.Context) (PortClient, error)
 	// Returns the GroupClient created from the configured ini
-	GroupClient() (GroupClient, error)
+	GroupClient(ctx context.Context) (GroupClient, error)
 	// Returns the RuleClient created from the configured ini
-	RuleClient() (RuleClient, error)
+	RuleClient(ctx context.Context) (RuleClient, error)
 	// Returns the ServerClient created from the configured ini
-	ServerClient() (ServerClient, error)
+	ServerClient(ctx context.Context) (ServerClient, error)
 	// Returns the KeyPairClient created from the configured ini
-	KeyPairClient() (KeyPairClient, error)
+	KeyPairClient(ctx context.Context) (KeyPairClient, error)
 	// Returns the AttachInterfaceClient created from the configured ini
-	AttachInterfaceClient() (AttachInterfaceClient, error)
+	AttachInterfaceClient(ctx context.Context) (AttachInterfaceClient, error)
 	// Returns the AttachInterfaceClient created from the configured ini
-	LoadBalancerClient() (LoadBalancerClient, error)
+	LoadBalancerClient(ctx context.Context) (LoadBalancerClient, error)
 }
 
 // FipClient is used to modify FloatingIPs in an OpenStack environment.

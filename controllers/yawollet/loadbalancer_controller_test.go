@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -607,7 +607,7 @@ func checkConditions(
 		if resp.StatusCode != 200 {
 			return nil
 		}
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}

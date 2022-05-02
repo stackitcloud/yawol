@@ -18,21 +18,21 @@ yawolCloudController:
   additionalArguments:
     - -target-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
   additionalVolumes:
-    - name: kubeconfig                                                                                                                                                            
-      projected:                                                                                                                                                                  
-        defaultMode: 420                                                                                                                                                          
-        sources:                                                                                                                                                                  
-        - secret:                                                                                                                                                                 
-            items:                                                                                                                                                                
-            - key: kubeconfig                                                                                                                                                     
-              path: kubeconfig                                                                                                                                                    
-            name: generic-token-kubeconfig                                                                                                                                        
-            optional: false                                                                                                                                                       
-        - secret:                                                                                                                                                                 
-            items:                                                                                                                                                                
-            - key: token                                                                                                                                                          
-              path: token                                                                                                                                                         
-            name: shoot-access-cloud-controller-manager                                                                                                                           
+    - name: kubeconfig
+      projected:
+        defaultMode: 420
+        sources:
+        - secret:
+            items:
+            - key: kubeconfig
+              path: kubeconfig
+            name: generic-token-kubeconfig
+            optional: false
+        - secret:
+            items:
+            - key: token
+              path: token
+            name: shoot-access-cloud-controller-manager
             optional: false
   additionalVolumeMounts:
     - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
@@ -86,5 +86,5 @@ yawolFlavorID: foobar
 yawolImageID: foobar
 yawolAPIHost: foobar
 migrateFromOctavia: true
-#openstackTimeout: 20
+#openstackTimeout: 20s
 yawolDebug: false

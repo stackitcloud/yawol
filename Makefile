@@ -2,7 +2,7 @@ SHELL=/bin/bash -e -o pipefail
 PWD = $(shell pwd)
 
 # constants
-GOLANGCI_VERSION = 1.42.1
+GOLANGCI_VERSION = 1.45.2
 CONTAINER_REGISTRY = reg.infra.ske.eu01.stackit.cloud/ske
 CONTAINER_TAG = dev
 CRD_OPTIONS ?= "crd:trivialVersions=true"

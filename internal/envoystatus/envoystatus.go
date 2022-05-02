@@ -2,7 +2,7 @@
 package envoystatus
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -44,7 +44,7 @@ func (c *Config) GetCurrentSnapshotVersion() (
 		return "", "", nil
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", "", err
 	}
@@ -80,7 +80,7 @@ func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, er
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
