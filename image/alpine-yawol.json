@@ -3,16 +3,23 @@
       "type": "openstack",
       "image_name": "yawol-{{user `version`}}",
       "source_image": "{{user `sourceImage`}}",
+      "external_source_image_properties": {
+        "os_type": "linux",
+        "os_distro": "alpine"
+      },
       "flavor": "c1.2",
       "floating_ip_network": "{{user `fipID`}}",
+      "metadata": {
+        "os_type": "linux",
+        "os_distro": "ubuntu"
+      },
       "networks": ["{{user `network`}}"],
       "security_groups": ["{{user `secgroup`}}"],
       "ssh_username": "alpine",
       "volume_size": 1,
       "volume_type": "storage_premium_perf6",
       "use_blockstorage_volume": true,
-      "image_visibility": "{{user `visibility`}}",
-      "image_tags":["os_type='linux'", "os_distro='alpine'"]
+      "image_visibility": "{{user `visibility`}}"
   }],
   "provisioners": [ {
     "type": "ansible",
