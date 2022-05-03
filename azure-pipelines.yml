@@ -34,21 +34,6 @@ stages:
        - bash: make test
          displayName: Runs all tests
 
-    - job: Semgrep
-      displayName: Run semgrep security tests
-      steps:
-      - bash: |
-          docker run -v $(pwd):/src --workdir /src returntocorp/semgrep-agent:v1 semgrep-agent \
-          --config p/secrets \
-          --config p/ci \
-          --config p/r2c \
-          --config p/r2c-ci \
-          --config p/docker \
-          --config p/dockerfile \
-          --config p/command-injection \
-          --config p/security-audit
-        displayName: Semgrep
-
   - stage: build
     dependsOn: test
     displayName: Build container image
@@ -87,6 +72,7 @@ stages:
               tags: $(Build.SourceBranchName)
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
               tags: $(Build.BuildNumber)
+
   - stage: packer
     dependsOn: test
     displayName: build yawollet image
