@@ -595,11 +595,13 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 		})
 
 		It("create service with set loadbalancer IP in status", func() {
+			// TODO this test is flaky sometimes
 			By("create service")
 			service := v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "service-test5",
-					Namespace: "default"},
+					Namespace: "default",
+				},
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
 						{
