@@ -44,9 +44,9 @@ stages:
         vmImage: ubuntu-latest
       steps:
       - task: Docker@2
-        displayName: image
+        displayName: build
         inputs:
-          command: buildAndPush
+          command: build
           arguments: "--target yawol-controller"
           dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
           containerRegistry: ske-reg-yawol
@@ -55,17 +55,38 @@ stages:
             tags: $(Build.SourceBranchName)
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
+      - task: Docker@2
+        displayName: push
+        inputs:
+          command: push
+          containerRegistry: ske-reg-yawol
+          repository: ske/yawol-controller
+          ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
+            tags: $(Build.SourceBranchName)
+          ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
+            tags: $(Build.BuildNumber)
+
     - job: build_yawol_cloud_controller
       displayName: yawol-cloud-controller
       pool:
         vmImage: ubuntu-latest
       steps:
         - task: Docker@2
-          displayName: image
+          displayName: build
           inputs:
-            command: buildAndPush
+            command: build
             arguments: "--target yawol-cloud-controller"
             dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+            containerRegistry: ske-reg-yawol
+            repository: ske/yawol-cloud-controller
+            ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
+              tags: $(Build.SourceBranchName)
+            ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
+              tags: $(Build.BuildNumber)
+        - task: Docker@2
+          displayName: push
+          inputs:
+            command: push
             containerRegistry: ske-reg-yawol
             repository: ske/yawol-cloud-controller
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
