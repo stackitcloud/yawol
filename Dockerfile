@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.3-labs
-ARG GO_VERSION=1.17
+ARG GO_VERSION=1.18
 
 # get modules, if they don't change the cache can be used for faster builds
 FROM golang:${GO_VERSION} AS base
@@ -23,7 +23,7 @@ COPY --from=yawol-cloud-controller-build /app/yawol-cloud-controller /bin/yawol-
 USER 65532:65532
 ENTRYPOINT ["/bin/yawol-cloud-controller"]
 
-# yawol-cloud-controller
+# yawol-controller
 FROM base AS yawol-controller-build
 COPY api/ api/
 COPY cmd/ cmd/
