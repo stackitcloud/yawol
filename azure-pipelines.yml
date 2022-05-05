@@ -52,7 +52,7 @@ stages:
           containerRegistry: ske-reg-yawol
           repository: ske/yawol-controller
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
-            tags: $(Build.SourceBranchName)
+            tags: ${{ replace(variables['Build.SourceBranchName'], 'v', '') }}
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
       - task: Docker@2
@@ -62,7 +62,7 @@ stages:
           containerRegistry: ske-reg-yawol
           repository: ske/yawol-controller
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
-            tags: $(Build.SourceBranchName)
+            tags: ${{ replace(variables['Build.SourceBranchName'], 'v', '') }}
           ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
             tags: $(Build.BuildNumber)
 
@@ -80,7 +80,7 @@ stages:
             containerRegistry: ske-reg-yawol
             repository: ske/yawol-cloud-controller
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
-              tags: $(Build.SourceBranchName)
+              tags: ${{ replace(variables['Build.SourceBranchName'], 'v', '') }}
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
               tags: $(Build.BuildNumber)
         - task: Docker@2
@@ -90,7 +90,7 @@ stages:
             containerRegistry: ske-reg-yawol
             repository: ske/yawol-cloud-controller
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tag') }}:
-              tags: $(Build.SourceBranchName)
+              tags: ${{ replace(variables['Build.SourceBranchName'], 'v', '') }}
             ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads') }}:
               tags: $(Build.BuildNumber)
 
