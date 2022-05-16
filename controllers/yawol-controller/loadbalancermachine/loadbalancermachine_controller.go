@@ -850,8 +850,17 @@ func (r *LoadBalancerMachineReconciler) reconcileKubeConfig(
 	if err = r.Client.Get(*ctx, types.NamespacedName{Name: sa.Secrets[0].Name, Namespace: ns}, &sec); err != nil {
 		return ctrl.Result{}, "", fmt.Errorf("error getting secret, %v, %s", sec, err)
 	}
-	token := sec.Data["token"]
-	ca := sec.Data["ca.crt"]
+
+	var token, ca []byte
+	var ok bool
+
+	if token, ok = sec.Data["token"]; !ok {
+		return ctrl.Result{}, "", fmt.Errorf("token not found in secret, %v", sec)
+	}
+
+	if ca, ok = sec.Data["ca.crt"]; !ok {
+		return ctrl.Result{}, "", fmt.Errorf("ca.crt not found in secret, %v", sec)
+	}
 
 	config := api.Config{
 		Kind:        "Config",
@@ -878,7 +887,7 @@ func (r *LoadBalancerMachineReconciler) reconcileKubeConfig(
 
 	var c []byte
 	if c, err = runtime.Encode(latest.Codec, &config); err != nil {
-		return ctrl.Result{}, "", nil
+		return ctrl.Result{}, "", err
 	}
 
 	return ctrl.Result{}, string(c), nil
