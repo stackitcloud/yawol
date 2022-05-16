@@ -885,6 +885,7 @@ func (r *LoadBalancerMachineReconciler) reconcileKubeConfig(
 		Extensions:     nil,
 	}
 
+	r.Log.Info("encoding kubeconfig", "codec", latest.Codec, "config", config, "secret", sec)
 	var c []byte
 	if c, err = runtime.Encode(latest.Codec, &config); err != nil {
 		return ctrl.Result{}, "", err
