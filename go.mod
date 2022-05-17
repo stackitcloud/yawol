@@ -17,7 +17,7 @@ require (
 	k8s.io/api v0.22.7
 	k8s.io/apimachinery v0.22.7
 	k8s.io/client-go v0.22.7
-	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/controller-runtime v0.9.7
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20210916143346-8e1263d50ea2
 	sigs.k8s.io/controller-tools v0.6.2
@@ -58,7 +58,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -96,8 +96,10 @@ require (
 )
 
 replace (
+	// v1.1.11 is not compatible with go1.18
+	github.com/json-iterator/go => github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
-	k8s.io/api => k8s.io/api v0.21.10
-	k8s.io/apimachinery => k8s.io/apimachinery v0.21.10
-	k8s.io/client-go => k8s.io/client-go v0.21.10
+	k8s.io/api => k8s.io/api v0.21.12
+	k8s.io/apimachinery => k8s.io/apimachinery v0.21.12
+	k8s.io/client-go => k8s.io/client-go v0.21.12
 )
