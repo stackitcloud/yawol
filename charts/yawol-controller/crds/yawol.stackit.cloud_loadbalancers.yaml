@@ -169,8 +169,16 @@ spec:
                 description: Options for additional LoadBalancer settings
                 properties:
                   tcpProxyProtocol:
-                    description: TCPProxyProtocol enable HAProxy TCP Proxy Protocol
+                    description: TCPProxyProtocol enables HAProxy TCP Proxy Protocol
                     type: boolean
+                  tcpProxyProtocolPortFilter:
+                    description: TCPProxyProtocolPortList enables HAProxy TCP Proxy
+                      Protocol for specified ports. If empty it is enabled for all
+                      ports. Only has an affect if TCPProxyProtocol is enabled.
+                    items:
+                      format: int32
+                      type: integer
+                    type: array
                 type: object
               ports:
                 description: Ports defines the Ports for the LoadBalancer (copy from

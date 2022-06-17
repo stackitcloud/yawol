@@ -24,6 +24,8 @@ const (
 	ServiceReplicas = "yawol.stackit.cloud/replicas"
 	// ServiceTCPProxyProtocol enables the HAProxy TCP Proxy Protocol for all TCP connections
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
+	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
+	ServiceTCPProxyProtocolPortsFilter = "yawol.stackit.cloud/tcpProxyProtocolPortsFilter"
 )
 
 // +kubebuilder:object:root=true
@@ -90,9 +92,13 @@ type LoadBalancerSpec struct {
 }
 
 type LoadBalancerOptions struct {
-	// TCPProxyProtocol enable HAProxy TCP Proxy Protocol
+	// TCPProxyProtocol enables HAProxy TCP Proxy Protocol
 	// +optional
 	TCPProxyProtocol bool `json:"tcpProxyProtocol,omitempty"`
+	// TCPProxyProtocolPortList enables HAProxy TCP Proxy Protocol for specified ports.
+	// If empty it is enabled for all ports. Only has an affect if TCPProxyProtocol is enabled.
+	// +optional
+	TCPProxyProtocolPortsFilter []int32 `json:"tcpProxyProtocolPortFilter,omitempty"`
 }
 
 // LoadBalancerDebugSettings defines debug settings for the LoadBalancer

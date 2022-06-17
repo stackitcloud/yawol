@@ -541,5 +541,26 @@ func getOptions(svc coreV1.Service) yawolv1beta1.LoadBalancerOptions {
 	if svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocol] != "" {
 		options.TCPProxyProtocol, _ = strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocol])
 	}
+	if svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocolPortsFilter] != "" {
+		options.TCPProxyProtocolPortsFilter = getTCPProxyProtocolPortsFilter(
+			svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocolPortsFilter],
+		)
+	}
 	return options
+}
+
+// getTCPProxyProtocolPortsFilter return port list from annotation
+func getTCPProxyProtocolPortsFilter(tcpProxyProtocolPortsFilter string) []int32 {
+	if tcpProxyProtocolPortsFilter == "" {
+		return nil
+	}
+	var portFilter []int32
+	for _, port := range strings.Split(tcpProxyProtocolPortsFilter, ",") {
+		intPort, err := strconv.Atoi(port)
+		if err != nil {
+			return nil
+		}
+		portFilter = append(portFilter, int32(intPort))
+	}
+	return portFilter
 }

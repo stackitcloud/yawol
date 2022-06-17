@@ -367,7 +367,7 @@ func (r *LoadBalancerReconciler) createClusters(lb yawolv1beta1.LoadBalancer) []
 					}},
 			}}
 
-			if lb.Spec.Options.TCPProxyProtocol {
+			if proxyProtocolEnabled(lb.Spec.Options, port) {
 				if config, err := anypb.New(&envoyproxyprotocol.ProxyProtocolUpstreamTransport{
 					Config: &envoycore.ProxyProtocolConfig{Version: 2},
 					TransportSocket: &envoycore.TransportSocket{
@@ -685,4 +685,27 @@ func (r *LoadBalancerReconciler) writeMetrics(ctx context.Context, lbm *yawolv1b
 	}
 
 	return nil
+}
+
+// proxyProtocolEnabled returns true if TCPProxyProtocol should be enabled for the given port
+func proxyProtocolEnabled(options yawolv1beta1.LoadBalancerOptions, port corev1.ServicePort) bool {
+	if !options.TCPProxyProtocol {
+		// TCPProxyProtocol is disabled
+		return false
+	}
+
+	if len(options.TCPProxyProtocolPortsFilter) == 0 {
+		// TCPProxyProtocol is enabled and no filter is set
+		return true
+	}
+
+	for _, portInFilter := range options.TCPProxyProtocolPortsFilter {
+		if portInFilter == port.Port {
+			// TCPProxyProtocol is enabled and port is found in filter list
+			return true
+		}
+	}
+
+	// TCPProxyProtocol is enabled and port is not found in filter list
+	return false
 }

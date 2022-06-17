@@ -40,13 +40,13 @@ yawolCloudController:
       readOnly: true
   image:
     repository: reg.infra.ske.eu01.stackit.cloud/ske/yawol-cloud-controller
-    tag: 0.6.5
+    tag: 0.7.0
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: reg.infra.ske.eu01.stackit.cloud/ske/yawol-controller
-    tag: 0.6.5
+    tag: 0.7.0
 
 resources:
   yawolCloudController:

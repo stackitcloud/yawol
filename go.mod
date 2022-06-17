@@ -99,7 +99,7 @@ replace (
 	// v1.1.11 is not compatible with go1.18
 	github.com/json-iterator/go => github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
-	k8s.io/api => k8s.io/api v0.21.12
-	k8s.io/apimachinery => k8s.io/apimachinery v0.21.12
-	k8s.io/client-go => k8s.io/client-go v0.21.12
+	k8s.io/api => k8s.io/api v0.21.13
+	k8s.io/apimachinery => k8s.io/apimachinery v0.21.13
+	k8s.io/client-go => k8s.io/client-go v0.21.13
 )
