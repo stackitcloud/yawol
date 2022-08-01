@@ -303,7 +303,6 @@ func getMockLB() *LB {
 				},
 			},
 			Replicas:                 1,
-			ExternalIP:               nil,
 			InternalLB:               false,
 			Endpoints:                nil,
 			Ports:                    nil,

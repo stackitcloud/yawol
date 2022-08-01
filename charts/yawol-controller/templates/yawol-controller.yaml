@@ -41,9 +41,6 @@ spec:
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- end }}
-          {{- if .Values.migrateFromOctavia }}
-          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
-          {{- end }}
           {{- if .Values.yawolDebug }}
           - -debug={{ .Values.yawolDebug }}
           {{- end }}
@@ -75,9 +72,6 @@ spec:
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- end }}
-          {{- if .Values.migrateFromOctavia }}
-          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
-          {{- end }}
           {{- if .Values.yawolDebug }}
           - -debug={{ .Values.yawolDebug }}
           {{- end }}
@@ -108,9 +102,6 @@ spec:
           - -enable-loadbalancermachine-controller
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
-          {{- end }}
-          {{- if .Values.migrateFromOctavia }}
-          - -migrate-from-octavia={{ .Values.migrateFromOctavia }}
           {{- end }}
           {{- if .Values.yawolDebug }}
           - -debug={{ .Values.yawolDebug }}

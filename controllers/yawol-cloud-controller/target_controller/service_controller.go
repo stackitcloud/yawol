@@ -105,6 +105,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil && apierrors.IsNotFound(err) {
 		if svc.DeletionTimestamp == nil {
 			if err = r.createLoadBalancer(ctx, req.NamespacedName, &svc, infraDefaults); err != nil {
+				r.Recorder.Event(&svc, coreV1.EventTypeWarning, "creationFailed", err.Error())
 				return ctrl.Result{}, err
 			}
 			r.Recorder.Event(&svc, coreV1.EventTypeNormal, "creation", "LoadBalancer is in creation")
@@ -185,6 +186,11 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	err = checkExistingFloatingIPChanged(svc)
+	if err != nil {
+		r.Recorder.Event(&svc, coreV1.EventTypeWarning, "update", err.Error())
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -200,9 +206,9 @@ func (r *ServiceReconciler) createLoadBalancer(
 	svc *coreV1.Service,
 	infraConfig InfrastructureDefaults,
 ) error {
-	externalIP := getExternalIP(*svc)
 	debugSettings := getDebugSettings(*svc)
 	options := getOptions(*svc)
+	existingFloatingIP := getExistingFloatingIPFromAnnotation(*svc)
 	hash := sha256.Sum256([]byte(*infraConfig.Namespace + "." + namespacedName.Namespace + "--" + namespacedName.Name))
 	hashstring := strings.ToLower(base32.StdEncoding.EncodeToString(hash[:]))[:16]
 	lbNN := getLoadBalancerNamespacedName(&infraConfig, svc)
@@ -221,7 +227,7 @@ func (r *ServiceReconciler) createLoadBalancer(
 					LoadBalancerLabelName: hashstring,
 				},
 			},
-			ExternalIP:               externalIP,
+			ExistingFloatingIP:       existingFloatingIP,
 			InternalLB:               *infraConfig.InternalLB,
 			Endpoints:                nil,
 			Ports:                    nil,
@@ -509,17 +515,45 @@ func validateService(svc coreV1.Service) error {
 	return nil
 }
 
-// getExternalIP return external ip from service (Spec.LoadBalancerIP and Status.LoadBalancer.Ingress[0].IP)
-// If both are set the IP from spec is used
-func getExternalIP(svc coreV1.Service) *string {
-	if svc.Spec.LoadBalancerIP != "" {
-		return &svc.Spec.LoadBalancerIP
-	}
+// getIPFromStatus return ip from service (Status.LoadBalancer.Ingress[0].IP)
+func getIPFromStatus(svc coreV1.Service) *string {
 	if len(svc.Status.LoadBalancer.Ingress) > 0 &&
 		svc.Status.LoadBalancer.Ingress[0].IP != "" {
 		return &svc.Status.LoadBalancer.Ingress[0].IP
 	}
 	return nil
+}
+
+// getIPFromStatus return ip from service (Status.LoadBalancer.Ingress[0].IP)
+// If both are set the IP from spec is used
+func getExistingFloatingIPFromAnnotation(svc coreV1.Service) *string {
+	if svc.Annotations[yawolv1beta1.ServiceExistingFloatingIP] != "" {
+		existingIP := svc.Annotations[yawolv1beta1.ServiceExistingFloatingIP]
+		return &existingIP
+	}
+	return nil
+}
+
+// checkExistingFloatingIPChanged check for existing FIP is different from svc.status
+func checkExistingFloatingIPChanged(svc coreV1.Service) error {
+	existingIP := getExistingFloatingIPFromAnnotation(svc)
+	if existingIP == nil {
+		return nil
+	}
+	statusIP := getIPFromStatus(svc)
+
+	// No FIP assigned yet
+	if statusIP == nil {
+		return nil
+	}
+
+	// FIP in status & existing FIP are the same
+	if *existingIP == *statusIP {
+		return nil
+	}
+
+	// FIP in status & existing FIP are not equal, return error
+	return fmt.Errorf("add of an ExistingFloatingIP is not supported after LB creation")
 }
 
 // getDebugSettings return loadbalancer debug settings

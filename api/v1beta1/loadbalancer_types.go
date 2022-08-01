@@ -26,6 +26,8 @@ const (
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
 	ServiceTCPProxyProtocolPortsFilter = "yawol.stackit.cloud/tcpProxyProtocolPortsFilter"
+	// ServiceExistingFloatingIP enables usage of existing Floating IP (use ID of Floating IP to reference)
+	ServiceExistingFloatingIP = "yawol.stackit.cloud/existingFloatingIP"
 )
 
 // +kubebuilder:object:root=true
@@ -65,9 +67,9 @@ type LoadBalancerSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	Replicas int `json:"replicas,omitempty"`
-	// ExternalIP is a externalIP (FIP or private) that should be used for a new LoadBalancer
+	// ExistingFloatingIP uses a existing Floating IP as FIP
 	// +optional
-	ExternalIP *string `json:"externalIP,omitempty"`
+	ExistingFloatingIP *string `json:"existingFloatingIP,omitempty"`
 	// InternalLB is a bool for internal LoadBalancer. If set to false a FloatingIP will be assigned to the LB. Defaults to false.
 	// TODO move to LoadBalancerOptions
 	// +kubebuilder:default:=false

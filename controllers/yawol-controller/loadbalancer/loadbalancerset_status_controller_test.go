@@ -63,7 +63,6 @@ var _ = Describe("LB Status update", func() {
 					},
 				},
 				Replicas:                 1,
-				ExternalIP:               nil,
 				InternalLB:               false,
 				Endpoints:                nil,
 				Ports:                    nil,

@@ -55,7 +55,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector:       metav1.LabelSelector{},
 					Replicas:       1,
-					ExternalIP:     nil,
 					InternalLB:     false,
 					Endpoints:      nil,
 					Ports:          nil,
@@ -75,18 +74,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				NodeRoleRef:       nil,
 			}
 			Expect(k8sClient.Status().Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: "service-test1", Namespace: "default"}, &service)
-				if err != nil {
-					return err
-				}
-				if len(service.Status.LoadBalancer.Ingress) == 1 &&
-					service.Status.LoadBalancer.Ingress[0].IP == externalIP {
-					return nil
-				}
-				return errors.New("ip not in status")
-			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			Eventually(func() error {
 				eventList := v1.EventList{}
@@ -137,7 +124,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector:       metav1.LabelSelector{},
 					Replicas:       1,
-					ExternalIP:     nil,
 					InternalLB:     false,
 					Endpoints:      nil,
 					Ports:          nil,

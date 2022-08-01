@@ -85,6 +85,5 @@ yawolNetworkID: foobar
 yawolFlavorID: foobar
 yawolImageID: foobar
 yawolAPIHost: foobar
-migrateFromOctavia: true
 #openstackTimeout: 20s
 yawolDebug: false

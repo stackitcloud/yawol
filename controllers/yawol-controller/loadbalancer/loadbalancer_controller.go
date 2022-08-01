@@ -15,7 +15,6 @@ import (
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
@@ -49,17 +48,16 @@ const (
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
 type LoadBalancerReconciler struct {
 	client.Client
-	Log                logr.Logger
-	Scheme             *runtime.Scheme
-	Recorder           record.EventRecorder
-	RecorderLB         record.EventRecorder
-	skipReconciles     bool
-	skipAllButNN       *types.NamespacedName
-	MigrateFromOctavia bool
-	OpenstackMetrics   prometheus.CounterVec
-	getOsClientForIni  func(iniData []byte) (openstack.Client, error)
-	WorkerCount        int
-	OpenstackTimeout   time.Duration
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	Recorder          record.EventRecorder
+	RecorderLB        record.EventRecorder
+	skipReconciles    bool
+	skipAllButNN      *types.NamespacedName
+	OpenstackMetrics  prometheus.CounterVec
+	getOsClientForIni func(iniData []byte) (openstack.Client, error)
+	WorkerCount       int
+	OpenstackTimeout  time.Duration
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -133,7 +131,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	// run octavia reconcile if lastOpenstackReconcile is nil
+	// run openstack reconcile if lastOpenstackReconcile is nil
 	if lb.Status.LastOpenstackReconcile == nil {
 		var requeue bool
 		var requeueAfter time.Duration
@@ -283,62 +281,12 @@ func (r *LoadBalancerReconciler) reconcileFIP(
 	osClient openstack.Client,
 ) (ctrl.Result, error) {
 	var fipClient openstack.FipClient
-	var portClient openstack.PortClient
-	var lbClient openstack.LoadBalancerClient
 	var requeue bool
 	{
 		var err error
 		fipClient, err = osClient.FipClient(ctx)
 		if err != nil {
 			return ctrl.Result{}, err
-		}
-		portClient, err = osClient.PortClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		lbClient, err = osClient.LoadBalancerClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	if r.MigrateFromOctavia &&
-		lb.Status.FloatingID == nil &&
-		lb.Status.FloatingName == nil &&
-		lb.Spec.ExternalIP != nil {
-		usedByOctavia, fipId, octaviaID, err := r.isFipIsUsedByOctavia(ctx, fipClient, portClient, lb.Spec.ExternalIP)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if usedByOctavia {
-			r.RecorderLB.Event(lb, coreV1.EventTypeNormal, "OctaviaMigration", "Found Octavia LB active. Reusing IP.")
-			var fip *floatingips.FloatingIP
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			defer cancel()
-			fip, err = fipClient.Update(tctx, fipId, floatingips.UpdateOpts{
-				PortID: nil,
-			})
-
-			if err != nil {
-				return ctrl.Result{}, r.sendEvent(err, lb)
-			}
-			err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
-				FloatingID:   &fip.ID,
-				FloatingName: &fip.Description,
-			})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			{
-				tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-				defer cancel()
-				err = lbClient.Delete(tctx, octaviaID, loadbalancers.DeleteOpts{Cascade: true})
-				if err != nil {
-					return ctrl.Result{}, r.sendEvent(err, lb)
-				}
-			}
-			r.RecorderLB.Event(lb, coreV1.EventTypeNormal, "OctaviaMigration", "Deleted Octavia LoadBalancer.")
 		}
 	}
 
@@ -370,23 +318,48 @@ func (r *LoadBalancerReconciler) reconcileFIP(
 	}
 
 	if lb.Status.FloatingID == nil {
-		var err error
-		var res ctrl.Result
-		if res, fip, err = r.createFIP(ctx, fipClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-			return res, err
-		}
-		// double check so status wont be corrupted
-		if fip.ID == "" {
-			r.Log.Info("fip was successfully created but fip id is empty")
-			panic("fip was successfully created but fip id is empty. crashing to prevent corruption of state")
-		}
+		// Use existing Floating IP if specified
+		if lb.Spec.ExistingFloatingIP != nil {
+			var err error
+			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
+			defer cancel()
+			if fip, err = r.getFIPByIP(tctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
+					return ctrl.Result{}, r.sendEvent(err, lb)
+				default:
+					r.Log.Info("unexpected error occurred")
+					return ctrl.Result{}, r.sendEvent(err, lb)
+				}
+			}
+			if fip.ID != "" {
+				if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+					FloatingID: &fip.ID,
+				}); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			// Create new FIP
+			var err error
+			var res ctrl.Result
+			if res, fip, err = r.createFIP(ctx, fipClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
+				return res, err
+			}
+			// double check so status wont be corrupted
+			if fip.ID == "" {
+				r.Log.Info("fip was successfully created but fip id is empty")
+				panic("fip was successfully created but fip id is empty. crashing to prevent corruption of state")
+			}
 
-		if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
-			FloatingID: &fip.ID,
-		}); err != nil {
-			return ctrl.Result{}, err
+			if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+				FloatingID: &fip.ID,
+			}); err != nil {
+				return ctrl.Result{}, err
+			}
+			requeue = true
 		}
-		requeue = true
 	}
 
 	// Get FIP
@@ -422,56 +395,6 @@ func (r *LoadBalancerReconciler) reconcileFIP(
 	return ctrl.Result{}, nil
 }
 
-// isFipIsUsedByOctavia returns true if Fip is used by octavia. If true it returns also the fipID and octaviaID
-func (r *LoadBalancerReconciler) isFipIsUsedByOctavia(
-	ctx context.Context,
-	fipClient openstack.FipClient,
-	portClient openstack.PortClient,
-	fip *string,
-) (used bool, fipID, octaviaID string, err error) {
-	if fip == nil {
-		return false, "", "", nil
-	}
-
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	floatingIPs, err := fipClient.List(tctx, floatingips.ListOpts{
-		FloatingIP: *fip,
-	})
-	if err != nil {
-		return false, "", "", err
-	}
-
-	if len(floatingIPs) < 1 {
-		return false, "", "", nil
-	}
-
-	if len(floatingIPs) > 1 {
-		panic("floating ip is in use... at least twice! WTF?")
-	}
-
-	floatingIP := floatingIPs[0]
-	if floatingIP.PortID == "" {
-		return false, "", "", nil
-	}
-
-	{
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		port, err := portClient.Get(tctx, floatingIP.PortID)
-		if err != nil {
-			return false, "", "", err
-		}
-
-		if port.DeviceOwner == "Octavia" {
-			lbID := strings.TrimPrefix(port.DeviceID, "lb-")
-			return true, floatingIP.ID, lbID, nil
-		}
-	}
-
-	return false, "", "", nil
-}
-
 // Returns a FIP filtered By Name
 // Returns an error on connection issues
 // Returns nil if not found
@@ -490,6 +413,31 @@ func (r *LoadBalancerReconciler) getFIPByName(
 
 	for _, floatingIP := range fipList {
 		if floatingIP.Description == fipName {
+			return &floatingIP, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// Returns a FIP filtered By IP
+// Returns an error on connection issues
+// Returns nil if not found
+func (r *LoadBalancerReconciler) getFIPByIP(
+	ctx context.Context, fipClient openstack.FipClient, fipIP string,
+) (*floatingips.FloatingIP, error) {
+	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
+	defer cancel()
+	fipList, err := fipClient.List(tctx, floatingips.ListOpts{
+		FloatingIP: fipIP,
+	})
+	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, floatingIP := range fipList {
+		if floatingIP.FloatingIP == fipIP {
 			return &floatingIP, nil
 		}
 	}
@@ -548,26 +496,20 @@ func (r *LoadBalancerReconciler) createFIP(
 	fipClient openstack.FipClient,
 	lb *yawolv1beta1.LoadBalancer,
 ) (ctrl.Result, *floatingips.FloatingIP, error) {
-	desiredFip := ""
-	if lb.Spec.ExternalIP != nil {
-		desiredFip = *lb.Spec.ExternalIP
-	}
-
 	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
 	defer cancel()
 	fip, err := fipClient.Create(tctx, floatingips.CreateOpts{
 		Description:       *lb.Status.FloatingName,
 		FloatingNetworkID: *lb.Spec.Infrastructure.FloatingNetID,
-		FloatingIP:        desiredFip,
 	})
 	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
 	if err != nil {
 		switch err.(type) {
 		case gophercloud.ErrDefault400:
-			r.Log.Info("desired floating ip is not in range of the floating subnet", "lb", lb.Namespace+"/"+lb.Name, "desiredFIP", desiredFip)
+			r.Log.Info("floating ip is not in range of the floating subnet", "lb", lb.Namespace+"/"+lb.Name)
 			return ctrl.Result{}, nil, r.sendEvent(err, lb)
 		case gophercloud.ErrDefault409:
-			r.Log.Info("desired floating ip is already in use", "lb", lb.Namespace+"/"+lb.Name, "desiredFIP", desiredFip)
+			r.Log.Info("floating ip is already in use", "lb", lb.Namespace+"/"+lb.Name)
 			return ctrl.Result{}, nil, r.sendEvent(err, lb)
 		default:
 			r.Log.Info("unexpected error occurred claiming a fip")
@@ -1578,6 +1520,19 @@ func (r *LoadBalancerReconciler) deleteFips(
 	var err error
 	var fip *floatingips.FloatingIP
 	var requeue = false
+
+	if lb.Spec.ExistingFloatingIP != nil {
+		r.Log.Info("existing floating IP used, skip FIP deletion", "lb", lb.Namespace+"/"+lb.Name)
+		err = r.removeFromLBStatus(ctx, lb, "floatingID")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = r.removeFromLBStatus(ctx, lb, "floatingName")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: requeue}, nil
+	}
 
 	if lb.Status.FloatingID != nil {
 		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)

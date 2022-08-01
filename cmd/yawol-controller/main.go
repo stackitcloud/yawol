@@ -67,7 +67,6 @@ func main() {
 	var probeAddr string
 
 	var concurrentWorkersPerReconciler int
-	var migrateFromOctavia bool
 	var lbController bool
 	var lbSetController bool
 	var lbMachineController bool
@@ -93,9 +92,6 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	flag.IntVar(&concurrentWorkersPerReconciler, "concurrent-workers", 30, "Defines the amount of concurrent workers per reconciler.")
-	flag.BoolVar(&migrateFromOctavia, "migrate-from-octavia", false, `Enable migration from octavia. `+
-		`If a fip in lb.spec.ExternalIP is used by octavia the fip is reused.`+
-		`Port and Octavia object will NOT be deleted in openstack. Just the fip will be deassociated`)
 	flag.BoolVar(&lbController, "enable-loadbalancer-controller", false,
 		"Enable loadbalancer controller manager. ")
 	flag.BoolVar(&lbSetController, "enable-loadbalancerset-controller", false,
@@ -161,15 +157,14 @@ func main() {
 		}
 
 		if err = (&loadbalancer.LoadBalancerReconciler{
-			Client:             loadBalancerMgr.GetClient(),
-			Log:                ctrl.Log.WithName("controller").WithName("LoadBalancer"),
-			Scheme:             loadBalancerMgr.GetScheme(),
-			WorkerCount:        concurrentWorkersPerReconciler,
-			RecorderLB:         loadBalancerMgr.GetEventRecorderFor("yawol-service"),
-			Recorder:           loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
-			OpenstackMetrics:   *openstackMetrics,
-			MigrateFromOctavia: migrateFromOctavia,
-			OpenstackTimeout:   openstackTimeout,
+			Client:           loadBalancerMgr.GetClient(),
+			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancer"),
+			Scheme:           loadBalancerMgr.GetScheme(),
+			WorkerCount:      concurrentWorkersPerReconciler,
+			RecorderLB:       loadBalancerMgr.GetEventRecorderFor("yawol-service"),
+			Recorder:         loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
+			OpenstackMetrics: *openstackMetrics,
+			OpenstackTimeout: openstackTimeout,
 		}).SetupWithManager(loadBalancerMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)

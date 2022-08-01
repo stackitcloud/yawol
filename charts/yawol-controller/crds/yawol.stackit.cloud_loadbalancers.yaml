@@ -83,9 +83,8 @@ spec:
                   - name
                   type: object
                 type: array
-              externalIP:
-                description: ExternalIP is a externalIP (FIP or private) that should
-                  be used for a new LoadBalancer
+              existingFloatingIP:
+                description: ExistingFloatingIP uses a existing Floating IP as FIP
                 type: string
               infrastructure:
                 description: Infrastructure defines parameters for the Infrastructure

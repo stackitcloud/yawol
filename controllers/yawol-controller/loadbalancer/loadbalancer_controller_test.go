@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
@@ -84,46 +83,6 @@ var _ = Describe("loadbalancer controller", func() {
 				if len(act.Finalizers) == 0 {
 					return fmt.Errorf("no finalizers on lb")
 				}
-
-				return nil
-			})
-		})
-	})
-
-	When("external ip is set", func() {
-		BeforeEach(func() {
-			lb.Spec.Ports = []v1.ServicePort{{
-				Protocol: v1.ProtocolTCP,
-				Port:     8080,
-				NodePort: 30000,
-			}}
-
-			lb.Spec.ExternalIP = pointer.StringPtr("1.1.1.1")
-		})
-
-		It("should create openstack resources", func() {
-			hopefully(lbNN, func(g Gomega, act LB) error {
-				name := lbNN.Namespace + "/" + lbNN.Name
-
-				g.Expect(len(act.Spec.Ports)).To(Equal(1))
-				g.Expect(act.Spec.Ports[0].NodePort).To(BeEquivalentTo(30000))
-
-				g.Expect(act.Status).ToNot(BeNil())
-
-				g.Expect(act.Status.PortID).ToNot(BeNil())
-				g.Expect(act.Status.PortName).ToNot(BeNil())
-				g.Expect(*act.Status.PortName).To(Equal(name))
-
-				g.Expect(act.Status.SecurityGroupID).ToNot(BeNil())
-				g.Expect(act.Status.SecurityGroupName).ToNot(BeNil())
-				g.Expect(*act.Status.SecurityGroupName).To(Equal(name))
-
-				g.Expect(act.Status.FloatingID).ToNot(BeNil())
-				g.Expect(act.Status.FloatingName).ToNot(BeNil())
-				g.Expect(*act.Status.FloatingName).To(Equal(name))
-
-				g.Expect(act.Status.ExternalIP).ToNot(BeNil())
-				g.Expect(*act.Status.ExternalIP).To(Equal("1.1.1.1"))
 
 				return nil
 			})
@@ -526,203 +485,6 @@ var _ = Describe("loadbalancer controller", func() {
 		})
 	}) // openstack not working context
 
-	When("migrating from octavia", func() {
-		var octaviaPortID, yawolPortID string
-		var fipFound, fipUnbound, fipRebound, octaviaDeleted bool
-
-		BeforeEach(func() {
-			loadBalancerReconciler.MigrateFromOctavia = true
-			lb.Spec.ExternalIP = pointer.StringPtr("10.0.0.1")
-
-			octaviaPortID = "44444-55555-66666"
-			yawolPortID = "66666-5555-4444"
-
-			fipFound = false
-			fipUnbound = false
-			fipRebound = false
-			octaviaDeleted = false
-
-			client.FipClientObj = &testing.CallbackFipClient{
-				GetFunc: func(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
-					if !fipUnbound {
-						return &floatingips.FloatingIP{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-							PortID:      octaviaPortID,
-						}, nil
-					}
-
-					if fipUnbound && !fipRebound {
-						return &floatingips.FloatingIP{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-						}, nil
-					}
-
-					if fipRebound {
-						return &floatingips.FloatingIP{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-							PortID:      yawolPortID,
-						}, nil
-					}
-					panic("test should not enter here")
-				},
-				ListFunc: func(ctx context.Context, opts floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error) {
-					loadBalancerReconciler.Log.Info("listed.fip")
-					if !fipUnbound && opts.(floatingips.ListOpts).FloatingIP == "10.0.0.1" {
-						fipFound = true
-						return []floatingips.FloatingIP{{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-							PortID:      "44444-55555-66666",
-						}}, nil
-					}
-					if fipUnbound && !fipRebound {
-						return []floatingips.FloatingIP{{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-						}}, nil
-					}
-					if opts.(floatingips.ListOpts).PortID == yawolPortID {
-						return []floatingips.FloatingIP{
-							{
-								ID:          "111111-2222222-33333",
-								Description: "some random octavia description",
-								FloatingIP:  "10.0.0.1",
-								PortID:      yawolPortID,
-							},
-						}, nil
-					}
-
-					return nil, nil
-				},
-				UpdateFunc: func(ctx context.Context, id string, opts floatingips.UpdateOptsBuilder) (*floatingips.FloatingIP, error) {
-					if id == "111111-2222222-33333" && opts.(floatingips.UpdateOpts).PortID == nil {
-						fipUnbound = true
-						return &floatingips.FloatingIP{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-						}, nil
-					}
-					if id == "111111-2222222-33333" && opts.(floatingips.UpdateOpts).PortID != nil &&
-						*opts.(floatingips.UpdateOpts).PortID == yawolPortID {
-						fipRebound = true
-						return &floatingips.FloatingIP{
-							ID:          "111111-2222222-33333",
-							Description: "some random octavia description",
-							FloatingIP:  "10.0.0.1",
-							PortID:      yawolPortID,
-						}, nil
-					}
-					panic("test should not enter here")
-				},
-				DeleteFunc: func(ctx context.Context, id string) error {
-					return nil
-				},
-			}
-
-			client.LoadBalancerClientObj = &testing.CallbackLoadBalancerClient{
-				DeleteFunc: func(ctx context.Context, id string, opts loadbalancers.DeleteOptsBuilder) error {
-					if id == "888888-9999999-6666666" {
-						octaviaDeleted = true
-					}
-					return nil
-				},
-			}
-
-			client.PortClientObj = &testing.CallbackPortClient{
-				ListFunc: func(ctx context.Context, opts ports.ListOptsBuilder) ([]ports.Port, error) {
-					return []ports.Port{}, nil
-				},
-				DeleteFunc: func(ctx context.Context, id string) error {
-					return nil
-				},
-				GetFunc: func(ctx context.Context, id string) (*ports.Port, error) {
-					if id == octaviaPortID {
-						return &ports.Port{DeviceOwner: "Octavia", ID: id, DeviceID: "lb-888888-9999999-6666666"}, nil
-					}
-
-					return &ports.Port{
-						ID:             yawolPortID,
-						Name:           lb.Namespace + "/" + lb.Name,
-						SecurityGroups: []string{"lallal"},
-					}, nil
-				},
-				CreateFunc: func(ctx context.Context, opts ports.CreateOptsBuilder) (*ports.Port, error) {
-					loadBalancerReconciler.Log.Info("created.port")
-					Expect(opts.(ports.CreateOpts).NetworkID).Should(Equal(lb.Spec.Infrastructure.NetworkID))
-					Expect(opts.(ports.CreateOpts).Name).Should(Equal(lb.Namespace + "/" + lb.Name))
-
-					return &ports.Port{
-						ID:   yawolPortID,
-						Name: lb.Namespace + "/" + lb.Name,
-					}, nil
-				},
-				UpdateFunc: func(ctx context.Context, id string, opts ports.UpdateOptsBuilder) (*ports.Port, error) {
-					return &ports.Port{
-						ID:   yawolPortID,
-						Name: "lala",
-					}, nil
-				},
-			}
-		})
-
-		It("should migrate the loadbalancer", func() {
-			hopefully(lbNN, func(g Gomega, act LB) error {
-				g.Expect(fipFound).To(BeTrue())
-				g.Expect(fipUnbound).To(BeTrue())
-				g.Expect(fipRebound).To(BeTrue())
-				g.Expect(octaviaDeleted).To(BeTrue())
-
-				g.Expect(act.Status.FloatingID).ToNot(BeNil())
-				g.Expect(*act.Status.FloatingID).To(Equal("111111-2222222-33333"))
-
-				var eventList v1.EventList
-				err := k8sClient.List(ctx, &eventList, &runtimeClient.ListOptions{Namespace: lbNN.Namespace})
-				if err != nil {
-					return err
-				}
-
-				octaviaStartEvent := false
-				octaviaEndEvent := false
-
-				for _, event := range eventList.Items {
-					if event.Reason == "OctaviaMigration" &&
-						event.Message == "Found Octavia LB active. Reusing IP." &&
-						event.InvolvedObject.Kind == "LoadBalancer" &&
-						event.InvolvedObject.Name == lbNN.Name {
-						octaviaStartEvent = true
-					}
-				}
-
-				for _, event := range eventList.Items {
-					if event.Reason == "OctaviaMigration" &&
-						event.Message == "Deleted Octavia LoadBalancer." &&
-						event.InvolvedObject.Kind == "LoadBalancer" &&
-						event.InvolvedObject.Name == lbNN.Name {
-						octaviaEndEvent = true
-					}
-				}
-
-				g.Expect(octaviaStartEvent).To(BeTrue())
-				g.Expect(octaviaEndEvent).To(BeTrue())
-
-				return nil
-			})
-
-			By("cleaning up")
-			loadBalancerReconciler.MigrateFromOctavia = false
-			// create a new client so all os resources are already cleaned up
-			client = testing.GetFakeClient()
-		})
-	}) // migrate from octavia context
 }) // load balancer describe
 
 func cleanupLB(lbNN types.NamespacedName, timeout time.Duration) {
@@ -792,7 +554,6 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 				},
 			},
 			Replicas:                 1,
-			ExternalIP:               nil,
 			InternalLB:               false,
 			Endpoints:                nil,
 			Ports:                    nil,

@@ -53,7 +53,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector:                 metav1.LabelSelector{},
 					Replicas:                 1,
-					ExternalIP:               nil,
 					InternalLB:               false,
 					LoadBalancerSourceRanges: nil,
 					Endpoints: []yawolv1beta1.LoadBalancerEndpoint{{

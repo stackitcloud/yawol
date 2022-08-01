@@ -518,14 +518,17 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
-		It("create service with set LoadBalancerIP", func() {
+		It("create service with existingFloatingIP", func() {
 			By("create service")
 			service := v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "service-test4",
-					Namespace: "default"},
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceExistingFloatingIP: "123.123.123.123",
+					},
+				},
 				Spec: v1.ServiceSpec{
-					LoadBalancerIP: "123.123.123.123",
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",
@@ -551,7 +554,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				service.Status = v1.ServiceStatus{
 					LoadBalancer: v1.LoadBalancerStatus{
 						Ingress: []v1.LoadBalancerIngress{
-							{IP: "123.123.123.1"},
+							{IP: "123.123.123.123"},
 						},
 					},
 				}
@@ -579,7 +582,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			Expect(err).Should(Succeed())
 
-			By("check for external IP in LB")
+			By("check for existingFloatingIP in LB")
 			Eventually(func() error {
 				err := k8sClient.Get(ctx, types.NamespacedName{
 					Name: "default--service-test4", Namespace: "default",
@@ -587,20 +590,22 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if err != nil {
 					return err
 				}
-				if lb.Spec.ExternalIP != nil && *lb.Spec.ExternalIP == "123.123.123.123" {
+				if lb.Spec.ExistingFloatingIP != nil && *lb.Spec.ExistingFloatingIP == "123.123.123.123" {
 					return nil
 				}
-				return errors.New("no external IP set")
+				return errors.New("no existingFloatingIP set")
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
-		It("create service with set loadbalancer IP in status", func() {
-			// TODO this test is flaky sometimes
+		It("create service with set loadbalancer IP in status and set a different existingFloatingIP", func() {
 			By("create service")
 			service := v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "service-test5",
 					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceExistingFloatingIP: "124.124.124.124",
+					},
 				},
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
@@ -656,18 +661,23 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			}
 
 			Expect(err).Should(Succeed())
-
-			By("check for external IP in LB")
+			By("Check Event for creation")
 			Eventually(func() error {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test5", Namespace: "default"}, &lb)
+				eventList := v1.EventList{}
+				err := k8sClient.List(ctx, &eventList)
 				if err != nil {
 					return err
 				}
-				if lb.Spec.ExternalIP != nil && *lb.Spec.ExternalIP == "123.123.123.123" {
-					return nil
+				for _, event := range eventList.Items {
+					if event.InvolvedObject.Name == "service-test5" &&
+						event.InvolvedObject.Kind == "Service" &&
+						strings.Contains(event.Message, "ExistingFloatingIP is not supported") {
+						return nil
+					}
 				}
-				return errors.New("no external IP set")
+				return errors.New("no event found")
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
 		})
 
 		It("Check IPfamily v4", func() {
