@@ -3,14 +3,15 @@ package loadbalancerset
 import (
 	"context"
 	"crypto/rand"
+
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	yawollet "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
+
 	"github.com/go-logr/logr"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,12 +21,13 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 const FINALIZER = "stackit.cloud/loadbalancermachine"
 
 // LoadBalancerSetReconciler reconciles service Objects with type LoadBalancer
-type LoadBalancerSetReconciler struct {
+type LoadBalancerSetReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
 	Log         logr.Logger
 	Scheme      *runtime.Scheme
@@ -50,12 +52,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// obj is not being deleted, set finalizer
-	if !containsString(set.ObjectMeta.Finalizers, FINALIZER) {
-		set.ObjectMeta.Finalizers = append(set.ObjectMeta.Finalizers, FINALIZER)
-		if err := r.Update(context.Background(), &set); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
+	kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &set, FINALIZER)
 
 	// get all childes by label
 	var childMachines yawolv1beta1.LoadBalancerMachineList
@@ -63,20 +60,20 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		LabelSelector: labels.SelectorFromSet(set.Spec.Selector.MatchLabels),
 		Namespace:     req.Namespace,
 	}); err != nil {
-		r.Log.Error(err, "unable to list child loadbalancerMachines")
+		r.Log.Error(err, helper.ErrListingChildLBMs.Error())
 		return ctrl.Result{}, err
 	}
 
 	readyMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
 	notReadyMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
 	deletedMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
-	for _, machine := range childMachines.Items {
-		if machine.DeletionTimestamp != nil {
-			deletedMachines = append(deletedMachines, machine)
-		} else if isMachineReady(machine) {
-			readyMachines = append(readyMachines, machine)
+	for i := range childMachines.Items {
+		if childMachines.Items[i].DeletionTimestamp != nil {
+			deletedMachines = append(deletedMachines, childMachines.Items[i])
+		} else if isMachineReady(childMachines.Items[i]) {
+			readyMachines = append(readyMachines, childMachines.Items[i])
 		} else {
-			notReadyMachines = append(notReadyMachines, machine)
+			notReadyMachines = append(notReadyMachines, childMachines.Items[i])
 		}
 	}
 
@@ -84,8 +81,13 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return res, err
 	}
 
-	res, err := r.reconcileReplicas(ctx, &set, deletedMachines, notReadyMachines, readyMachines)
-	if err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err := r.reconcileReplicas(
+		ctx,
+		&set,
+		deletedMachines,
+		notReadyMachines,
+		readyMachines,
+	); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
@@ -99,7 +101,7 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 	// obj is being deleted
 	if containsString(set.ObjectMeta.Finalizers, FINALIZER) {
 		// finalizer is present
-		if err := r.deleteAllMachines(&ctx, *set); err != nil {
+		if err := r.deleteAllMachines(ctx, set); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -117,10 +119,7 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 	}
 
 	// remove finalizer
-	set.ObjectMeta.Finalizers = removeString(set.ObjectMeta.Finalizers, FINALIZER)
-	if err := r.Update(context.Background(), set); err != nil {
-		return ctrl.Result{}, err
-	}
+	kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, set, FINALIZER)
 
 	// stop reconciliation as item is being deleted
 	return ctrl.Result{}, nil
@@ -167,7 +166,7 @@ func (r *LoadBalancerSetReconciler) reconcileReplicas(
 	deletedReplicas = len(deletedMachines)
 
 	if currentReplicas < desiredReplicas {
-		if err := r.createMachine(&ctx, set); err != nil {
+		if err := r.createMachine(ctx, set); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
@@ -176,7 +175,7 @@ func (r *LoadBalancerSetReconciler) reconcileReplicas(
 	if desiredReplicas < currentReplicas-deletedReplicas {
 		// Delete not ready machines first
 		if len(notReadyMachines) > 0 {
-			if err := r.deleteMachine(&ctx, &notReadyMachines[0]); err != nil {
+			if err := r.deleteMachine(ctx, &notReadyMachines[0]); err != nil {
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 2}, nil
@@ -184,7 +183,7 @@ func (r *LoadBalancerSetReconciler) reconcileReplicas(
 
 		// Delete ready machines
 		if len(readyMachines) > 0 {
-			if err := r.deleteMachine(&ctx, &readyMachines[0]); err != nil {
+			if err := r.deleteMachine(ctx, &readyMachines[0]); err != nil {
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 2}, nil
@@ -199,18 +198,18 @@ func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(
 	lbs *yawolv1beta1.LoadBalancerSet,
 	status yawolv1beta1.LoadBalancerSetStatus,
 ) error {
-	statusJson, err := json.Marshal(status)
+	statusJSON, err := json.Marshal(status)
 	if err != nil {
 		return err
 	}
-	patch := []byte(`{"status":` + string(statusJson) + `}`)
+	patch := []byte(`{"status":` + string(statusJSON) + `}`)
 	return r.Client.Status().Patch(ctx, lbs, client.RawPatch(types.MergePatchType, patch))
 }
 
 // Decides whether the machine should be deleted or not
-// Yes if created before 10 minutes and no condition added yet
-// Yes if LastHeartbeatTime is > 5 minutes
-// Yes if a condition is not good for 5 minutes
+// True if created before 10 minutes and no condition added yet
+// True if LastHeartbeatTime is > 5 minutes
+// True if a condition is not good for 5 minutes
 func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) bool {
 	before5Minutes := v1.Time{Time: time.Now().Add(-5 * time.Minute)}
 	before10Minutes := v1.Time{Time: time.Now().Add(-10 * time.Minute)}
@@ -230,19 +229,8 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) bool {
 			}
 
 			if condition.LastTransitionTime.Before(&before5Minutes) {
-				switch string(condition.Type) {
-				case string(yawollet.ConfigReady):
-					if string(condition.Status) != string(yawollet.ConditionTrue) {
-						return true
-					}
-				case string(yawollet.EnvoyReady):
-					if string(condition.Status) != string(yawollet.ConditionTrue) {
-						return true
-					}
-				case string(yawollet.EnvoyUpToDate):
-					if string(condition.Status) != string(yawollet.ConditionTrue) {
-						return true
-					}
+				if helper.LoadBalancerSetConditionIsFalse(condition) {
+					return true
 				}
 			}
 		}
@@ -252,7 +240,9 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) bool {
 }
 
 // Decides whether the machine is ready or not
-// Yes if
+// False if not all conditions are set
+// False if LastHeartbeatTime is older than 60sec
+// False if ConfigReady, EnvoyReady or EnvoyUpToDate are false
 func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 	before60seconds := v1.Time{Time: time.Now().Add(-60 * time.Second)}
 
@@ -267,20 +257,8 @@ func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 			if condition.LastHeartbeatTime.Before(&before60seconds) {
 				return false
 			}
-
-			switch string(condition.Type) {
-			case string(yawollet.ConfigReady):
-				if string(condition.Status) != string(yawollet.ConditionTrue) {
-					return false
-				}
-			case string(yawollet.EnvoyReady):
-				if string(condition.Status) != string(yawollet.ConditionTrue) {
-					return false
-				}
-			case string(yawollet.EnvoyUpToDate):
-				if string(condition.Status) != string(yawollet.ConditionTrue) {
-					return false
-				}
+			if helper.LoadBalancerSetConditionIsFalse(condition) {
+				return false
 			}
 		}
 	}
@@ -288,7 +266,7 @@ func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 	return true
 }
 
-func (r *LoadBalancerSetReconciler) createMachine(ctx *context.Context, set *yawolv1beta1.LoadBalancerSet) error {
+func (r *LoadBalancerSetReconciler) createMachine(ctx context.Context, set *yawolv1beta1.LoadBalancerSet) error {
 	machineLabels := r.getMachineLabelsFromSet(set)
 	machine := yawolv1beta1.LoadBalancerMachine{
 		ObjectMeta: v1.ObjectMeta{
@@ -307,28 +285,28 @@ func (r *LoadBalancerSetReconciler) createMachine(ctx *context.Context, set *yaw
 		Spec: set.Spec.Template.Spec,
 	}
 	r.Recorder.Event(&machine, "Normal", "Created", fmt.Sprintf("Created LoadBalancerMachine %s/%s", machine.Namespace, machine.Name))
-	return r.Client.Create(*ctx, &machine, &client.CreateOptions{})
+	return r.Client.Create(ctx, &machine, &client.CreateOptions{})
 }
 
-func (r *LoadBalancerSetReconciler) deleteMachine(ctx *context.Context, machine *yawolv1beta1.LoadBalancerMachine) error {
-	return r.Client.Delete(*ctx, machine)
+func (r *LoadBalancerSetReconciler) deleteMachine(ctx context.Context, machine *yawolv1beta1.LoadBalancerMachine) error {
+	return r.Client.Delete(ctx, machine)
 }
 
-func (r *LoadBalancerSetReconciler) deleteAllMachines(ctx *context.Context, set yawolv1beta1.LoadBalancerSet) error {
+func (r *LoadBalancerSetReconciler) deleteAllMachines(ctx context.Context, set *yawolv1beta1.LoadBalancerSet) error {
 	var childMachines yawolv1beta1.LoadBalancerMachineList
-	if err := r.List(*ctx, &childMachines, &client.ListOptions{
+	if err := r.List(ctx, &childMachines, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(set.Spec.Selector.MatchLabels),
 		Namespace:     set.Namespace,
 	}); err != nil {
-		r.Log.Error(err, "unable to list child loadbalancerMachines")
+		r.Log.Error(err, helper.ErrListingChildLBMs.Error())
 		return err
 	}
 
-	for _, machine := range childMachines.Items {
-		if err := r.Client.Delete(*ctx, &machine); err != nil {
+	for i := range childMachines.Items {
+		if err := r.Client.Delete(ctx, &childMachines.Items[i]); err != nil {
 			return err
 		}
-		r.Recorder.Event(&set, v12.EventTypeNormal, "Deleted", "Deleted loadBalancerMachine "+machine.Name)
+		r.Recorder.Event(set, v12.EventTypeNormal, "Deleted", "Deleted loadBalancerMachine "+childMachines.Items[i].Name)
 	}
 	r.Log.Info("finished cleaning up old loadBalancerMachines")
 	return nil
@@ -364,16 +342,6 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
-}
-
 func randomString(length int) string {
 	buf := make([]byte, 16)
 	_, err := rand.Read(buf)
@@ -381,6 +349,4 @@ func randomString(length int) string {
 		panic(err) // out of randomness, should never happen
 	}
 	return fmt.Sprintf("%x", buf)[:length]
-	// or hex.EncodeToString(buf)
-	// or base64.StdEncoding.EncodeToString(buf)
 }

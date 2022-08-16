@@ -1,12 +1,12 @@
-package control_controller
+package controlcontroller
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	"github.com/go-logr/logr"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,7 +37,7 @@ func (r *EventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// skip no event for forwarding
-	if event.Source.Component != EventSource || event.InvolvedObject.Kind != "LoadBalancer" {
+	if event.Source.Component != EventSource || event.InvolvedObject.Kind != helper.LoadBalancerKind {
 		return ctrl.Result{}, nil
 	}
 
@@ -52,9 +52,9 @@ func (r *EventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// get svc from target cluster
 	svc := coreV1.Service{}
-	serviceParams := strings.Split(lb.Annotations[target_controller.ServiceAnnotation], "/")
+	serviceParams := strings.Split(lb.Annotations[targetcontroller.ServiceAnnotation], "/")
 	if len(serviceParams) != 2 {
-		return ctrl.Result{}, errors.New("could not read service namespacedname from annotation")
+		return ctrl.Result{}, helper.ErrCouldNotReadSvcNameSpacedNameFromAnno
 	}
 	if err := r.TargetClient.Get(ctx, client.ObjectKey{Name: serviceParams[1], Namespace: serviceParams[0]}, &svc); err != nil {
 		return ctrl.Result{}, err

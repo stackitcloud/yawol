@@ -1,0 +1,643 @@
+package helper
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/types/known/anypb"
+	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/envoystatus"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/hostmetrics"
+
+	envoycluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoyendpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	envoylistener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	envoyrbacconfig "github.com/envoyproxy/go-control-plane/envoy/config/rbac/v3"
+	envoyrbac "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/rbac/v3"
+	envoytcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
+	envoyudp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/udp/udp_proxy/v3"
+	envoyproxyprotocol "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/proxy_protocol/v3"
+	envoytypev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	envoytypes "github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	envoywellknown "github.com/envoyproxy/go-control-plane/pkg/wellknown"
+)
+
+// LoadbalancerCondition condition name for conditions in lbm
+type LoadbalancerCondition string
+
+// LoadbalancerConditionStatus condition status for conditions in lbm
+type LoadbalancerConditionStatus string
+
+// LoadbalancerMetric metric name for lbm
+type LoadbalancerMetric string
+
+// Condition status const
+const (
+	ConditionTrue  LoadbalancerConditionStatus = "True"
+	ConditionFalse LoadbalancerConditionStatus = "False"
+)
+
+// Condition name const
+const (
+	ConfigReady   LoadbalancerCondition = "ConfigReady"
+	EnvoyReady    LoadbalancerCondition = "EnvoyReady"
+	EnvoyUpToDate LoadbalancerCondition = "EnvoyUpToDate"
+)
+
+// Metric name const
+const (
+	MetricLoad1        LoadbalancerMetric = "load1"
+	MetricLoad5        LoadbalancerMetric = "load5"
+	MetricLoad15       LoadbalancerMetric = "load15"
+	MetricMemTotal     LoadbalancerMetric = "memTotal"
+	MetricMemFree      LoadbalancerMetric = "memFree"
+	MetricMemAvailable LoadbalancerMetric = "memAvailable"
+	MetricStealTime    LoadbalancerMetric = "stealTime"
+)
+
+// Envoy health check parameters
+const (
+	envoyHealthCheckTimeout            int64  = 5
+	envoyHealthCheckInterval           int64  = 5
+	envoyHealthCheckUnhealthyThreshold uint32 = 3
+	envoyHealthCheckHealthyThreshold   uint32 = 2
+)
+
+// Supported Protocols
+const (
+	protocolTCP string = "TCP"
+	protocolUDP string = "UDP"
+)
+
+// Const declaration for DNS checking
+const dnsName string = `^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9])).([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}.[a-zA-Z]{2,3})$` //nolint:lll // long regex
+var rxDNSName = regexp.MustCompile(dnsName)
+
+// CreateEnvoyConfig create a new envoy snapshot and checks if the new snapshot has changes
+func CreateEnvoyConfig(
+	r record.EventRecorder,
+	oldSnapshot *envoycache.Snapshot,
+	lb *yawolv1beta1.LoadBalancer,
+	listen string,
+) (bool, envoycache.Snapshot, error) {
+	for _, port := range lb.Spec.Ports {
+		if string(port.Protocol) != protocolTCP && string(port.Protocol) != protocolUDP {
+			return false, envoycache.Snapshot{}, ErrPortProtocolNotSupported
+		}
+		if port.Port > 65535 || port.Port < 1 {
+			return false, envoycache.Snapshot{}, ErrPortInvalidRange
+		}
+		if port.NodePort > 65535 || port.NodePort < 1 {
+			return false, envoycache.Snapshot{}, ErrNodePortInvalidRange
+		}
+	}
+
+	for _, endpoints := range lb.Spec.Endpoints {
+		if endpoints.Addresses == nil {
+			return false, envoycache.Snapshot{}, ErrEndpointAddressesNil
+		}
+		for _, addresses := range endpoints.Addresses {
+			if !rxDNSName.MatchString(addresses) && net.ParseIP(addresses) == nil {
+				return false, envoycache.Snapshot{}, ErrEndpointAddressWrongFormat
+			}
+		}
+	}
+
+	versionInt, err := strconv.Atoi(oldSnapshot.GetVersion(resource.ListenerType))
+	if err != nil {
+		versionInt = 0
+	}
+	newVersion := fmt.Sprintf("%v", versionInt+1)
+	newSnapshot := envoycache.NewSnapshot(
+		newVersion,
+		nil, // endpoints
+		createEnvoyCluster(lb),
+		nil,
+		createEnvoyListener(r, lb, listen),
+		nil, // runtimes
+		nil, // secrets
+	)
+
+	if fmt.Sprint(newSnapshot.GetResources(resource.ClusterType)) == fmt.Sprint(oldSnapshot.GetResources(resource.ClusterType)) &&
+		fmt.Sprint(newSnapshot.GetResources(resource.ListenerType)) == fmt.Sprint(oldSnapshot.GetResources(resource.ListenerType)) {
+		// nothing to change
+		return false, envoycache.Snapshot{}, nil
+	}
+	// return new snapshot
+	return true, newSnapshot, nil
+}
+
+func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
+	clusters := make([]envoytypes.Resource, len(lb.Spec.Ports))
+	for i, port := range lb.Spec.Ports {
+		var protocol envoycore.SocketAddress_Protocol
+		var healthChecks []*envoycore.HealthCheck
+		var transportSocket *envoycore.TransportSocket
+
+		if string(port.Protocol) == protocolTCP {
+			protocol = envoycore.SocketAddress_TCP
+			healthChecks = []*envoycore.HealthCheck{{
+				Timeout:            &duration.Duration{Seconds: envoyHealthCheckTimeout},
+				Interval:           &duration.Duration{Seconds: envoyHealthCheckInterval},
+				UnhealthyThreshold: &wrappers.UInt32Value{Value: envoyHealthCheckUnhealthyThreshold},
+				HealthyThreshold:   &wrappers.UInt32Value{Value: envoyHealthCheckHealthyThreshold},
+				HealthChecker: &envoycore.HealthCheck_TcpHealthCheck_{
+					TcpHealthCheck: &envoycore.HealthCheck_TcpHealthCheck{
+						Send:    nil,
+						Receive: []*envoycore.HealthCheck_Payload{},
+					}},
+			}}
+
+			if proxyProtocolEnabled(lb.Spec.Options, port) {
+				if config, err := anypb.New(&envoyproxyprotocol.ProxyProtocolUpstreamTransport{
+					Config: &envoycore.ProxyProtocolConfig{Version: 2},
+					TransportSocket: &envoycore.TransportSocket{
+						Name: envoywellknown.TransportSocketRawBuffer,
+					},
+				}); err == nil {
+					transportSocket = &envoycore.TransportSocket{
+						// TODO constant is not in envoy.wellknown
+						Name: "envoy.transport_sockets.upstream_proxy_protocol",
+						ConfigType: &envoycore.TransportSocket_TypedConfig{
+							TypedConfig: config,
+						},
+					}
+				}
+			}
+		} else if string(port.Protocol) == protocolUDP {
+			protocol = envoycore.SocketAddress_UDP
+			// health checks are only implemented for TCP
+		}
+
+		endpoints := make([]*envoyendpoint.LocalityLbEndpoints, len(lb.Spec.Endpoints))
+		for iEndpoint, endpointSpec := range lb.Spec.Endpoints {
+			addressEndpoints := make([]*envoyendpoint.LbEndpoint, len(endpointSpec.Addresses))
+			for iAddresses, address := range endpointSpec.Addresses {
+				addressEndpoints[iAddresses] = &envoyendpoint.LbEndpoint{
+					HostIdentifier: &envoyendpoint.LbEndpoint_Endpoint{
+						Endpoint: &envoyendpoint.Endpoint{
+							Address: &envoycore.Address{
+								Address: &envoycore.Address_SocketAddress{
+									SocketAddress: &envoycore.SocketAddress{
+										Protocol: protocol,
+										Address:  address,
+										PortSpecifier: &envoycore.SocketAddress_PortValue{
+											PortValue: uint32(port.NodePort),
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+			}
+
+			endpoints[iEndpoint] = &envoyendpoint.LocalityLbEndpoints{
+				LbEndpoints: addressEndpoints,
+			}
+		}
+		clusterPort := &envoycluster.Cluster{
+			Name:                 fmt.Sprintf("%v-%v", port.Protocol, port.Port),
+			ConnectTimeout:       &duration.Duration{Seconds: 5},
+			ClusterDiscoveryType: &envoycluster.Cluster_Type{Type: envoycluster.Cluster_STATIC},
+			CommonLbConfig: &envoycluster.Cluster_CommonLbConfig{
+				HealthyPanicThreshold: &envoytypev3.Percent{Value: 0},
+			},
+			LbPolicy: envoycluster.Cluster_ROUND_ROBIN,
+			LoadAssignment: &envoyendpoint.ClusterLoadAssignment{
+				ClusterName: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
+				Endpoints:   endpoints,
+			},
+			DnsLookupFamily:               envoycluster.Cluster_V4_ONLY,
+			HealthChecks:                  healthChecks,
+			TransportSocket:               transportSocket,
+			PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32Kib
+			CircuitBreakers: &envoycluster.CircuitBreakers{
+				Thresholds: []*envoycluster.CircuitBreakers_Thresholds{
+					{
+						Priority:           envoycore.RoutingPriority_DEFAULT,
+						MaxConnections:     &wrappers.UInt32Value{Value: 10000 * uint32(hostmetrics.GetCPUNum())},
+						MaxRequests:        &wrappers.UInt32Value{Value: 8000 * uint32(hostmetrics.GetCPUNum())},
+						MaxPendingRequests: &wrappers.UInt32Value{Value: 2000 * uint32(hostmetrics.GetCPUNum())},
+					},
+				},
+			},
+		}
+		clusters[i] = clusterPort
+	}
+
+	return clusters
+}
+
+// createEnvoyListener create envoylistener for envoy snapshot
+func createEnvoyListener(
+	r record.EventRecorder,
+	lb *yawolv1beta1.LoadBalancer,
+	listenAddress string,
+) []envoytypes.Resource {
+	listeners := make([]envoytypes.Resource, len(lb.Spec.Ports))
+	for i, port := range lb.Spec.Ports {
+		// unsupported protocol is already checked earlier
+		if string(port.Protocol) == protocolTCP {
+			listeners[i] = createEnvoyTCPListener(r, lb, listenAddress, port)
+		} else if string(port.Protocol) == protocolUDP {
+			listeners[i] = createEnvoyUDPListener(listenAddress, port)
+		}
+	}
+
+	return listeners
+}
+
+func createEnvoyTCPListener(
+	r record.EventRecorder,
+	lb *yawolv1beta1.LoadBalancer,
+	listenAddress string,
+	port corev1.ServicePort,
+) *envoylistener.Listener {
+	listenPort, err := anypb.New(&envoytcp.TcpProxy{
+		StatPrefix:       "envoytcp",
+		ClusterSpecifier: &envoytcp.TcpProxy_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	filters := []*envoylistener.Filter{}
+
+	// ip whitelisting via RBAC according to loadBalancerSourceRanges
+	if lb.Spec.Options.LoadBalancerSourceRanges != nil && len(lb.Spec.Options.LoadBalancerSourceRanges) > 0 {
+		lbSourceRangeFilter := createEnvoyRBACRules(r, lb)
+		if lbSourceRangeFilter != nil {
+			filters = append(filters, &envoylistener.Filter{
+				Name: envoywellknown.RoleBasedAccessControl,
+				ConfigType: &envoylistener.Filter_TypedConfig{
+					TypedConfig: lbSourceRangeFilter,
+				},
+			})
+		}
+	}
+
+	return &envoylistener.Listener{
+		Name: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
+		Address: &envoycore.Address{
+			Address: &envoycore.Address_SocketAddress{
+				SocketAddress: &envoycore.SocketAddress{
+					Protocol: envoycore.SocketAddress_TCP,
+					Address:  listenAddress,
+					PortSpecifier: &envoycore.SocketAddress_PortValue{
+						PortValue: uint32(port.Port),
+					},
+				},
+			},
+		},
+		FilterChains: []*envoylistener.FilterChain{{
+			// proxy filter has to be the last in the chain
+			Filters: append(filters, &envoylistener.Filter{
+				Name: envoywellknown.TCPProxy,
+				ConfigType: &envoylistener.Filter_TypedConfig{
+					TypedConfig: listenPort,
+				},
+			}),
+		}},
+		Freebind:                      &wrappers.BoolValue{Value: true},
+		ReusePort:                     true,
+		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+	}
+}
+
+func createEnvoyUDPListener(
+	listenAddress string,
+	port corev1.ServicePort,
+) *envoylistener.Listener {
+	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
+		StatPrefix:     "envoyudp",
+		RouteSpecifier: &envoyudp.UdpProxyConfig_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO UDP only supports a single filter at the moment
+	// ref: https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/listener/v3/listener.proto -> listener_filters
+	// -> load-balancer-source-ranges are only guaranteed via OpenStack
+	return &envoylistener.Listener{
+		Name: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
+		Address: &envoycore.Address{
+			Address: &envoycore.Address_SocketAddress{
+				SocketAddress: &envoycore.SocketAddress{
+					Protocol: envoycore.SocketAddress_UDP,
+					Address:  listenAddress,
+					PortSpecifier: &envoycore.SocketAddress_PortValue{
+						PortValue: uint32(port.Port),
+					},
+				},
+			},
+		},
+		ListenerFilters: []*envoylistener.ListenerFilter{
+			{
+				// TODO this is not in envoywellknown
+				Name: "envoy.filters.udp_listener.udp_proxy",
+				ConfigType: &envoylistener.ListenerFilter_TypedConfig{
+					TypedConfig: listenPort,
+				},
+			},
+		},
+		Freebind:                      &wrappers.BoolValue{Value: true},
+		ReusePort:                     true,
+		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+	}
+}
+
+func GetRoleRules(
+	loadBalancer *yawolv1beta1.LoadBalancer,
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+) []rbac.PolicyRule {
+	return []rbac.PolicyRule{{
+		Verbs:     []string{"create"},
+		APIGroups: []string{""},
+		Resources: []string{"events"},
+	}, {
+		Verbs:     []string{"list", "watch"},
+		APIGroups: []string{"yawol.stackit.cloud"},
+		Resources: []string{"loadbalancers"},
+	}, {
+		Verbs:         []string{"get"},
+		APIGroups:     []string{"yawol.stackit.cloud"},
+		Resources:     []string{"loadbalancers"},
+		ResourceNames: []string{loadBalancer.Name},
+	}, {
+		Verbs:     []string{"list", "watch"},
+		APIGroups: []string{"yawol.stackit.cloud"},
+		Resources: []string{"loadbalancermachines"},
+	}, {
+		Verbs:         []string{"get", "update", "patch"},
+		APIGroups:     []string{"yawol.stackit.cloud"},
+		Resources:     []string{"loadbalancermachines"},
+		ResourceNames: []string{loadBalancerMachine.Name},
+	}, {
+		Verbs:         []string{"get", "update", "patch"},
+		APIGroups:     []string{"yawol.stackit.cloud"},
+		Resources:     []string{"loadbalancermachines/status"},
+		ResourceNames: []string{loadBalancerMachine.Name},
+	}}
+}
+
+func createEnvoyRBACRules(
+	r record.EventRecorder,
+	lb *yawolv1beta1.LoadBalancer,
+) *anypb.Any {
+	principals := []*envoyrbacconfig.Principal{}
+	for _, sourceRange := range lb.Spec.Options.LoadBalancerSourceRanges {
+		// validate CIDR and ignore if invalid
+		_, _, err := net.ParseCIDR(sourceRange)
+		split := strings.Split(sourceRange, "/")
+
+		if err != nil || len(split) != 2 {
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			continue
+		}
+
+		prefix, err := strconv.ParseUint(split[1], 10, 32)
+		if err != nil {
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			continue
+		}
+
+		principals = append(principals, &envoyrbacconfig.Principal{
+			Identifier: &envoyrbacconfig.Principal_DirectRemoteIp{
+				DirectRemoteIp: &envoycore.CidrRange{
+					AddressPrefix: split[0],
+					PrefixLen:     &wrappers.UInt32Value{Value: uint32(prefix)},
+				},
+			},
+		})
+	}
+
+	rules, err := anypb.New(&envoyrbac.RBAC{
+		StatPrefix: "envoyrbac",
+		Rules: &envoyrbacconfig.RBAC{
+			Action: envoyrbacconfig.RBAC_ALLOW,
+			Policies: map[string]*envoyrbacconfig.Policy{
+				"load-balancer-source-ranges": {
+					Permissions: []*envoyrbacconfig.Permission{{
+						// allow everything if principal matches
+						Rule: &envoyrbacconfig.Permission_Any{Any: true},
+					}},
+					Principals: principals,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: no rule applied", ErrCouldNotParseSourceRange), lb)
+		return nil
+	}
+
+	return rules
+}
+
+// proxyProtocolEnabled returns true if TCPProxyProtocol should be enabled for the given port
+func proxyProtocolEnabled(options yawolv1beta1.LoadBalancerOptions, port corev1.ServicePort) bool {
+	if !options.TCPProxyProtocol {
+		// TCPProxyProtocol is disabled
+		return false
+	}
+
+	if len(options.TCPProxyProtocolPortsFilter) == 0 {
+		// TCPProxyProtocol is enabled and no filter is set
+		return true
+	}
+
+	for _, portInFilter := range options.TCPProxyProtocolPortsFilter {
+		if portInFilter == port.Port {
+			// TCPProxyProtocol is enabled and port is found in filter list
+			return true
+		}
+	}
+
+	// TCPProxyProtocol is enabled and port is not found in filter list
+	return false
+}
+
+// UpdateLBMConditions update a given condition in lbm object
+func UpdateLBMConditions(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	condition LoadbalancerCondition,
+	status LoadbalancerConditionStatus,
+	reason string,
+	message string,
+) error {
+	lastTransitionTime := v1.Now()
+	var otherConditions string
+	if lbm.Status.Conditions != nil {
+		for _, c := range *lbm.Status.Conditions {
+			if string(c.Type) == string(condition) {
+				if string(c.Status) == string(status) {
+					lastTransitionTime = c.LastTransitionTime
+				}
+			} else {
+				jsonCondition, err := json.Marshal(c)
+				if err != nil {
+					return err
+				}
+				otherConditions += "," + string(jsonCondition)
+			}
+		}
+	}
+	patch := []byte(`{ "status": { "conditions": [{` +
+		`"lastHeartbeatTime": "` + v1.Now().UTC().Format(time.RFC3339) + `",` +
+		`"lastTransitionTime": "` + lastTransitionTime.UTC().Format(time.RFC3339) + `",` +
+		`"message": "` + message + `",` +
+		`"reason": "` + reason + `",` +
+		`"status": "` + string(status) + `",` +
+		`"type": "` + string(condition) +
+		`"}` +
+		otherConditions + `]}}`)
+	err := c.Patch(ctx, lbm, client.RawPatch(types.MergePatchType, patch))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// WriteLBMMetrics gets metrics and write new metrics to lbm
+func WriteLBMMetrics(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
+	load1, load5, load15, err := hostmetrics.GetLoad()
+	if err != nil {
+		return err
+	}
+
+	memTotal, memFree, memAvailable, err := hostmetrics.GetMem()
+	if err != nil {
+		return err
+	}
+
+	stealTime, err := hostmetrics.GetCPUStealTime()
+	if err != nil {
+		return err
+	}
+
+	metrics := []yawolv1beta1.LoadBalancerMachineMetric{
+		{
+			Type:  string(MetricLoad1),
+			Value: load1,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricLoad5),
+			Value: load5,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricLoad15),
+			Value: load15,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricMemTotal),
+			Value: memTotal,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricMemFree),
+			Value: memFree,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricMemAvailable),
+			Value: memAvailable,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricStealTime),
+			Value: stealTime,
+			Time:  v1.Now(),
+		},
+	}
+	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
+	var envoyMetrics []yawolv1beta1.LoadBalancerMachineMetric
+	envoyMetrics, err = envoyStatus.GetCurrentStats()
+	if err != nil {
+		return err
+	}
+	metrics = append(metrics, envoyMetrics...)
+
+	err = updateLBMMetrics(ctx, c, lbm, metrics)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// updateLBMMetrics update metrics in lbm object
+func updateLBMMetrics(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	metric []yawolv1beta1.LoadBalancerMachineMetric,
+) error {
+	jsonMetrics, err := json.Marshal(metric)
+	if err != nil {
+		return err
+	}
+	patch := []byte(`{ "status": { "metrics": ` + string(jsonMetrics) + `}}`)
+	err = c.Patch(ctx, lbm, client.RawPatch(types.MergePatchType, patch))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CheckEnvoyVersion(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	snapshot envoycache.Snapshot,
+) error {
+	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
+
+	envoySnapshotClusterVersion, envoySnapshotListenerVersion, err := envoyStatus.GetCurrentSnapshotVersion()
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "unable to get envoy snapshot version")
+	}
+
+	if envoySnapshotClusterVersion == snapshot.GetVersion(resource.ClusterType) &&
+		envoySnapshotListenerVersion == snapshot.GetVersion(resource.ListenerType) {
+		return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionTrue, "EnvoySnapshotUpToDate", "envoy snapshot version is up to date")
+	}
+	return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "envoy is not up to date")
+}
+
+func UpdateEnvoyStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
+	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
+	if envoyStatus.GetEnvoyStatus() {
+		return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionTrue, "EnvoyReady", "envoy response with 200")
+	}
+	return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionFalse, "EnvoyNotReady", "envoy response not with 200")
+}

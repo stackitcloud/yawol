@@ -195,7 +195,7 @@ spec:
                       format: date-time
                       type: string
                     type:
-                      description: Type is the type of a metric
+                      description: Type is the type of the metric
                       type: string
                     value:
                       description: Value is the value of a metric
@@ -209,8 +209,20 @@ spec:
               portID:
                 description: PortID contains the openstack port ID for a LoadBalancerMachine.
                 type: string
+              roleBindingName:
+                description: RoleBindingName contains the namespacedName from the
+                  RoleBinding for a LoadBalancerMachine.
+                type: string
+              roleName:
+                description: RoleName contains the namespacedName from the Role for
+                  a LoadBalancerMachine.
+                type: string
               serverID:
                 description: ServerID contains the openstack server ID for a LoadBalancerMachine.
+                type: string
+              serviceAccountName:
+                description: ServiceAccountName contains the namespacedName from the
+                  ServiceAccount for a LoadBalancerMachine.
                 type: string
             type: object
         type: object

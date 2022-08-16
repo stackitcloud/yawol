@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -70,8 +69,9 @@ type LoadBalancerSpec struct {
 	// ExistingFloatingIP uses a existing Floating IP as FIP
 	// +optional
 	ExistingFloatingIP *string `json:"existingFloatingIP,omitempty"`
-	// InternalLB is a bool for internal LoadBalancer. If set to false a FloatingIP will be assigned to the LB. Defaults to false.
-	// TODO move to LoadBalancerOptions
+	// DEPRECATED (moved to options) - InternalLB is a bool for internal LoadBalancer.
+	// If set to false a FloatingIP will be assigned to the LB. Defaults to false.
+	// TODO deprecated remove later
 	// +kubebuilder:default:=false
 	// +optional
 	InternalLB bool `json:"internalLB,omitempty"`
@@ -82,8 +82,8 @@ type LoadBalancerSpec struct {
 	Endpoints []LoadBalancerEndpoint `json:"endpoints,omitempty"`
 	// Ports defines the Ports for the LoadBalancer (copy from service)
 	Ports []corev1.ServicePort `json:"ports,omitempty"`
-	// LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
-	// TODO move to LoadBalancerOptions
+	// DEPRECATED (moved to options) - LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
+	// TODO deprecated remove later
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// Infrastructure defines parameters for the Infrastructure
@@ -94,6 +94,13 @@ type LoadBalancerSpec struct {
 }
 
 type LoadBalancerOptions struct {
+	// InternalLB is a bool for internal LoadBalancer. If set to false a FloatingIP will be assigned to the LB. Defaults to false.
+	// +kubebuilder:default:=false
+	// +optional
+	InternalLB bool `json:"internalLB,omitempty"`
+	// LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
+	// +optional
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// TCPProxyProtocol enables HAProxy TCP Proxy Protocol
 	// +optional
 	TCPProxyProtocol bool `json:"tcpProxyProtocol,omitempty"`
@@ -121,7 +128,7 @@ type LoadBalancerEndpoint struct {
 	Addresses []string `json:"addresses,omitempty"`
 }
 
-// LoadBalancerInfrastructure defines a Endpoint for the LoadBalancer
+// LoadBalancerInfrastructure defines infrastructure defaults for the LoadBalancer
 type LoadBalancerInfrastructure struct {
 	// FloatingNetID defines a openstack ID for the floatingNet.
 	// +optional
@@ -208,9 +215,6 @@ type LoadBalancerStatus struct {
 	// SecurityGroupName is the current security group name mapped to the port
 	// +optional
 	SecurityGroupName *string `json:"security_group_name,omitempty"`
-	// NodeRole is the current role metadata that is used by the LB machine's ServiceAccounts.
-	// +optional
-	NodeRoleRef *rbacv1.RoleRef `json:"nodeRoleRef,omitempty"`
 	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.
 	// +optional
 	LastOpenstackReconcile *metav1.Time `json:"lastOpenstackReconcile,omitempty"`

@@ -30,10 +30,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
@@ -43,7 +43,7 @@ import (
 // Client provides a interface to configure and use different OpenStack clients.
 type Client interface {
 	// Takes the content of an ini-file, to configure the openstack client
-	Configure(ini []byte, timeout time.Duration) error
+	Configure(ini []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error
 	// Returns the FipClient created from the configured ini
 	FipClient(ctx context.Context) (FipClient, error)
 	// Returns the PortClient created from the configured ini
@@ -56,15 +56,11 @@ type Client interface {
 	ServerClient(ctx context.Context) (ServerClient, error)
 	// Returns the KeyPairClient created from the configured ini
 	KeyPairClient(ctx context.Context) (KeyPairClient, error)
-	// Returns the AttachInterfaceClient created from the configured ini
-	AttachInterfaceClient(ctx context.Context) (AttachInterfaceClient, error)
-	// Returns the AttachInterfaceClient created from the configured ini
-	LoadBalancerClient(ctx context.Context) (LoadBalancerClient, error)
 }
 
 // FipClient is used to modify FloatingIPs in an OpenStack environment.
 // It provides methods with CRUD functionalities
-type FipClient interface {
+type FipClient interface { //nolint:dupl // no dupl
 	List(ctx context.Context, opts floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error)
 	Create(ctx context.Context, opts floatingips.CreateOptsBuilder) (*floatingips.FloatingIP, error)
 	Update(ctx context.Context, id string, opts floatingips.UpdateOptsBuilder) (*floatingips.FloatingIP, error)
@@ -84,7 +80,7 @@ type PortClient interface {
 
 // GroupClient is used to modify Network Security Groups in an OpenStack environment.
 // It provides methods with CRUD functionalities.
-type GroupClient interface {
+type GroupClient interface { //nolint:dupl // no dupl
 	List(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error)
 	Create(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error)
 	Update(ctx context.Context, id string, opts groups.UpdateOptsBuilder) (*groups.SecGroup, error)
@@ -119,25 +115,4 @@ type KeyPairClient interface {
 	Create(ctx context.Context, opts keypairs.CreateOptsBuilder) (*keypairs.KeyPair, error)
 	Get(ctx context.Context, name string) (*keypairs.KeyPair, error)
 	Delete(ctx context.Context, name string) error
-}
-
-// AttachInterfaceClient is used to attach and detach network ports to a server in an OpenStack environment.
-// They can be created with ServerClient and PortClient.
-// It provides methods with CRD functionalities.
-type AttachInterfaceClient interface {
-	List(ctx context.Context, serverID string) ([]attachinterfaces.Interface, error)
-	Get(ctx context.Context, serverID, portID string) (*attachinterfaces.Interface, error)
-	Create(ctx context.Context, serverID string, opts attachinterfaces.CreateOptsBuilder) (*attachinterfaces.Interface, error)
-	Delete(ctx context.Context, serverID, portID string) error
-}
-
-type LoadBalancerClient interface {
-	List(ctx context.Context, opts loadbalancers.ListOptsBuilder) ([]loadbalancers.LoadBalancer, error)
-	Create(ctx context.Context, opts loadbalancers.CreateOptsBuilder) (*loadbalancers.LoadBalancer, error)
-	Get(ctx context.Context, id string) (*loadbalancers.LoadBalancer, error)
-	Update(ctx context.Context, id string, opts loadbalancers.UpdateOpts) (*loadbalancers.LoadBalancer, error)
-	Delete(ctx context.Context, id string, opts loadbalancers.DeleteOptsBuilder) error
-	GetStatuses(ctx context.Context, id string) (*loadbalancers.StatusTree, error)
-	GetStats(ctx context.Context, id string) (*loadbalancers.Stats, error)
-	Failover(ctx context.Context, id string) error
 }

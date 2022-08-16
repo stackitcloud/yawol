@@ -1,4 +1,4 @@
-package target_controller
+package targetcontroller
 
 import (
 	"strconv"
@@ -9,15 +9,16 @@ import (
 
 type InfrastructureDefaults struct {
 	AuthSecretName    *string
-	FloatingNetworkId *string
-	NetworkId         *string
+	FloatingNetworkID *string
+	NetworkID         *string
 	Namespace         *string
 	FlavorRef         *yawolv1beta1.OpenstackFlavorRef
 	ImageRef          *yawolv1beta1.OpenstackImageRef
 	InternalLB        *bool
 }
 
-func GetMergedInfrastructureDetails(defaults InfrastructureDefaults, svc v1.Service) InfrastructureDefaults {
+// Returns InfrastructureDefaults overwritten with svc details
+func GetMergedInfrastructureDetails(defaults InfrastructureDefaults, svc *v1.Service) InfrastructureDefaults {
 	svcConfig := GetInfrastructureDetailsFromService(svc)
 
 	if svcConfig.Namespace != nil {
@@ -36,12 +37,12 @@ func GetMergedInfrastructureDetails(defaults InfrastructureDefaults, svc v1.Serv
 		defaults.FlavorRef = svcConfig.FlavorRef
 	}
 
-	if svcConfig.NetworkId != nil {
-		defaults.NetworkId = svcConfig.NetworkId
+	if svcConfig.NetworkID != nil {
+		defaults.NetworkID = svcConfig.NetworkID
 	}
 
-	if svcConfig.FloatingNetworkId != nil {
-		defaults.FloatingNetworkId = svcConfig.FloatingNetworkId
+	if svcConfig.FloatingNetworkID != nil {
+		defaults.FloatingNetworkID = svcConfig.FloatingNetworkID
 	}
 
 	if svcConfig.AuthSecretName != nil {
@@ -51,11 +52,11 @@ func GetMergedInfrastructureDetails(defaults InfrastructureDefaults, svc v1.Serv
 	return defaults
 }
 
-func GetInfrastructureDetailsFromService(svc v1.Service) InfrastructureDefaults {
+func GetInfrastructureDetailsFromService(svc *v1.Service) InfrastructureDefaults {
 	serviceInfraDefault := InfrastructureDefaults{
 		AuthSecretName:    nil,
-		FloatingNetworkId: nil,
-		NetworkId:         nil,
+		FloatingNetworkID: nil,
+		NetworkID:         nil,
 		FlavorRef:         nil,
 		ImageRef:          nil,
 		InternalLB:        nil,

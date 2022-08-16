@@ -20,14 +20,7 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-      # TODO fix all below
       - hugeParam
-      - rangeValCopy
-      - sloppyReassign
-      - paramTypeCombine
-      - ptrToRefParam
-      - unnecessaryBlock
-      - singleCaseSwitch
 
   gocyclo:
     min-complexity: 30 # decrease this
@@ -43,15 +36,14 @@ linters-settings:
     settings:
       mnd:
         # don't include the "operation" and "assign"
-        checks: argument,case,condition,return
+        checks: [argument,case,condition,return]
   govet:
-    check-shadowing: true
+    check-shadowing: false
   lll:
     line-length: 140
   misspell:
     locale: US
   nolintlint:
-    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: false # report any unused nolint directives
     require-explanation: true # require an explanation for nolint directives
     require-specific: true # require nolint directives to be specific about which linter is being skipped
@@ -89,15 +81,15 @@ linters:
     - unused
     - varcheck
     - whitespace
+    - revive
+    - dupl
+    - gocyclo
+    - gosec
+    - nolintlint
 
   # don't enable:
+  # - noctx
   # - funlen # TODO reconcile functions are way too large
-  # - revive # TODO disable underscore in package name
-  # - dupl # TODO remove duplicated code
-  # - gocyclo # TODO remove complexity of functions
-  # - gosec # TODO fix
-  # - nolintlint # TODO fix
-  # - noctx # TODO fix
   # - prealloc
   # - exportloopref
   # - gomnd # magic number detected -> sometimes useful

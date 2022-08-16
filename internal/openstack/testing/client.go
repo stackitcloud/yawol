@@ -2,6 +2,7 @@
 This package is used for testing. It contains MockClients to intercept calls, intended to go to openstack.
 
 Example usage
+
 	mockClient := testing.MockClient{}
 	mockClient.StoredValues = map[string]interface{}{}
 	mockClient.GroupClientObj = &testing.CallbackGroupClient{
@@ -23,21 +24,21 @@ import (
 	"time"
 
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type MockClient struct {
-	StoredValues             map[string]interface{}
-	FipClientObj             openstack.FipClient
-	PortClientObj            openstack.PortClient
-	GroupClientObj           openstack.GroupClient
-	RuleClientObj            openstack.RuleClient
-	ServerClientObj          openstack.ServerClient
-	KeyPairClientObj         openstack.KeyPairClient
-	AttachInterfaceClientObj openstack.AttachInterfaceClient
-	LoadBalancerClientObj    openstack.LoadBalancerClient
+	StoredValues     map[string]interface{}
+	FipClientObj     openstack.FipClient
+	PortClientObj    openstack.PortClient
+	GroupClientObj   openstack.GroupClient
+	RuleClientObj    openstack.RuleClient
+	ServerClientObj  openstack.ServerClient
+	KeyPairClientObj openstack.KeyPairClient
 }
 
-func (r *MockClient) Configure(ini []byte, timeout time.Duration) error {
+func (r *MockClient) Configure(ini []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error {
 	r.StoredValues = make(map[string]interface{})
 	return nil
 }
@@ -58,10 +59,4 @@ func (r *MockClient) ServerClient(ctx context.Context) (openstack.ServerClient, 
 }
 func (r *MockClient) KeyPairClient(ctx context.Context) (openstack.KeyPairClient, error) {
 	return r.KeyPairClientObj, nil
-}
-func (r *MockClient) AttachInterfaceClient(ctx context.Context) (openstack.AttachInterfaceClient, error) {
-	return r.AttachInterfaceClientObj, nil
-}
-func (r *MockClient) LoadBalancerClient(ctx context.Context) (openstack.LoadBalancerClient, error) {
-	return r.LoadBalancerClientObj, nil
 }

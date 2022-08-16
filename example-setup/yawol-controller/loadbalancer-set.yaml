@@ -1,30 +1,41 @@
+# Example LBS as created by yawol-controller from LB (some fields were omitted)
 apiVersion: yawol.stackit.cloud/v1beta1
 kind: LoadBalancerSet
 metadata:
-  name: test-lb-set
   labels:
-    app: test
+    lbm-template-hash: r2dv4eyyfs25gkj2
+    yawol.stackit.cloud/loadbalancer: yyjki53tcryt5pcw
+  name: yawol-test--loadbalancer-r2dv4eyyfs25gkj2
+  namespace: yawol-test
+  ownerReferences:
+  - apiVersion: yawol.stackit.cloud/v1beta1
+    kind: LoadBalancer
+    name: yawol-test--loadbalancer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: test
+      lbm-template-hash: r2dv4eyyfs25gkj2
+      yawol.stackit.cloud/loadbalancer: yyjki53tcryt5pcw
   template:
     lables:
-      app: test
+      lbm-template-hash: r2dv4eyyfs25gkj2
+      yawol.stackit.cloud/loadbalancer: yyjki53tcryt5pcw
     spec:
-      floatingID: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+      floatingID: FIP-ID
       infrastructure:
         authSecretRef:
           name: cloud-provider-config
-          namespace: default
+          namespace: yawol-test
         flavor:
-          flavor_id: osAyv1W3z2TU5D6h
-        floatingNetID: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+          flavor_id: FLAVOR-ID
+        floatingNetID: FLOATINGNET-ID
         image:
-          image_id: 64e0c0ba-794d-4487-9383-c4c98cb469ed
-        networkID: a9d32d04-87f1-47ef-8da4-a8fda4353bc1
+          image_id: IMAGE-ID-FOR-YAWOLLET-IMAGE
+        networkID: NETWORK-ID
       loadBalancerRef:
-        name: lb1
-        namespace: default
-      portID: 72cf7a7e-0b35-4cbc-aa20-8c6c1be90713
+        name: yawol-test--loadbalancer
+        namespace: yawol-test
+status:
+  readyReplicas: 1
+  replicas: 1

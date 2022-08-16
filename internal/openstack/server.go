@@ -2,6 +2,9 @@ package openstack
 
 import (
 	"context"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -13,20 +16,34 @@ import (
 // As an easier abstraction you can use OSClient in this package, where you can insert data from an ini
 // file to automatically initialize all modules you want to use.
 type OSServerClient struct {
-	computeV2 *gophercloud.ServiceClient
+	computeV2   *gophercloud.ServiceClient
+	timeout     time.Duration
+	promCounter *prometheus.CounterVec
 }
 
 // Configure takes ComputeV2 ServiceClient to receive endpoints and auth info for further calls against openstack.
-func (r *OSServerClient) Configure(networkClient *gophercloud.ServiceClient) *OSServerClient {
+func (r *OSServerClient) Configure(
+	networkClient *gophercloud.ServiceClient,
+	timeout time.Duration,
+	promCounter *prometheus.CounterVec,
+) *OSServerClient {
 	r.computeV2 = networkClient
+	r.timeout = timeout
+	r.promCounter = promCounter
 	return r
 }
 
 // Invokes servers.List() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
-	r.computeV2.Context = ctx
+	increasePromCounter(r.promCounter, "nova")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.computeV2.Context = tctx
+	defer func() {
+		r.computeV2.Context = nil
+	}()
+
 	page, err := servers.List(r.computeV2, opts).AllPages()
-	r.computeV2.Context = nil
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +52,14 @@ func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder)
 
 // Invokes servers.Create() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	r.computeV2.Context = ctx
+	increasePromCounter(r.promCounter, "nova")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.computeV2.Context = tctx
+	defer func() {
+		r.computeV2.Context = nil
+	}()
+
 	srv, err := servers.Create(r.computeV2, opts).Extract()
 	r.computeV2.Context = nil
 	return srv, err
@@ -43,24 +67,42 @@ func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuil
 
 // Invokes servers.Get() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Get(ctx context.Context, id string) (*servers.Server, error) {
-	r.computeV2.Context = ctx
+	increasePromCounter(r.promCounter, "nova")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.computeV2.Context = tctx
+	defer func() {
+		r.computeV2.Context = nil
+	}()
+
 	srv, err := servers.Get(r.computeV2, id).Extract()
-	r.computeV2.Context = nil
 	return srv, err
 }
 
 // Invokes servers.Update() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Update(ctx context.Context, id string, opts servers.UpdateOptsBuilder) (*servers.Server, error) {
-	r.computeV2.Context = ctx
+	increasePromCounter(r.promCounter, "nova")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.computeV2.Context = tctx
+	defer func() {
+		r.computeV2.Context = nil
+	}()
+
 	srv, err := servers.Update(r.computeV2, id, opts).Extract()
-	r.computeV2.Context = nil
 	return srv, err
 }
 
 // Invokes servers.Delete() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Delete(ctx context.Context, id string) error {
-	r.computeV2.Context = ctx
+	increasePromCounter(r.promCounter, "nova")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.computeV2.Context = tctx
+	defer func() {
+		r.computeV2.Context = nil
+	}()
+
 	err := servers.Delete(r.computeV2, id).ExtractErr()
-	r.computeV2.Context = nil
 	return err
 }

@@ -1,27 +1,29 @@
+# LB for testing yawollet locally
 apiVersion: yawol.stackit.cloud/v1beta1
 kind: LoadBalancer
 metadata:
   name: loadbalancer-sample
+  namespace: yawol-test
 spec:
-  selector:
-    matchLabels:
-      yawol.stackit.cloud/loadbalancer: test
-  replicas: 1
-  endpoints:
+  endpoints: # defines endpoints for LB. In this case just localhost
     - name: node1
       addresses:
         - 127.0.0.1
-  ports:
-    - name: http
-      protocol: TCP
-      port: 8085
-      nodePort: 9000
-    - name: dns
-      protocol: UDP
-      port: 8086
-      nodePort: 9001
-  infrastructure:
-    networkID: none
+  infrastructure: # is not used by yawollet can be set to anything
     authSecretRef:
       name: none
       namespace: none
+    networkID: none
+  ports: # defines ports which traffic well be forwarded to. In this case from 8085 to 9000
+    - name: http
+      port: 8085
+      nodePort: 9000
+      protocol: TCP
+    - name: dns
+      port: 8086
+      nodePort: 9001
+      protocol: UDP
+  replicas: 1
+  selector:
+    matchLabels:
+      yawol.stackit.cloud/loadbalancer: test

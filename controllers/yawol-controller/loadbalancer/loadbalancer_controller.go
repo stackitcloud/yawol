@@ -2,32 +2,27 @@ package loadbalancer
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base32"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"net"
 	"strconv"
-	"strings"
 	"time"
 
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/prometheus/client_golang/prometheus"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	coreV1 "k8s.io/api/core/v1"
-	rbac "k8s.io/api/rbac/v1"
+	openstackhelper "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/openstack"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -39,14 +34,11 @@ import (
 const (
 	DefaultRequeueTime = 10 * time.Millisecond
 	RevisionAnnotation = "loadbalancer.yawol.stackit.cloud/revision"
-	HashLabel          = "lbm-template-hash"
 	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
-	OpenStackAPIDelay  = 10 * time.Second
-	LoadBalancerKind   = "LoadBalancer"
 )
 
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
-type LoadBalancerReconciler struct {
+type Reconciler struct {
 	client.Client
 	Log               logr.Logger
 	Scheme            *runtime.Scheme
@@ -60,190 +52,107 @@ type LoadBalancerReconciler struct {
 	OpenstackTimeout  time.Duration
 }
 
-// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
-func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// Reconcile function for LoadBalancer object
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("loadbalancer", req.NamespacedName)
 	if r.skipReconciles || (r.skipAllButNN != nil && r.skipAllButNN.Name != req.Name && r.skipAllButNN.Namespace != req.Namespace) {
-		r.Log.Info("Skip reconciles enabled.. requeuing")
-		return ctrl.Result{RequeueAfter: 10 * time.Millisecond}, nil
+		r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
+	// get LoadBalancer object for this Reconcile request
 	var lb yawolv1beta1.LoadBalancer
 	if err := r.Client.Get(ctx, req.NamespacedName, &lb); err != nil {
-		// Throw if error more serve than 404
-		if client.IgnoreNotFound(err) != nil {
-			return ctrl.Result{}, err
+		// If not found just add an info log and ignore error
+		if errors2.IsNotFound(err) {
+			r.Log.Info("LoadBalancer not found", "lb", req.NamespacedName)
 		}
-		r.Log.Info("LoadBalancer not found", "lb", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	secretRef := lb.Spec.Infrastructure.AuthSecretRef
-	var infraSecret coreV1.Secret
-	if err := r.Client.Get(ctx, client.ObjectKey{Name: secretRef.Name, Namespace: secretRef.Namespace}, &infraSecret); err != nil {
-		r.Log.Error(err, "could not get infrastructure secret")
-		return ctrl.Result{}, err
+	// migrate deprecations TODO: remove later
+	if res, err := r.migrateDeprecations(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
+		return res, err
 	}
-	var osClient openstack.Client
-	if _, ok := infraSecret.Data["cloudprovider.conf"]; !ok {
-		return ctrl.Result{}, fmt.Errorf("cloudprovider.conf not found in secret")
-	}
-	var err error
-	var res ctrl.Result
-	if osClient, err = r.getOsClientForIni(infraSecret.Data["cloudprovider.conf"]); err != nil {
+
+	// get OpenStack Client for LoadBalancer
+	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if lb.DeletionTimestamp != nil {
-		if res, err = r.deletionRoutine(ctx, &lb, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	var res ctrl.Result
+
+	// handle deletion
+	if lb.GetDeletionTimestamp() != nil {
+		if res, err := r.deletionRoutine(ctx, &lb, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
 			return res, err
 		}
-		if err = r.removeFinalizer(ctx, lb, ServiceFinalizer); err != nil {
-			return ctrl.Result{}, err
-		}
 		return ctrl.Result{}, nil
-	} else if !hasFinalizer(lb.ObjectMeta, ServiceFinalizer) {
-		if err = r.addFinalizer(ctx, lb, ServiceFinalizer); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
-	openstackReconcileHash, err := getOpenStackReconcileHash(&lb)
-	if err != nil {
-		r.Log.Error(err, "could not generate OpenStackReconcileHash")
+
+	// adds finalizer if not set
+	if err := kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &lb, ServiceFinalizer); err != nil {
 		return ctrl.Result{}, err
 	}
-	before5min := metaV1.Time{Time: time.Now().Add(-5 * time.Minute)}
-	// remove openstack reconcile in case of:
-	// - lastOpenstackReconcile is older than 5 mins
-	// - loadbalancer is in initial creation and not ready
-	// - internalLB but has FloatingIP
-	// - no internalLB but has non FloatingIP
-	// - OpenstackReconcileHash is nil or has changed
-	if lb.Status.LastOpenstackReconcile.Before(&before5min) ||
-		(lb.Status.ExternalIP == nil && lb.Status.ReadyReplicas != nil && *lb.Status.ReadyReplicas > 0) ||
-		(lb.Spec.InternalLB && (lb.Status.FloatingID != nil || lb.Status.FloatingName != nil)) ||
-		(!lb.Spec.InternalLB && (lb.Status.FloatingID == nil || lb.Status.FloatingName == nil)) ||
-		(lb.Status.OpenstackReconcileHash == nil || *lb.Status.OpenstackReconcileHash != openstackReconcileHash) {
-		err = r.removeFromLBStatus(ctx, &lb, "lastOpenstackReconcile")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
 
-	// run openstack reconcile if lastOpenstackReconcile is nil
-	if lb.Status.LastOpenstackReconcile == nil {
-		var requeue bool
-		var requeueAfter time.Duration
-
-		res, err = r.reconcileSecGroup(ctx, req, &lb, osClient)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if res.Requeue {
-			requeue = true
-		}
-		if requeueAfter < res.RequeueAfter {
-			requeueAfter = res.RequeueAfter
-		}
-
-		if !lb.Spec.InternalLB {
-			res, err = r.reconcileFIP(ctx, req, &lb, osClient)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			if res.Requeue {
-				requeue = true
-			}
-			if requeueAfter < res.RequeueAfter {
-				requeueAfter = res.RequeueAfter
-			}
-		} else {
-			var fipClient openstack.FipClient
-			fipClient, err = osClient.FipClient(ctx)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			res, err = r.deleteFips(ctx, fipClient, &lb)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			if res.Requeue {
-				requeue = true
-			}
-			if requeueAfter < res.RequeueAfter {
-				requeueAfter = res.RequeueAfter
-			}
-		}
-
-		res, err = r.reconcilePort(ctx, req, &lb, osClient)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if res.Requeue {
-			requeue = true
-		}
-		if requeueAfter < res.RequeueAfter {
-			requeueAfter = res.RequeueAfter
-		}
-
-		if !lb.Spec.InternalLB {
-			res, err = r.reconcileFIPAssociate(ctx, req, &lb, osClient)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			if res.Requeue {
-				requeue = true
-			}
-			if requeueAfter < res.RequeueAfter {
-				requeueAfter = res.RequeueAfter
-			}
-		}
-
-		if requeue {
-			return ctrl.Result{Requeue: requeue}, nil
-		}
-		if requeueAfter != 0 {
-			return ctrl.Result{RequeueAfter: requeueAfter}, nil
-		}
-
-		timeNow := metaV1.Now()
-		err = r.patchLBStatus(ctx, &lb, yawolv1beta1.LoadBalancerStatus{LastOpenstackReconcile: &timeNow})
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// update status lb status accordingly
-		openstackReconcileHash, err = getOpenStackReconcileHash(&lb)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if lb.Status.OpenstackReconcileHash == nil ||
-			*lb.Status.OpenstackReconcileHash != openstackReconcileHash {
-			if err = r.patchLBStatus(ctx, &lb, yawolv1beta1.LoadBalancerStatus{
-				OpenstackReconcileHash: &openstackReconcileHash,
-			}); err != nil {
-				r.Log.Error(err, "failed to update OpenstackReconcileHash in status")
-				return ctrl.Result{RequeueAfter: DefaultRequeueTime}, r.sendEvent(err, &lb)
-			}
-		}
+	// run openstack reconcile if needed
+	if res, err = r.reconcileOpenStackIfNeeded(ctx, &lb, req, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
+		return res, err
 	}
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
-	if res, err := r.reconcileLoadBalancerSet(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err = r.reconcileLoadBalancerSet(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+// migrateDeprecations moves the deprecated fields to the new object
+// TODO: remove in future
+func (r *Reconciler) migrateDeprecations(
+	ctx context.Context,
+	lb *yawolv1beta1.LoadBalancer,
+) (ctrl.Result, error) {
+	// internalLB
+	if lb.Spec.InternalLB {
+		// add to options
+		patch := []byte(`{"spec":{"options":{"internalLB":` + strconv.FormatBool(lb.Spec.InternalLB) + `}}}`)
+		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
+			return ctrl.Result{}, err
+		}
+		// remove old field
+		patch = []byte(`[{"op":"remove", "path":"/spec/internalLB"}]`)
+		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	// loadBalancerSourceRanges
+	if lb.Spec.LoadBalancerSourceRanges != nil && len(lb.Spec.LoadBalancerSourceRanges) > 0 {
+		// add to options
+		data, err := json.Marshal(lb.Spec.LoadBalancerSourceRanges)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		patch := []byte(`{"spec":{"options":{"loadBalancerSourceRanges":` + string(data) + `}}}`)
+		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
+			return ctrl.Result{}, err
+		}
+		// remove old field
+		patch = []byte(`[{"op":"remove", "path":"/spec/loadBalancerSourceRanges"}]`)
+		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout)
+			err := osClient.Configure(iniData, r.OpenstackTimeout, &r.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -259,363 +168,288 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *LoadBalancerReconciler) patchLBStatus(
+func (r *Reconciler) reconcileOpenStackIfNeeded(
 	ctx context.Context,
 	lb *yawolv1beta1.LoadBalancer,
-	lbStatus yawolv1beta1.LoadBalancerStatus,
+	req ctrl.Request,
+	osClient openstack.Client,
+) (ctrl.Result, error) {
+	if !helper.LoadBalancerOpenstackReconcileIsNeeded(lb) {
+		return ctrl.Result{}, nil
+	}
+
+	var requeue, overallRequeue bool
+	var err error
+
+	requeue, err = r.reconcileSecGroup(ctx, req, lb, osClient)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	overallRequeue = overallRequeue || requeue
+
+	requeue, err = r.reconcileFIP(ctx, req, lb, osClient)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	overallRequeue = overallRequeue || requeue
+
+	requeue, err = r.reconcilePort(ctx, req, lb, osClient)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	overallRequeue = overallRequeue || requeue
+
+	requeue, err = r.reconcileFIPAssociate(ctx, req, lb, osClient)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	overallRequeue = overallRequeue || requeue
+
+	if overallRequeue {
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+	}
+
+	if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+		LastOpenstackReconcile: &metaV1.Time{Time: time.Now()},
+	}); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.updateOpenstackReconcileHash(ctx, lb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) updateOpenstackReconcileHash(
+	ctx context.Context,
+	lb *yawolv1beta1.LoadBalancer,
 ) error {
-	lbStatusJson, _ := json.Marshal(lbStatus)
-	patch := []byte(`{"status":` + string(lbStatusJson) + `}`)
-	return r.Client.Status().Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+	// update status lb status accordingly
+	openstackReconcileHash, err := helper.GetOpenStackReconcileHash(lb)
+	if err != nil {
+		return err
+	}
+
+	if lb.Status.OpenstackReconcileHash != nil &&
+		*lb.Status.OpenstackReconcileHash == openstackReconcileHash {
+		return nil
+	}
+
+	if err = helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+		OpenstackReconcileHash: &openstackReconcileHash,
+	}); err != nil {
+		r.Log.Error(err, "failed to update OpenstackReconcileHash in status")
+		return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+	}
+
+	return nil
 }
 
-func (r *LoadBalancerReconciler) removeFromLBStatus(ctx context.Context, lb *yawolv1beta1.LoadBalancer, key string) error {
-	patch := []byte(`{"status":{"` + key + `": null}}`)
-	return r.Client.Status().Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
-}
-
-func (r *LoadBalancerReconciler) reconcileFIP(
+func (r *Reconciler) reconcileFIP(
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
-) (ctrl.Result, error) {
-	var fipClient openstack.FipClient
-	var requeue bool
-	{
-		var err error
-		fipClient, err = osClient.FipClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+) (bool, error) {
+	// delete fip if loadbalancer is internal
+	if lb.Spec.Options.InternalLB {
+		return r.deleteFips(ctx, osClient, lb)
 	}
+
+	var err error
+
+	// get openstack fip client
+	var fipClient openstack.FipClient
+	fipClient, err = osClient.FipClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	var requeue bool
 
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.FloatingName == nil {
-		if err := r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			FloatingName: pointer.StringPtr(req.NamespacedName.String()),
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
 	var fip *floatingips.FloatingIP
-	{
-		if lb.Status.FloatingID == nil {
-			var err error
-			fip, err = r.getFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-			if err != nil {
-				return ctrl.Result{}, err
+
+	// get floatingIP by name if ID is not set and patch ID in loadbalancer object
+	if lb.Status.FloatingID == nil {
+		fip, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+		if err != nil {
+			return false, err
+		}
+		if fip != nil {
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID}); err != nil {
+				return false, err
 			}
-			if fip != nil {
-				if err := r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID}); err != nil {
-					return ctrl.Result{}, err
-				}
-				requeue = true
-			}
+			requeue = true
 		}
 	}
 
 	if lb.Status.FloatingID == nil {
 		// Use existing Floating IP if specified
 		if lb.Spec.ExistingFloatingIP != nil {
-			var err error
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			defer cancel()
-			if fip, err = r.getFIPByIP(tctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
+			if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
 				switch err.(type) {
 				case gophercloud.ErrDefault404:
 					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
-					return ctrl.Result{}, r.sendEvent(err, lb)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				default:
 					r.Log.Info("unexpected error occurred")
-					return ctrl.Result{}, r.sendEvent(err, lb)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				}
 			}
 			if fip.ID != "" {
-				if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+				if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 					FloatingID: &fip.ID,
 				}); err != nil {
-					return ctrl.Result{}, err
+					return false, err
 				}
 			}
 		} else {
-			// Create new FIP
-			var err error
-			var res ctrl.Result
-			if res, fip, err = r.createFIP(ctx, fipClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-				return res, err
+			// create fip
+			if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault400:
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				case gophercloud.ErrDefault409:
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				default:
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
 			}
-			// double check so status wont be corrupted
+			// double check so status won't be corrupted
 			if fip.ID == "" {
-				r.Log.Info("fip was successfully created but fip id is empty")
-				panic("fip was successfully created but fip id is empty. crashing to prevent corruption of state")
+				return false, helper.ErrFIPIDEmpty
 			}
 
-			if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 				FloatingID: &fip.ID,
 			}); err != nil {
-				return ctrl.Result{}, err
+				return false, err
 			}
 			requeue = true
 		}
 	}
 
 	// Get FIP
-	var err error
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	if fip, err = fipClient.Get(tctx, *lb.Status.FloatingID); err != nil {
+	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
 		case gophercloud.ErrDefault404:
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
-			if err = r.removeFromLBStatus(ctx, lb, "floatingID"); err != nil {
-				return ctrl.Result{}, err
+			// fip not found by ID, remove it from status and trigger reconcile
+			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
+				return false, err
 			}
-			return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+			return true, err
 		default:
 			r.Log.Info("unexpected error occurred")
-			return ctrl.Result{}, r.sendEvent(err, lb)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 	}
 
+	// patch floatingIP in status
 	if lb.Status.ExternalIP == nil || *lb.Status.ExternalIP != fip.FloatingIP {
-		if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &fip.FloatingIP,
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
-	if requeue {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-	return ctrl.Result{}, nil
+	return requeue, nil
 }
 
-// Returns a FIP filtered By Name
-// Returns an error on connection issues
-// Returns nil if not found
-func (r *LoadBalancerReconciler) getFIPByName(
-	ctx context.Context, fipClient openstack.FipClient, fipName string,
-) (*floatingips.FloatingIP, error) {
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	fipList, err := fipClient.List(tctx, floatingips.ListOpts{
-		Description: fipName,
-	})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, floatingIP := range fipList {
-		if floatingIP.Description == fipName {
-			return &floatingIP, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// Returns a FIP filtered By IP
-// Returns an error on connection issues
-// Returns nil if not found
-func (r *LoadBalancerReconciler) getFIPByIP(
-	ctx context.Context, fipClient openstack.FipClient, fipIP string,
-) (*floatingips.FloatingIP, error) {
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	fipList, err := fipClient.List(tctx, floatingips.ListOpts{
-		FloatingIP: fipIP,
-	})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, floatingIP := range fipList {
-		if floatingIP.FloatingIP == fipIP {
-			return &floatingIP, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// Returns a Port filtered By Name
-// Returns an error on connection issues
-// Returns nil if not found
-func (r *LoadBalancerReconciler) getPortByName(ctx context.Context, portClient openstack.PortClient, portName string) (*ports.Port, error) {
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	portList, err := portClient.List(tctx, ports.ListOpts{
-		Name: portName,
-	})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, port := range portList {
-		if port.Name == portName {
-			return &port, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// Returns a Port filtered By Name
-// Returns an error on connection issues
-// Returns nil if not found
-func (r *LoadBalancerReconciler) getSecGroupByName(
-	ctx context.Context, groupClient openstack.GroupClient, groupName string,
-) (*groups.SecGroup, error) {
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	groupList, err := groupClient.List(tctx, groups.ListOpts{Name: groupName})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, group := range groupList {
-		if group.Name == groupName {
-			return &group, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func (r *LoadBalancerReconciler) createFIP(
-	ctx context.Context,
-	fipClient openstack.FipClient,
-	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, *floatingips.FloatingIP, error) {
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	fip, err := fipClient.Create(tctx, floatingips.CreateOpts{
-		Description:       *lb.Status.FloatingName,
-		FloatingNetworkID: *lb.Spec.Infrastructure.FloatingNetID,
-	})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		switch err.(type) {
-		case gophercloud.ErrDefault400:
-			r.Log.Info("floating ip is not in range of the floating subnet", "lb", lb.Namespace+"/"+lb.Name)
-			return ctrl.Result{}, nil, r.sendEvent(err, lb)
-		case gophercloud.ErrDefault409:
-			r.Log.Info("floating ip is already in use", "lb", lb.Namespace+"/"+lb.Name)
-			return ctrl.Result{}, nil, r.sendEvent(err, lb)
-		default:
-			r.Log.Info("unexpected error occurred claiming a fip")
-			return ctrl.Result{}, nil, r.sendEvent(err, lb)
-		}
-	}
-	return ctrl.Result{}, fip, nil
-}
-
-func (r *LoadBalancerReconciler) reconcilePort(
+func (r *Reconciler) reconcilePort(
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
-) (ctrl.Result, error) {
+) (bool, error) {
 	var requeue bool
 	var portClient openstack.PortClient
-	{
-		var err error
-		portClient, err = osClient.PortClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	var err error
+
+	portClient, err = osClient.PortClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.PortName == nil {
-		if err := r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			PortName: pointer.StringPtr(req.NamespacedName.String()),
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
-	// Reuse port id if found
 	var port *ports.Port
-	{
-		if lb.Status.PortID == nil {
-			var err error
-			port, err = r.getPortByName(ctx, portClient, *lb.Status.PortName)
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-			if err != nil {
-				return ctrl.Result{}, err
+
+	// try to get port my name to use it if possible
+	if lb.Status.PortID == nil {
+		port, err = openstackhelper.GetPortByName(ctx, portClient, *lb.Status.PortName)
+		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		if err != nil {
+			return false, err
+		}
+		if port != nil {
+			r.Log.Info("found port with name", "id", port.ID, "lb", req.NamespacedName, "portName", *lb.Status.PortName)
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{PortID: &port.ID}); err != nil {
+				return false, err
 			}
-			if port != nil {
-				r.Log.Info("found port with name", "id", port.ID, "lb", req.NamespacedName, "portName", *lb.Status.PortName)
-				if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{PortID: &port.ID}); err != nil {
-					return ctrl.Result{}, err
-				}
-				requeue = true
-			}
+			requeue = true
 		}
 	}
 
 	// Create Port
 	if lb.Status.PortID == nil {
-		var err error
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		port, err = portClient.Create(tctx, ports.CreateOpts{
-			Name:      *lb.Status.PortName,
-			NetworkID: lb.Spec.Infrastructure.NetworkID,
-		})
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
 		if err != nil {
-			switch err.(type) {
-			default:
-				r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
-				return ctrl.Result{}, r.sendEvent(err, lb)
-			}
+			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 
-		// double check so status wont be corrupted
+		// double check so status won't be corrupted
 		if port.ID == "" {
-			r.Log.Info("port was successfully created but port id is empty", "lb", req.NamespacedName)
-			panic("port was successfully created but port id is empty. crashing to prevent corruption of state")
+			return false, helper.ErrPortIDEmpty
 		}
 
 		r.Log.Info("successfully created port", "id", port.ID, "lb", req.NamespacedName)
 
-		if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			PortID: &port.ID,
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
 	// Check if port still exists properly
 	if lb.Status.PortID != nil {
-		var err error
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		if port, err = portClient.Get(tctx, *lb.Status.PortID); err != nil {
+		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
 				r.Log.Info("port not found in openstack", "portID", *lb.Status.PortID)
-				if err = r.removeFromLBStatus(ctx, lb, "portID"); err != nil {
-					return ctrl.Result{}, err
+				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID"); err != nil {
+					return false, err
 				}
-				return ctrl.Result{RequeueAfter: DefaultRequeueTime}, r.sendEvent(err, lb)
+				return true, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			default:
 				r.Log.Info("unexpected error occurred")
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 
@@ -629,437 +463,234 @@ func (r *LoadBalancerReconciler) reconcilePort(
 				SecurityGroups: &[]string{*lb.Status.SecurityGroupID},
 			}); err != nil {
 				r.Log.Error(err, "could not update port.securitygroups", "lb", lb)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 			requeue = true
 		}
+
+		var changed bool
+		changed, err = openstackhelper.BindSecGroupToPortIfNeeded(
+			ctx,
+			portClient,
+			lb.Status.SecurityGroupID,
+			port,
+		)
+		if err != nil {
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+		}
+
+		requeue = requeue || changed
 	}
 
 	if port == nil {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+		return true, nil
 	}
 
 	// If internal LB, use first port ip as external ip
-	if lb.Spec.InternalLB && len(port.FixedIPs) >= 1 &&
+	if lb.Spec.Options.InternalLB && len(port.FixedIPs) >= 1 &&
 		(lb.Status.ExternalIP == nil || *lb.Status.ExternalIP != port.FixedIPs[0].IPAddress) {
-		if err := r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &port.FixedIPs[0].IPAddress,
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
-
 		requeue = true
 	}
 
-	if requeue {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-
-	return ctrl.Result{}, nil
+	return requeue, nil
 }
 
-func (r *LoadBalancerReconciler) reconcileSecGroup(
+func (r *Reconciler) reconcileSecGroup(
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
-) (ctrl.Result, error) {
+) (bool, error) {
 	var requeue bool
+	var err error
+
 	var groupClient openstack.GroupClient
-	{
-		var err error
-		groupClient, err = osClient.GroupClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	groupClient, err = osClient.GroupClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
 	var ruleClient openstack.RuleClient
-	{
-		var err error
-		ruleClient, err = osClient.RuleClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	ruleClient, err = osClient.RuleClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
-	// Patch Floating Name, so we can reference it later
+	// Patch SecurityGroup Name, so we can reference it later
 	if lb.Status.SecurityGroupName == nil {
-		if err := r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			SecurityGroupName: pointer.StringPtr(req.NamespacedName.String()),
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
 	// Reuse SecGroup if SecGroup found by name
 	var secGroup *groups.SecGroup
-	{
-		if lb.Status.SecurityGroupID == nil {
-			var err error
-			secGroup, err = r.getSecGroupByName(ctx, groupClient, *lb.Status.SecurityGroupName)
-			if err != nil {
-				return ctrl.Result{}, r.sendEvent(err, lb)
+
+	if lb.Status.SecurityGroupID == nil {
+		secGroup, err = openstackhelper.GetSecGroupByName(ctx, groupClient, *lb.Status.SecurityGroupName)
+		if err != nil {
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+		}
+		if secGroup != nil {
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{SecurityGroupID: &secGroup.ID}); err != nil {
+				return false, err
 			}
-			if secGroup != nil {
-				if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{SecurityGroupID: &secGroup.ID}); err != nil {
-					return ctrl.Result{}, err
-				}
-				requeue = true
-			}
+			requeue = true
 		}
 	}
 
 	// Create SecGroup
 	if lb.Status.SecurityGroupID == nil {
-		var err error
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		secGroup, err = groupClient.Create(tctx, groups.CreateOpts{
-			Name: req.NamespacedName.String(),
-		})
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		secGroup, err = openstackhelper.CreateSecGroup(ctx, groupClient, req.NamespacedName.String())
 		if err != nil {
-			switch err.(type) {
-			default:
-				r.Log.Info("unexpected error occurred claiming a fip", "lb", req.NamespacedName)
-				return ctrl.Result{}, r.sendEvent(err, lb)
-			}
+			r.Log.Info("unexpected error occurred claiming a fip", "lb", req.NamespacedName)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
-		// double check so status wont be corrupted
+		// double check so status won't be corrupted
 		if secGroup.ID == "" {
-			r.Log.Info("secGroup was successfully created but secGroup id is empty", "lb", req.NamespacedName)
-			panic("secGroup was successfully created but secGroup id is empty. crashing to prevent corruption of state")
+			r.Log.Info(helper.ErrSecGroupIDEmpty.Error(), "lb", req.NamespacedName)
+			return false, helper.ErrSecGroupIDEmpty
 		}
-		if err = r.patchLBStatus(ctx, lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			SecurityGroupID: &secGroup.ID,
 		}); err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		requeue = true
 	}
 
 	// Fetch SecGroup for ID
 	if lb.Status.SecurityGroupID != nil {
-		var err error
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		if secGroup, err = groupClient.Get(tctx, *lb.Status.SecurityGroupID); err != nil {
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		if secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
 				r.Log.Info("SecurityGroupID not found in openstack", "SecurityGroupID", *lb.Status.SecurityGroupID)
-				if err = r.removeFromLBStatus(ctx, lb, "security_group_id"); err != nil {
-					return ctrl.Result{}, err
+				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id"); err != nil {
+					return false, err
 				}
-				return ctrl.Result{RequeueAfter: DefaultRequeueTime}, r.sendEvent(err, lb)
+				return true, nil
 			default:
 				r.Log.Info("unexpected error occurred")
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 	}
 
 	if secGroup == nil {
-		r.Log.Info("SecGroup is nil, cannot create rules")
-		return ctrl.Result{}, errors.New("SecGroup is nil, cannot create rules")
+		r.Log.Info(helper.ErrSecGroupNil.Error())
+		return false, helper.ErrSecGroupNil
 	}
 
-	// Desired SecGroupRules are:
-	// IPv4 and IPv6 all:
-	// Egress
-	// VRRP Ingress from same secGroup
-	desiredSecGroups := []rules.SecGroupRule{}
-	etherTypes := []rules.RuleEtherType{rules.EtherType4, rules.EtherType6}
-	for _, etherType := range etherTypes {
-		desiredSecGroups = append(
-			desiredSecGroups,
-			rules.SecGroupRule{
-				EtherType: string(etherType),
-				Direction: string(rules.DirEgress),
-			},
-			rules.SecGroupRule{
-				EtherType:     string(etherType),
-				Direction:     string(rules.DirIngress),
-				Protocol:      string(rules.ProtocolVRRP),
-				RemoteGroupID: secGroup.ID,
-			},
-			rules.SecGroupRule{
-				EtherType:    string(etherType),
-				Direction:    string(rules.DirIngress),
-				Protocol:     string(rules.ProtocolICMP),
-				PortRangeMin: 1,
-				PortRangeMax: 8,
-			},
-		)
+	desiredSecGroups := helper.GetDesiredSecGroupRulesForLoadBalancer(r.RecorderLB, lb, secGroup.ID)
+
+	err = openstackhelper.DeleteUnusedSecGroupRulesFromSecGroup(ctx, ruleClient, secGroup, desiredSecGroups)
+	if err != nil {
+		return true, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	sourceRanges := lb.Spec.LoadBalancerSourceRanges
-	if sourceRanges == nil || len(sourceRanges) < 1 {
-		// if no range is given, allow all
-		sourceRanges = []string{"0.0.0.0/0", "::/0"}
+	err = openstackhelper.CreateNonExistingSecGroupRules(ctx, ruleClient, req.NamespacedName.String(), secGroup, desiredSecGroups)
+	if err != nil {
+		return true, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	sshPortUsed := false
-	for _, port := range lb.Spec.Ports {
-		for _, cidr := range sourceRanges {
-			// validate CIDR and ignore if invalid
-			_, _, err := net.ParseCIDR(cidr)
-			if err != nil {
-				r.RecorderLB.Event(
-					lb, "Warning", "Error",
-					"Could not parse LoadBalancerSourceRange: "+cidr,
-				)
-				continue
-			}
-
-			var etherType rules.RuleEtherType
-			if strings.Contains(cidr, ".") {
-				etherType = rules.EtherType4
-			} else if strings.Contains(cidr, ":") {
-				etherType = rules.EtherType6
-			}
-
-			portValue := int(port.Port)
-			rule := rules.SecGroupRule{
-				Direction:      string(rules.DirIngress),
-				EtherType:      string(etherType),
-				PortRangeMin:   portValue,
-				PortRangeMax:   portValue,
-				RemoteIPPrefix: cidr,
-				Protocol:       string(port.Protocol),
-			}
-
-			if portValue == 22 {
-				sshPortUsed = true
-			}
-
-			desiredSecGroups = append(desiredSecGroups, rule)
-		}
-	}
-
-	// allow ssh traffic from everywhere when debugging is enabled
-	if lb.Spec.DebugSettings.Enabled {
-		if sshPortUsed {
-			r.RecorderLB.Event(
-				lb, "Warning", "Warning",
-				"DebugSettings are enabled but port 22 is already in use.",
-			)
-		} else {
-			r.RecorderLB.Event(
-				lb, "Warning", "Warning",
-				"DebugSettings are enabled, Port 22 is open to all IP ranges.",
-			)
-			desiredSecGroups = append(
-				desiredSecGroups,
-				rules.SecGroupRule{
-					Direction:      string(rules.DirIngress),
-					EtherType:      string(rules.EtherType4),
-					RemoteIPPrefix: "0.0.0.0/0",
-					PortRangeMin:   22,
-					PortRangeMax:   22,
-					Protocol:       string(rules.ProtocolTCP),
-				},
-				rules.SecGroupRule{
-					Direction:      string(rules.DirIngress),
-					EtherType:      string(rules.EtherType6),
-					RemoteIPPrefix: "::/0",
-					PortRangeMin:   22,
-					PortRangeMax:   22,
-					Protocol:       string(rules.ProtocolTCP),
-				},
-			)
-		}
-	}
-
-	// delete rules that are not used anymore
-	// deletion must happen before creation in order
-	// to not have temporary duplicated / overlapping rules
-	for _, appliedRule := range secGroup.Rules {
-		found := false
-		for _, desiredRule := range desiredSecGroups {
-			if secGroupRuleIsEqual(appliedRule, desiredRule) {
-				found = true
-				break
-			}
-		}
-
-		if found {
-			continue
-		}
-
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		// rule not found -> delete
-		if err := ruleClient.Delete(tctx, appliedRule.ID); err != nil {
-			cancel()
-			r.Log.Error(err, "failed to delete secgroup rule", "secgroup", secGroup.ID, "rule", appliedRule)
-			return ctrl.Result{RequeueAfter: DefaultRequeueTime}, r.sendEvent(err, lb)
-		}
-		cancel()
-	}
-
-	// create non existing rules
-	for _, desiredRule := range desiredSecGroups {
-		var isApplied bool
-		for _, appliedRule := range secGroup.Rules {
-			if secGroupRuleIsEqual(appliedRule, desiredRule) {
-				isApplied = true
-				break
-			}
-		}
-
-		if !isApplied {
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			_, err := ruleClient.Create(tctx, rules.CreateOpts{
-				SecGroupID:     secGroup.ID,
-				Description:    req.NamespacedName.String(),
-				Direction:      rules.RuleDirection(desiredRule.Direction),
-				EtherType:      rules.RuleEtherType(desiredRule.EtherType),
-				Protocol:       rules.RuleProtocol(desiredRule.Protocol),
-				PortRangeMax:   desiredRule.PortRangeMax,
-				PortRangeMin:   desiredRule.PortRangeMin,
-				RemoteIPPrefix: desiredRule.RemoteIPPrefix,
-				RemoteGroupID:  desiredRule.RemoteGroupID,
-			})
-			cancel()
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-
-			if err != nil {
-				r.Log.Error(err, "failed to apply secgroup rule", "secgroup", secGroup.ID, "rule", desiredRule)
-				return ctrl.Result{RequeueAfter: DefaultRequeueTime}, r.sendEvent(err, lb)
-			}
-		}
-	}
-
-	if requeue {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-
-	return ctrl.Result{}, nil
+	return requeue, nil
 }
 
-func secGroupRuleIsEqual(first, second rules.SecGroupRule) bool {
-	if first.RemoteIPPrefix == second.RemoteIPPrefix &&
-		first.EtherType == second.EtherType &&
-		first.PortRangeMax == second.PortRangeMax &&
-		first.PortRangeMin == second.PortRangeMin &&
-		first.Protocol == second.Protocol &&
-		first.RemoteGroupID == second.RemoteGroupID {
-		return true
-	}
-
-	return false
-}
-
-func (r *LoadBalancerReconciler) reconcileFIPAssociate(
+func (r *Reconciler) reconcileFIPAssociate(
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
-) (ctrl.Result, error) {
+) (bool, error) {
+	if lb.Spec.Options.InternalLB {
+		return false, nil
+	}
+
+	var err error
+
 	var fipClient openstack.FipClient
-	{
-		var err error
-		fipClient, err = osClient.FipClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	fipClient, err = osClient.FipClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
 	if lb.Status.PortID == nil || lb.Status.FloatingID == nil {
 		r.Log.WithName("reconcileFIPAssociate").Info("either portID or floatingID is null", "lb", req)
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+		return true, nil
 	}
 
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	{
-		var fip *floatingips.FloatingIP
-		var err error
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		if fip, err = fipClient.Get(tctx, *lb.Status.FloatingID); err != nil {
-			return ctrl.Result{}, r.sendEvent(err, lb)
-		}
+	var fip *floatingips.FloatingIP
 
-		if fip.PortID == *lb.Status.PortID {
-			return ctrl.Result{}, nil
-		}
+	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
+		return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	// ports are not in sync -> update
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	if _, err := fipClient.Update(tctx, *lb.Status.FloatingID, floatingips.UpdateOpts{
-		PortID: lb.Status.PortID,
-	}); err != nil {
-		r.Log.
-			WithName("reconcileFIPAssociate").
+	// fip is already on coorect port
+	if fip.PortID == *lb.Status.PortID {
+		return false, nil
+	}
+
+	if err := openstackhelper.BindFIPToPort(ctx, fipClient, *lb.Status.FloatingID, lb.Status.PortID); err != nil {
+		r.Log.WithName("reconcileFIPAssociate").
 			Info("failed to associate fip with port",
 				"lb", req, "fip",
-				*lb.Status.FloatingID, "port", *lb.Status.PortID,
-			)
-		return ctrl.Result{}, r.sendEvent(err, lb)
+				*lb.Status.FloatingID, "port", *lb.Status.PortID)
+		return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	return ctrl.Result{}, nil
+	return false, nil
 }
 
-func (r *LoadBalancerReconciler) reconcileLoadBalancerSet(
+func (r *Reconciler) reconcileLoadBalancerSet(
 	ctx context.Context,
 	lb *yawolv1beta1.LoadBalancer,
 ) (ctrl.Result, error) {
-	// Get the labels LBS will receive on creation from this lb
-	lbsLabels := r.getLoadBalancerSetLabelsFromLoadBalancer(lb)
-
 	// Make sure LoadBalancer has revision number
-	var currentRevision int
-	if currentRevision = r.readCurrentRevisionFromLB(lb); currentRevision == 0 {
-		if err := r.patchLoadBalancerRevision(ctx, lb, 1); err != nil {
+	currentRevision, err := helper.ReadCurrentRevisionFromLB(lb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if currentRevision == 0 {
+		if err := helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
+	// Get the labels LBS will receive on creation from this lb
+	lbsLabels := helper.GetLoadBalancerSetLabelsFromLoadBalancer(lb)
+
 	// Get Hash for current LoadBalancerMachineSpec
 	var hash string
-	{
-		var err error
-		floatingID := ""
-		if lb.Status.FloatingID != nil {
-			floatingID = *lb.Status.FloatingID
-		}
-
-		if hash, err = hashData(yawolv1beta1.LoadBalancerMachineSpec{
-			Infrastructure: lb.Spec.Infrastructure,
-			FloatingID:     floatingID,
-			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
-				Namespace: lb.Namespace,
-				Name:      lb.Name,
-			},
-		}); err != nil {
-			return ctrl.Result{}, err
-		}
+	hash, err = helper.GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Get LoadBalancerSet for current hash
 	var loadBalancerSet *yawolv1beta1.LoadBalancerSet
-	{
-		var err error
-		if loadBalancerSet, err = r.getLoadBalancerSetForHash(ctx, lbsLabels, hash); err != nil {
-			return ctrl.Result{}, err
-		}
+	if loadBalancerSet, err = helper.GetLoadBalancerSetForHash(ctx, r.Client, lbsLabels, hash); err != nil {
+		return ctrl.Result{}, err
+	}
 
-		// set to empty object to prevent nil pointer exception
-		if loadBalancerSet == nil {
-			loadBalancerSet = &yawolv1beta1.LoadBalancerSet{}
-		}
+	// set to empty object to prevent nil pointer exception
+	if loadBalancerSet == nil {
+		loadBalancerSet = &yawolv1beta1.LoadBalancerSet{}
 	}
 
 	// create new lbset if hash changed
 	if loadBalancerSet.Name == "" {
-		newRevision, err := r.getNextRevisionFromLB(ctx, lb)
+		var newRevision int
+		newRevision, err = helper.GetNextRevisionFromLB(ctx, r.Client, lb)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1069,8 +700,7 @@ func (r *LoadBalancerReconciler) reconcileLoadBalancerSet(
 			floatingID = *lb.Status.FloatingID
 		}
 
-		var res ctrl.Result
-		if res, err = r.createLoadBalancerSet(ctx, lb, yawolv1beta1.LoadBalancerMachineSpec{
+		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
 			FloatingID:     floatingID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
@@ -1078,10 +708,10 @@ func (r *LoadBalancerReconciler) reconcileLoadBalancerSet(
 				Name:      lb.Name,
 			},
 		}, hash, newRevision); err != nil {
-			return res, err
+			return ctrl.Result{}, err
 		}
 
-		err = r.patchLoadBalancerRevision(ctx, lb, newRevision)
+		err = helper.PatchLoadBalancerRevision(ctx, r.Client, lb, newRevision)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1093,10 +723,14 @@ func (r *LoadBalancerReconciler) reconcileLoadBalancerSet(
 
 	// update lb revision to lbset revision
 	// in order to show the correct status on the lb object
-	lbsRevision := r.readRevisionFromLBS(loadBalancerSet)
+	lbsRevision, err := helper.ReadRevisionFromLBS(loadBalancerSet)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if lbsRevision != currentRevision {
 		r.Log.Info("patch lb revision to match lbs revision", "revision", lbsRevision)
-		err := r.patchLoadBalancerRevision(ctx, lb, lbsRevision)
+		err = helper.PatchLoadBalancerRevision(ctx, r.Client, lb, lbsRevision)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1104,403 +738,88 @@ func (r *LoadBalancerReconciler) reconcileLoadBalancerSet(
 
 	// update replicas
 	if loadBalancerSet.Spec.Replicas != lb.Spec.Replicas {
-		err := r.patchLoadBalancerSetReplicas(ctx, loadBalancerSet, lb.Spec.Replicas)
+		err := helper.PatchLoadBalancerSetReplicas(ctx, r.Client, loadBalancerSet, lb.Spec.Replicas)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
-	// check if all replicas from current lbset are ready
-	{
-		ready, err := r.loadBalancerSetIsReady(ctx, lb, loadBalancerSet)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if !ready {
-			return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
-		}
-
-		r.Log.Info("current lbset is ready", "lbs", loadBalancerSet.Name)
+	// check if all replicas from current lbset are ready and requeue if current lbset is not fully ready
+	ready, err := helper.LoadBalancerSetIsReady(ctx, r.Client, lb, loadBalancerSet)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	// scale down after upscale to ensure no downtime
-	{
-		downscaled, err := r.areAllLoadBalancerSetsForLBButDownscaled(ctx, lb, loadBalancerSet.Name)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	if !ready {
+		return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
+	}
 
-		if !downscaled {
-			r.Log.Info("scale down all lbsets except of", "lbs", loadBalancerSet.Name)
-			return r.scaleDownAllLoadBalancerSetsForLBBut(ctx, lb, loadBalancerSet.Name)
-		}
+	r.Log.Info("current lbset is ready", "lbs", loadBalancerSet.Name)
+
+	// scale down all other existing lbsets for the LoadBalancer after upscale to ensure no downtime
+	downscaled, err := helper.AreAllLoadBalancerSetsForLBButDownscaled(ctx, r.Client, lb, loadBalancerSet.Name)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !downscaled {
+		r.Log.Info("scale down all lbsets except of", "lbs", loadBalancerSet.Name)
+		return helper.ScaleDownAllLoadBalancerSetsForLBBut(ctx, r.Client, lb, loadBalancerSet.Name)
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *LoadBalancerReconciler) patchLoadBalancerRevision(ctx context.Context, lb *yawolv1beta1.LoadBalancer, revision int) error {
-	if revision < 1 {
-		return errors.New("revision number for lb must be >0")
-	}
-
-	patch := []byte(`{"metadata": {"annotations": {"` + RevisionAnnotation + `": "` + strconv.Itoa(revision) + `"} }}`)
-	return r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
-}
-
-func hashData(data interface{}) (string, error) {
-	var jsonSpec []byte
-	var err error
-	if jsonSpec, err = json.Marshal(data); err != nil {
-		return "", err
-	}
-
-	bytes := sha256.Sum256(jsonSpec)
-	return strings.ToLower(base32.StdEncoding.EncodeToString(bytes[:]))[:16], nil
-}
-
-func copyLabelMap(lbs map[string]string) map[string]string {
-	targetMap := make(map[string]string)
-	for key, value := range lbs {
-		targetMap[key] = value
-	}
-	return targetMap
-}
-
-func (r *LoadBalancerReconciler) getLoadBalancerSetLabelsFromLoadBalancer(lb *yawolv1beta1.LoadBalancer) map[string]string {
-	return copyLabelMap(lb.Spec.Selector.MatchLabels)
-}
-
-func (r *LoadBalancerReconciler) patchLoadBalancerSetReplicas(ctx context.Context, lbs *yawolv1beta1.LoadBalancerSet, replicas int) error {
-	patch := []byte(`{"spec": {"replicas": ` + strconv.Itoa(replicas) + `}}`)
-	return r.Client.Patch(ctx, lbs, client.RawPatch(types.MergePatchType, patch))
-}
-
-func getOwnersReferenceForLB(lb *yawolv1beta1.LoadBalancer) metaV1.OwnerReference {
-	return metaV1.OwnerReference{
-		APIVersion: lb.APIVersion,
-		Kind:       lb.Kind,
-		Name:       lb.Name,
-		UID:        lb.UID,
-	}
-}
-
-// Returns nil if no matching exists
-// If there are multiple: Returns one with highest RevisionAnnotation annotation
-// If there is a single one: returns the one fetched
-func (r *LoadBalancerReconciler) getLoadBalancerSetForHash(
-	ctx context.Context,
-	filterLabels map[string]string,
-	hash string,
-) (*yawolv1beta1.LoadBalancerSet, error) {
-	filterLabels = copyLabelMap(filterLabels)
-	filterLabels[HashLabel] = hash
-	var loadBalancerSetList yawolv1beta1.LoadBalancerSetList
-
-	if err := r.Client.List(ctx, &loadBalancerSetList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(filterLabels),
-	}); err != nil {
-		return nil, err
-	}
-
-	if len(loadBalancerSetList.Items) == 0 {
-		return nil, nil
-	}
-
-	if len(loadBalancerSetList.Items) == 1 {
-		return &loadBalancerSetList.Items[0], nil
-	}
-
-	var highestGen int
-	var highestGenLBS *yawolv1beta1.LoadBalancerSet
-	if len(loadBalancerSetList.Items) > 1 {
-		for _, lbs := range loadBalancerSetList.Items {
-			if gen, err := strconv.Atoi(lbs.Annotations[RevisionAnnotation]); err == nil && highestGen < gen {
-				highestGen = gen
-				highestGenLBS = &lbs
-			}
-		}
-	}
-
-	return highestGenLBS, nil
-}
-
-func (r *LoadBalancerReconciler) readRevisionFromLBS(lbs *yawolv1beta1.LoadBalancerSet) int {
-	var currentRevision int
-	if lbs.Annotations[RevisionAnnotation] == "" {
-		return 0
-	}
-
-	var err error
-	if currentRevision, err = strconv.Atoi(lbs.Annotations[RevisionAnnotation]); err != nil {
-		r.Log.Info("failed to read revision on annotation", "annotation", RevisionAnnotation+"="+lbs.Annotations[RevisionAnnotation])
-		return 0
-	}
-	return currentRevision
-}
-
-func (r *LoadBalancerReconciler) readCurrentRevisionFromLB(lb *yawolv1beta1.LoadBalancer) int {
-	var currentRevision int
-	if lb.Annotations[RevisionAnnotation] == "" {
-		return 0
-	}
-
-	var err error
-	if currentRevision, err = strconv.Atoi(lb.Annotations[RevisionAnnotation]); err != nil {
-		r.Log.Info("failed to read revision on annotation", "annotation", RevisionAnnotation+"="+lb.Annotations[RevisionAnnotation])
-		return 0
-	}
-	return currentRevision
-}
-
-func (r *LoadBalancerReconciler) getNextRevisionFromLB(ctx context.Context, lb *yawolv1beta1.LoadBalancer) (int, error) {
-	loadBalancerSetList, err := r.getLoadBalancerSetsForLoadBalancer(ctx, lb)
-	if err != nil {
-		return 0, err
-	}
-	var highestRevision int
-	for _, loadBalancerSet := range loadBalancerSetList.Items {
-		rev := r.readRevisionFromLBS(&loadBalancerSet)
-		if rev > highestRevision {
-			highestRevision = rev
-		}
-	}
-	highestRevision++
-	return highestRevision, nil
-}
-
-func (r *LoadBalancerReconciler) createLoadBalancerSet(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-	machineSpec yawolv1beta1.LoadBalancerMachineSpec,
-	hash string,
-	revision int,
-) (ctrl.Result, error) {
-	lbsetLabels := r.getLoadBalancerSetLabelsFromLoadBalancer(lb)
-	lbsetLabels[HashLabel] = hash
-
-	lbset := yawolv1beta1.LoadBalancerSet{
-		ObjectMeta: metaV1.ObjectMeta{
-			Name:      lb.Name + "-" + hash,
-			Namespace: lb.Namespace,
-			OwnerReferences: []metaV1.OwnerReference{
-				getOwnersReferenceForLB(lb),
-			},
-			Labels: lbsetLabels,
-			Annotations: map[string]string{
-				RevisionAnnotation: strconv.Itoa(revision),
-			},
-		},
-		Spec: yawolv1beta1.LoadBalancerSetSpec{
-			Selector: metaV1.LabelSelector{
-				MatchLabels: lbsetLabels,
-			},
-			Template: yawolv1beta1.LoadBalancerMachineTemplateSpec{
-				Labels: lbsetLabels,
-				Spec:   machineSpec,
-			},
-			Replicas: lb.Spec.Replicas,
-		},
-	}
-	if err := r.Client.Create(ctx, &lbset); err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-}
-
-// Scales down all LoadBalancerSets deriving from a LB but the the one with the name of exceptionName
-// This will use getLoadBalancerSetsForLoadBalancer to identify the LBS deriving from the given LB
-// See error handling getLoadBalancerSetsForLoadBalancer
-// See error handling patchLoadBalancerSetReplicas
-// Requests requeue when a LBS has been downscaled
-func (r *LoadBalancerReconciler) scaleDownAllLoadBalancerSetsForLBBut(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-	exceptionName string,
-) (ctrl.Result, error) {
-	loadBalancerSetList, err := r.getLoadBalancerSetsForLoadBalancer(ctx, lb)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	var scaledDown bool
-	for _, lbSet := range loadBalancerSetList.Items {
-		if lbSet.Name != exceptionName && lbSet.Spec.Replicas > 0 {
-			if err := r.patchLoadBalancerSetReplicas(ctx, &lbSet, 0); err != nil {
-				return ctrl.Result{}, err
-			}
-			scaledDown = true
-		}
-	}
-
-	if scaledDown {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *LoadBalancerReconciler) loadBalancerSetIsReady(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-	currentSet *yawolv1beta1.LoadBalancerSet,
-) (bool, error) {
-	loadBalancerSetList, err := r.getLoadBalancerSetsForLoadBalancer(ctx, lb)
-	if err != nil {
-		return false, err
-	}
-
-	for _, loadBalancerSet := range loadBalancerSetList.Items {
-		if loadBalancerSet.Name != currentSet.Name {
-			continue
-		}
-
-		desiredReplicas := currentSet.Spec.Replicas
-
-		if loadBalancerSet.Spec.Replicas != desiredReplicas {
-			return false, nil
-		}
-
-		if loadBalancerSet.Status.Replicas == nil ||
-			loadBalancerSet.Status.ReadyReplicas == nil {
-			return false, nil
-		}
-
-		if *loadBalancerSet.Status.Replicas != desiredReplicas ||
-			*loadBalancerSet.Status.ReadyReplicas != desiredReplicas {
-			return false, nil
-		}
-
-		return true, nil
-	}
-
-	return false, fmt.Errorf("active LoadBalancerSet not found")
-}
-
-// Checks if LoadBalancerSets deriving from LoadBalancers are downscaled except for the LoadBalancerSet with the name of exceptionName
-// Returns true if all are downscaled; false if not
-// Follows error contract of getLoadBalancerSetsForLoadBalancer
-func (r *LoadBalancerReconciler) areAllLoadBalancerSetsForLBButDownscaled(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-	exceptionName string,
-) (bool, error) {
-	loadBalancerSetList, err := r.getLoadBalancerSetsForLoadBalancer(ctx, lb)
-	if err != nil {
-		return false, err
-	}
-
-	for _, loadBalancerSet := range loadBalancerSetList.Items {
-		if loadBalancerSet.Name == exceptionName {
-			continue
-		}
-		if loadBalancerSet.Spec.Replicas != 0 {
-			return false, nil
-		}
-		if loadBalancerSet.Status.Replicas != nil && *loadBalancerSet.Status.Replicas != 0 {
-			return false, nil
-		}
-		if loadBalancerSet.Status.ReadyReplicas != nil && *loadBalancerSet.Status.ReadyReplicas != 0 {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-// This returns all LoadBalancerSets for a given LoadBalancer
-// Returns an error if lb is nil
-// Returns an error if lb.UID is empty
-// Returns an error if kube api-server problems occurred
-func (r *LoadBalancerReconciler) getLoadBalancerSetsForLoadBalancer(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-) (yawolv1beta1.LoadBalancerSetList, error) {
-	if lb == nil {
-		return yawolv1beta1.LoadBalancerSetList{}, errors.New("LoadBalancer must no be nil")
-	}
-
-	if lb.UID == "" {
-		return yawolv1beta1.LoadBalancerSetList{}, errors.New("LoadBalancer.UID must not be nil")
-	}
-
-	filerLabels := r.getLoadBalancerSetLabelsFromLoadBalancer(lb)
-	var loadBalancerSetList yawolv1beta1.LoadBalancerSetList
-	if err := r.Client.List(ctx, &loadBalancerSetList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(filerLabels),
-		Namespace:     lb.Namespace,
-	}); err != nil {
-		return yawolv1beta1.LoadBalancerSetList{}, err
-	}
-
-	return loadBalancerSetList, nil
-}
-
-func (r *LoadBalancerReconciler) deletionRoutine(
+func (r *Reconciler) deletionRoutine(
 	ctx context.Context,
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
 ) (ctrl.Result, error) {
-	var fipClient openstack.FipClient
-	var portClient openstack.PortClient
-	var groupClient openstack.GroupClient
-	{
-		var err error
-		fipClient, err = osClient.FipClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		portClient, err = osClient.PortClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		groupClient, err = osClient.GroupClient(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	if list, err := r.getLoadBalancerSetsForLoadBalancer(ctx, lb); err != nil {
+	// Clean up all LoadBalancerSets
+	list, err := helper.GetLoadBalancerSetsForLoadBalancer(ctx, r.Client, lb)
+	if err != nil {
 		return ctrl.Result{}, err
-	} else if len(list.Items) > 0 {
-		for _, loadBalancerSet := range list.Items {
-			if loadBalancerSet.DeletionTimestamp == nil {
-				if err := r.Client.Delete(ctx, &loadBalancerSet); err != nil {
-					return ctrl.Result{}, err
-				}
+	}
+	for i := range list.Items {
+		if list.Items[i].DeletionTimestamp == nil {
+			if err := r.Client.Delete(ctx, &list.Items[i]); err != nil {
+				return ctrl.Result{}, err
 			}
-
-			// TODO check if this is wrong
-			// nolint:staticcheck // see if this is wrong
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 	}
 
-	var err error
-	var role rbac.Role
-	if lb.Status.NodeRoleRef != nil {
-		if err = r.Client.Get(ctx, types.NamespacedName{
-			Namespace: lb.Namespace,
-			Name:      lb.Status.NodeRoleRef.Name}, &role); client.IgnoreNotFound(err) != nil {
-			return ctrl.Result{}, err
-		}
-		if err = r.removeFromLBStatus(ctx, lb, "nodeRoleRef"); err != nil {
-			return ctrl.Result{}, err
-		}
+	if len(list.Items) != 0 {
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	var res ctrl.Result
-	if res, err = r.deleteFips(ctx, fipClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
+	var requeue bool
+	requeue, err = r.deleteFips(ctx, osClient, lb)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
-	if res, err = r.deletePorts(ctx, portClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
+	if requeue {
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
-	if res, err = r.deleteSecGroups(ctx, portClient, groupClient, lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
+
+	requeue, err = r.deletePorts(ctx, osClient, lb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if requeue {
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+	}
+
+	requeue, err = r.deleteSecGroups(ctx, osClient, lb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if requeue {
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+	}
+
+	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -1512,110 +831,106 @@ func (r *LoadBalancerReconciler) deletionRoutine(
 // 2. Retrieves FIP by Name in lb.Status.FloatingName
 // 2.1 if found => delete FIP
 // Returns any error except for 404 errors from gophercloud
-func (r *LoadBalancerReconciler) deleteFips(
+func (r *Reconciler) deleteFips(
 	ctx context.Context,
-	fipClient openstack.FipClient,
+	osClient openstack.Client,
 	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
+) (bool, error) {
 	var err error
+
+	var fipClient openstack.FipClient
+	fipClient, err = osClient.FipClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	var fip *floatingips.FloatingIP
 	var requeue = false
 
+	// Remove only from status if lb.Spec.ExistingFloatingIP is set
 	if lb.Spec.ExistingFloatingIP != nil {
+		if lb.Status.FloatingID == nil &&
+			lb.Status.FloatingName == nil {
+			return false, nil
+		}
 		r.Log.Info("existing floating IP used, skip FIP deletion", "lb", lb.Namespace+"/"+lb.Name)
-		err = r.removeFromLBStatus(ctx, lb, "floatingID")
+		err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
 		if err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
-		err = r.removeFromLBStatus(ctx, lb, "floatingName")
+		err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingName")
 		if err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
-		return ctrl.Result{Requeue: requeue}, nil
+		return true, nil
 	}
 
 	if lb.Status.FloatingID != nil {
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		fip, err = fipClient.Get(tctx, *lb.Status.FloatingID)
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-				err = r.removeFromLBStatus(ctx, lb, "floatingID")
+				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
 				if err != nil {
-					return ctrl.Result{}, err
+					return false, err
 				}
 			default:
 				r.Log.Info("an unexpected error occurred retrieving fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
+
 		if fip != nil {
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			defer cancel()
-			err = fipClient.Delete(tctx, fip.ID)
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+			err = openstackhelper.DeleteFIP(ctx, fipClient, fip.ID)
 			if err != nil {
 				switch err.(type) {
 				case gophercloud.ErrDefault404:
 					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-					return ctrl.Result{}, r.sendEvent(err, lb)
-				}
-			}
-
-			// requeue so next run will delete the status
-			requeue = true
-		}
-	}
-
-	if lb.Status.FloatingName != nil {
-		var fips []floatingips.FloatingIP
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		fips, err = fipClient.List(tctx, floatingips.ListOpts{
-			Description: *lb.Status.FloatingName,
-		})
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-		if err != nil {
-			r.Log.Info("an error occurred extracting floating IPs", "lb", lb.Namespace+"/"+lb.Name)
-			return ctrl.Result{}, err
-		}
-
-		if len(fips) == 0 {
-			r.Log.Info("no fips found, fip has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "fipName", *lb.Status.FloatingName)
-			err = r.removeFromLBStatus(ctx, lb, "floatingName")
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		for _, floatingIP := range fips {
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			err = fipClient.Delete(tctx, floatingIP.ID)
-			cancel()
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404:
-				case gophercloud.ErrDefault409:
-					r.Log.Info("could not delete floating IP, retry deletion...", "lb", lb.Namespace+"/"+lb.Name)
-					return ctrl.Result{RequeueAfter: OpenStackAPIDelay}, nil
-				default:
-					r.Log.Info("an error occurred deleting floating IP", "lb", lb.Namespace+"/"+lb.Name)
-					return ctrl.Result{}, r.sendEvent(err, lb)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				}
 			}
 		}
-
 		// requeue so next run will delete the status
 		requeue = true
 	}
 
-	return ctrl.Result{Requeue: requeue}, nil
+	if lb.Status.FloatingName != nil { //nolint:dupl // no dupl
+		var fipByName *floatingips.FloatingIP
+
+		fipByName, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+		if err != nil {
+			r.Log.Info("an error occurred extracting floating IPs", "lb", lb.Namespace+"/"+lb.Name)
+			return false, err
+		}
+
+		if fipByName == nil {
+			r.Log.Info("no fips found, fip has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "fipName", *lb.Status.FloatingName)
+			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingName")
+			if err != nil {
+				return false, err
+			}
+		}
+
+		if fipByName != nil {
+			err = openstackhelper.DeleteFIP(ctx, fipClient, fipByName.ID)
+			if err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
+				default:
+					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
+			}
+		}
+		// requeue so next run will delete the status
+		requeue = true
+	}
+
+	return requeue, nil
 }
 
 // Deletes ports related to the LoadBalancer object
@@ -1624,275 +939,207 @@ func (r *LoadBalancerReconciler) deleteFips(
 // 2. Retrieves port by Name in lb.Status.PortName
 // 2.1 if found => delete port
 // Returns any error except for 404 errors from gophercloud
-func (r *LoadBalancerReconciler) deletePorts(
+func (r *Reconciler) deletePorts(
 	ctx context.Context,
-	portClient openstack.PortClient,
+	osClient openstack.Client,
 	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
+) (bool, error) {
 	var err error
-	var port *ports.Port
-	if lb.Status.PortID == nil {
-		return ctrl.Result{}, nil
+
+	portClient, err := osClient.PortClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	port, err = portClient.Get(tctx, *lb.Status.PortID)
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		switch err.(type) {
-		case gophercloud.ErrDefault404:
-			r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-		default:
-			r.Log.Info("an unexpected error occurred retrieving port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-			return ctrl.Result{}, err
-		}
-	}
-	if port != nil {
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		err = portClient.Delete(tctx, port.ID)
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+	var port *ports.Port
+	var requeue bool
+
+	if lb.Status.PortID != nil {
+		port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
+				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
+				if err != nil {
+					return false, err
+				}
 			default:
-				r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				r.Log.Info("an unexpected error occurred retrieving port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
+				return false, err
 			}
 		}
-	}
-
-	var listedPorts []ports.Port
-	ttctx, ccancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer ccancel()
-	listedPorts, err = portClient.List(ttctx, ports.ListOpts{
-		Name: *lb.Status.PortName,
-	})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		r.Log.Info("an error occurred extracting floating IPs", "lb", lb)
-		return ctrl.Result{}, err
-	}
-	for _, iPort := range listedPorts {
-		{
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			err = portClient.Delete(tctx, iPort.ID)
-			cancel()
+		if port != nil {
+			err = openstackhelper.DeletePort(ctx, portClient, port.ID)
+			if err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
+				default:
+					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
+			}
 		}
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+		requeue = true
+	}
 
+	if lb.Status.PortName != nil { //nolint:dupl // no dupl
+		var portByName *ports.Port
+
+		portByName, err = openstackhelper.GetPortByName(ctx, portClient, *lb.Status.PortName)
 		if err != nil {
-			switch err.(type) {
-			case gophercloud.ErrDefault404:
-			case gophercloud.ErrDefault409:
-				r.Log.Info("could not delete port, retry deletion...", "lb", lb.Namespace+"/"+lb.Name)
-				return ctrl.Result{RequeueAfter: OpenStackAPIDelay}, nil
-			default:
-				r.Log.Info("an error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+			r.Log.Info("an error occurred extracting ports", "lb", lb.Namespace+"/"+lb.Name)
+			return false, err
+		}
+
+		if portByName == nil {
+			r.Log.Info("no port found, port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portName", *lb.Status.PortName)
+			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portName")
+			if err != nil {
+				return false, err
 			}
 		}
+
+		if portByName != nil {
+			err = openstackhelper.DeletePort(ctx, portClient, portByName.ID)
+			if err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("error deleting port, already deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
+				default:
+					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
+			}
+		}
+		// requeue so next run will delete the status
+		requeue = true
 	}
 
-	return ctrl.Result{}, nil
+	return requeue, nil
 }
 
-// Deletes SecGroups related to the LoadBalancer objects an disassociate it from other ports
+// Deletes SecGroups related to the LoadBalancer objects and disassociate it from other ports
 // 1. Removes sec group from all listable ports
 // 2. Retrieves sec group by ID in lb.Status.SecGroupID
 // 2.1 if found => delete sec group
 // 3. Retrieves sec group by Name in lb.Status.SecGroupName
 // 3.1 if found => delete sec group
-func (r *LoadBalancerReconciler) deleteSecGroups(
+func (r *Reconciler) deleteSecGroups(
 	ctx context.Context,
-	portClient openstack.PortClient,
-	groupClient openstack.GroupClient,
+	osClient openstack.Client,
 	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
+) (bool, error) {
 	var err error
-	if lb.Status.SecurityGroupID == nil {
-		return ctrl.Result{}, nil
+
+	portClient, err := osClient.PortClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	groupClient, err := osClient.GroupClient(ctx)
+	if err != nil {
+		return false, err
 	}
 
 	err = r.findAndDeleteSecGroupUsages(ctx, portClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return false, err
 	}
 
-	var secGroup *groups.SecGroup
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	secGroup, err = groupClient.Get(tctx, *lb.Status.SecurityGroupID)
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		switch err.(type) {
-		case gophercloud.ErrDefault404:
-			r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-		default:
-			r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-			return ctrl.Result{}, err
-		}
-	}
-	if secGroup != nil {
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		{
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			defer cancel()
-			err = groupClient.Delete(tctx, secGroup.ID)
-		}
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+	var requeue bool
+
+	if lb.Status.SecurityGroupID != nil {
+		var secGroup *groups.SecGroup
+		secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
+				if err != nil {
+					return false, err
+				}
 			default:
-				r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+				return false, err
 			}
 		}
-	}
-
-	var secGroups []groups.SecGroup
-	{
-		tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-		defer cancel()
-		secGroups, err = groupClient.List(tctx, groups.ListOpts{
-			Name: *lb.Status.SecurityGroupName,
-		})
-	}
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-	if err != nil {
-		r.Log.Info("an error occurred extracting secgroups", "lb", lb.Namespace+"/"+lb.Name)
-		return ctrl.Result{}, err
-	}
-	for _, secGroup := range secGroups {
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		{
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			err = groupClient.Delete(tctx, secGroup.ID)
-			cancel()
-		}
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-		if err != nil {
-			switch err.(type) {
-			case gophercloud.ErrDefault404:
-			case gophercloud.ErrDefault409:
-				r.Log.Info("could not delete secGroup, retry deletion...", "lb", lb.Namespace+"/"+lb.Name)
-				return ctrl.Result{RequeueAfter: OpenStackAPIDelay}, nil
-			default:
-				r.Log.Info("an error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name)
-				return ctrl.Result{}, r.sendEvent(err, lb)
+		if secGroup != nil {
+			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID)
+			if err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+				default:
+					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
 			}
 		}
+		requeue = true
 	}
 
-	return ctrl.Result{}, nil
+	if lb.Status.SecurityGroupName != nil { //nolint:dupl // no dupl
+		var secGroupByName *groups.SecGroup
+
+		secGroupByName, err = openstackhelper.GetSecGroupByName(ctx, groupClient, *lb.Status.SecurityGroupName)
+		if err != nil {
+			r.Log.Info("an error occurred extracting secgroup", "lb", lb.Namespace+"/"+lb.Name)
+			return false, err
+		}
+
+		if secGroupByName == nil {
+			r.Log.Info("no secGroup found, secGroup has already been deleted", "lb",
+				lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupName)
+			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_name")
+			if err != nil {
+				return false, err
+			}
+		}
+
+		if secGroupByName != nil {
+			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroupByName.ID)
+			if err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+					r.Log.Info("error deleting secGroup, already deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
+				default:
+					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
+					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+				}
+			}
+		}
+		// requeue so next run will delete the status
+		requeue = true
+	}
+
+	return requeue, nil
 }
 
-func (r *LoadBalancerReconciler) findAndDeleteSecGroupUsages(
+func (r *Reconciler) findAndDeleteSecGroupUsages(
 	ctx context.Context,
 	portClient openstack.PortClient,
-	lb *yawolv1beta1.LoadBalancer) error {
+	lb *yawolv1beta1.LoadBalancer,
+) error {
+	if lb.Status.SecurityGroupID == nil {
+		return nil
+	}
+
 	var listedPorts []ports.Port
-	tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-	defer cancel()
-	listedPorts, err := portClient.List(tctx, ports.ListOpts{})
-	r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
+	var err error
+	listedPorts, err = openstackhelper.GetAllPorts(ctx, portClient)
 	if err != nil {
 		return err
 	}
 
-	for _, port := range listedPorts {
-		for _, securityGroupID := range port.SecurityGroups {
-			if securityGroupID == *lb.Status.SecurityGroupID {
-				purgedList := removeString(port.SecurityGroups, securityGroupID)
-				r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-				{
-					tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-					if _, err = portClient.Update(tctx, port.ID, ports.UpdateOpts{
-						SecurityGroups: &purgedList,
-					}); err != nil {
-						cancel()
-						return r.sendEvent(err, lb)
-					}
-					cancel()
-				}
-			}
+	for i := range listedPorts {
+		err = openstackhelper.RemoveSecGroupFromPortIfNeeded(ctx, portClient, &listedPorts[i], *lb.Status.SecurityGroupID)
+		if err != nil {
+			return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 	}
 
 	return nil
-}
-
-func hasFinalizer(objectMeta metaV1.ObjectMeta, finalizer string) bool {
-	for _, f := range objectMeta.Finalizers {
-		if f == finalizer {
-			return true
-		}
-	}
-	return false
-}
-
-func (r LoadBalancerReconciler) addFinalizer(ctx context.Context, loadBalancer yawolv1beta1.LoadBalancer, finalizer string) error {
-	patch := []byte(`{"metadata":{"finalizers": ["` + finalizer + `"]}}`)
-	return r.Client.Patch(ctx, &loadBalancer, client.RawPatch(types.MergePatchType, patch))
-}
-
-func (r *LoadBalancerReconciler) removeFinalizer(ctx context.Context, loadBalancer yawolv1beta1.LoadBalancer, finalizer string) error {
-	fin, err := json.Marshal(removeString(loadBalancer.Finalizers, finalizer))
-	if err != nil {
-		return err
-	}
-	patch := []byte(`{"metadata":{"finalizers": ` + string(fin) + ` }}`)
-	return r.Client.Patch(ctx, &loadBalancer, client.RawPatch(types.MergePatchType, patch))
-}
-
-func removeString(slice []string, s string) []string {
-	var result []string
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return result
-}
-
-func (r *LoadBalancerReconciler) sendEvent(err error, obj ...runtime.Object) error {
-	var body []byte
-	switch casted := err.(type) {
-	case gophercloud.ErrDefault401:
-		body = casted.Body
-	case gophercloud.ErrDefault403:
-		body = casted.Body
-	case gophercloud.ErrDefault404:
-		body = casted.Body
-	case gophercloud.ErrDefault409:
-		body = casted.Body
-	}
-
-	if len(body) > 0 {
-		for _, ob := range obj {
-			if ob.GetObjectKind().GroupVersionKind().Kind == LoadBalancerKind {
-				r.RecorderLB.Event(ob, coreV1.EventTypeWarning, "Failed", string(body))
-			} else {
-				r.Recorder.Event(ob, coreV1.EventTypeWarning, "Failed", string(body))
-			}
-		}
-	}
-	return err
-}
-
-func getOpenStackReconcileHash(lb *yawolv1beta1.LoadBalancer) (string, error) {
-	return hashData(map[string]interface{}{
-		"ports":         lb.Spec.Ports,
-		"sourceRanges":  lb.Spec.LoadBalancerSourceRanges,
-		"debugSettings": lb.Spec.DebugSettings,
-	})
 }

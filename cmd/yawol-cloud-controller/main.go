@@ -15,8 +15,8 @@ import (
 	"k8s.io/utils/pointer"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/control_controller"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/controlcontroller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -163,7 +163,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&target_controller.ServiceReconciler{
+	if err = (&targetcontroller.ServiceReconciler{
 		TargetClient:           targetClient,
 		ControlClient:          controlClient,
 		InfrastructureDefaults: infrastructureDefaults,
@@ -175,7 +175,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
-	if err = (&target_controller.NodeReconciler{
+	if err = (&targetcontroller.NodeReconciler{
 		TargetClient:           targetClient,
 		ControlClient:          controlClient,
 		InfrastructureDefaults: infrastructureDefaults,
@@ -187,7 +187,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&control_controller.LoadBalancerReconciler{
+	if err = (&controlcontroller.LoadBalancerReconciler{
 		TargetClient:  targetClient,
 		ControlClient: controlClient,
 		Log:           ctrl.Log.WithName("controller").WithName("LoadBalancer"),
@@ -198,7 +198,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&control_controller.EventReconciler{
+	if err = (&controlcontroller.EventReconciler{
 		TargetClient:  targetClient,
 		ControlClient: controlClient,
 		Log:           ctrl.Log.WithName("controller").WithName("LoadBalancer"),
@@ -256,7 +256,7 @@ func getConfigFromKubeconfigOrDie(kubeconfig string) *rest.Config {
 	return restConfig
 }
 
-func getInfrastructureDefaultsFromEnvOrDie() target_controller.InfrastructureDefaults {
+func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefaults {
 	var authSecretName string
 	if authSecretName = os.Getenv(EnvAuthSecretName); authSecretName == "" {
 		panic("could not read env " + EnvAuthSecretName)
@@ -322,10 +322,10 @@ func getInfrastructureDefaultsFromEnvOrDie() target_controller.InfrastructureDef
 		}
 	}
 
-	return target_controller.InfrastructureDefaults{
+	return targetcontroller.InfrastructureDefaults{
 		AuthSecretName:    pointer.StringPtr(authSecretName),
-		FloatingNetworkId: pointer.StringPtr(floatingNetworkID),
-		NetworkId:         pointer.StringPtr(networkID),
+		FloatingNetworkID: pointer.StringPtr(floatingNetworkID),
+		NetworkID:         pointer.StringPtr(networkID),
 		Namespace:         pointer.StringPtr(clusterNamespace),
 		FlavorRef: &yawolv1beta1.OpenstackFlavorRef{
 			FlavorID:     flavorID,

@@ -1,4 +1,4 @@
-package control_controller
+package controlcontroller
 
 import (
 	"context"

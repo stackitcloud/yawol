@@ -154,19 +154,32 @@ spec:
                 type: object
               internalLB:
                 default: false
-                description: InternalLB is a bool for internal LoadBalancer. If set
-                  to false a FloatingIP will be assigned to the LB. Defaults to false.
-                  TODO move to LoadBalancerOptions
+                description: DEPRECATED (moved to options) - InternalLB is a bool
+                  for internal LoadBalancer. If set to false a FloatingIP will be
+                  assigned to the LB. Defaults to false. TODO deprecated remove later
                 type: boolean
               loadBalancerSourceRanges:
-                description: LoadBalancerSourceRanges restrict traffic to IP ranges
-                  for the LoadBalancer (copy from service) TODO move to LoadBalancerOptions
+                description: DEPRECATED (moved to options) - LoadBalancerSourceRanges
+                  restrict traffic to IP ranges for the LoadBalancer (copy from service)
+                  TODO deprecated remove later
                 items:
                   type: string
                 type: array
               options:
                 description: Options for additional LoadBalancer settings
                 properties:
+                  internalLB:
+                    default: false
+                    description: InternalLB is a bool for internal LoadBalancer. If
+                      set to false a FloatingIP will be assigned to the LB. Defaults
+                      to false.
+                    type: boolean
+                  loadBalancerSourceRanges:
+                    description: LoadBalancerSourceRanges restrict traffic to IP ranges
+                      for the LoadBalancer (copy from service)
+                    items:
+                      type: string
+                    type: array
                   tcpProxyProtocol:
                     description: TCPProxyProtocol enables HAProxy TCP Proxy Protocol
                     type: boolean
@@ -312,24 +325,6 @@ spec:
                   last openstack reconciliation.
                 format: date-time
                 type: string
-              nodeRoleRef:
-                description: NodeRole is the current role metadata that is used by
-                  the LB machine's ServiceAccounts.
-                properties:
-                  apiGroup:
-                    description: APIGroup is the group for the resource being referenced
-                    type: string
-                  kind:
-                    description: Kind is the type of resource being referenced
-                    type: string
-                  name:
-                    description: Name is the name of resource being referenced
-                    type: string
-                required:
-                - apiGroup
-                - kind
-                - name
-                type: object
               openstackReconcileHash:
                 description: OpenstackReconcileHash contains a hash of openstack related
                   settings to reset the LastOpenstackReconcile timer if needed.

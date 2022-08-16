@@ -2,6 +2,9 @@ package openstack
 
 import (
 	"context"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
@@ -13,21 +16,35 @@ import (
 // As an easier abstraction you can use OSClient in this package, where you can insert data from an ini
 // file to automatically initialize all modules you want to use.
 type OSGroupClient struct {
-	networkV2 *gophercloud.ServiceClient
+	networkV2   *gophercloud.ServiceClient
+	timeout     time.Duration
+	promCounter *prometheus.CounterVec
 }
 
 // Configure takes NetworkV2 ServiceClient to receive endpoints and auth info for further calls against openstack.
-func (r *OSGroupClient) Configure(networkClient *gophercloud.ServiceClient) *OSGroupClient {
+func (r *OSGroupClient) Configure(
+	networkClient *gophercloud.ServiceClient,
+	timeout time.Duration,
+	promCounter *prometheus.CounterVec,
+) *OSGroupClient {
 	r.networkV2 = networkClient
+	r.timeout = timeout
+	r.promCounter = promCounter
 	return r
 }
 
 // Invokes groups.List() in gophercloud's groups package and extracts all security groups.
 // Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) List(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
-	r.networkV2.Context = ctx
+	increasePromCounter(r.promCounter, "neutron")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.networkV2.Context = tctx
+	defer func() {
+		r.networkV2.Context = nil
+	}()
+
 	pages, err := groups.List(r.networkV2, opts).AllPages()
-	r.networkV2.Context = nil
 	if err != nil {
 		return nil, err
 	}
@@ -36,32 +53,57 @@ func (r *OSGroupClient) List(ctx context.Context, opts groups.ListOpts) ([]group
 
 // Invokes groups.Create() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Create(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
+	increasePromCounter(r.promCounter, "neutron")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.networkV2.Context = tctx
+	defer func() {
+		r.networkV2.Context = nil
+	}()
+
 	r.networkV2.Context = ctx
 	group, err := groups.Create(r.networkV2, opts).Extract()
-	r.networkV2.Context = nil
 	return group, err
 }
 
 // Invokes groups.Update() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Update(ctx context.Context, id string, opts groups.UpdateOptsBuilder) (*groups.SecGroup, error) {
-	r.networkV2.Context = ctx
+	increasePromCounter(r.promCounter, "neutron")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.networkV2.Context = tctx
+	defer func() {
+		r.networkV2.Context = nil
+	}()
+
 	group, err := groups.Update(r.networkV2, id, opts).Extract()
-	r.networkV2.Context = nil
 	return group, err
 }
 
 // Invokes groups.Get() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Get(ctx context.Context, id string) (*groups.SecGroup, error) {
-	r.networkV2.Context = ctx
+	increasePromCounter(r.promCounter, "neutron")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.networkV2.Context = tctx
+	defer func() {
+		r.networkV2.Context = nil
+	}()
+
 	group, err := groups.Get(r.networkV2, id).Extract()
-	r.networkV2.Context = nil
 	return group, err
 }
 
 // Invokes groups.Delete() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Delete(ctx context.Context, id string) error {
-	r.networkV2.Context = ctx
+	increasePromCounter(r.promCounter, "neutron")
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	r.networkV2.Context = tctx
+	defer func() {
+		r.networkV2.Context = nil
+	}()
+
 	err := groups.Delete(r.networkV2, id).ExtractErr()
-	r.networkV2.Context = nil
 	return err
 }

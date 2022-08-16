@@ -1,13 +1,14 @@
-package target_controller
+package targetcontroller
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"regexp"
 	"strings"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+
 	"github.com/go-logr/logr"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,7 +28,7 @@ type NodeReconciler struct {
 	Recorder               record.EventRecorder
 }
 
-// nolint: lll // because regex, thats why
+//nolint:lll // because regex, thats why
 var ipv6Regex = `^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$`
 var ipv4Regex = `^(((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4})`
 var ipv6RegexC, _ = regexp.Compile(ipv6Regex)
@@ -49,22 +50,22 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	for _, loadBalancer := range loadBalancers.Items {
+	for i := range loadBalancers.Items {
 		// get svc
 		svc := coreV1.Service{}
-		serviceAnnotation := strings.Split(loadBalancer.Annotations[ServiceAnnotation], "/")
+		serviceAnnotation := strings.Split(loadBalancers.Items[i].Annotations[ServiceAnnotation], "/")
 		if len(serviceAnnotation) != 2 {
-			return ctrl.Result{}, errors.New("could not read service namespacedname from annotation")
+			return ctrl.Result{}, helper.ErrCouldNotReadSvcNameSpacedNameFromAnno
 		}
 		if err := r.TargetClient.Get(ctx, client.ObjectKey{Name: serviceAnnotation[1], Namespace: serviceAnnotation[0]}, &svc); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		readyEndpoints := getReadyEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilyPolicy, svc.Spec.IPFamilies)
+		readyEndpoints := getReadyEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilies)
 
 		// update endpoints
-		if !EqualLoadBalancerEndpoints(loadBalancer.Spec.Endpoints, readyEndpoints) {
-			if err := r.addEndpointsToLB(ctx, readyEndpoints, loadBalancer); err != nil {
+		if !EqualLoadBalancerEndpoints(loadBalancers.Items[i].Spec.Endpoints, readyEndpoints) {
+			if err := r.patchEndpointsToLB(ctx, readyEndpoints, &loadBalancers.Items[i]); err != nil {
 				return ctrl.Result{}, err
 			}
 
@@ -81,33 +82,20 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *NodeReconciler) addEndpointsToLB(
+func (r *NodeReconciler) patchEndpointsToLB(
 	ctx context.Context,
 	endpoints []yawolv1beta1.LoadBalancerEndpoint,
-	lb yawolv1beta1.LoadBalancer,
+	lb *yawolv1beta1.LoadBalancer,
 ) error {
-	var epJson []byte
+	var epJSON []byte
 	var err error
-	if epJson, err = json.Marshal(endpoints); err != nil {
+	if epJSON, err = json.Marshal(endpoints); err != nil {
 		return err
 	}
 
-	patch := []byte(`{"spec":{"endpoints":` + string(epJson) + `}}`)
+	patch := []byte(`{"spec":{"endpoints":` + string(epJSON) + `}}`)
 
-	return r.ControlClient.Patch(ctx, &lb, client.RawPatch(types.MergePatchType, patch))
-}
-
-func isNodeReady(node coreV1.Node) bool {
-	if node.DeletionTimestamp != nil {
-		return false
-	}
-
-	for _, condition := range node.Status.Conditions {
-		if condition.Type == coreV1.NodeReady {
-			return condition.Status == coreV1.ConditionTrue
-		}
-	}
-	return false
+	return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 }
 
 func getLoadBalancerEndpointFromNode(node coreV1.Node, ipFamilies []coreV1.IPFamily) yawolv1beta1.LoadBalancerEndpoint {
@@ -149,19 +137,29 @@ func getLoadBalancerEndpointFromNode(node coreV1.Node, ipFamilies []coreV1.IPFam
 
 func getReadyEndpointsFromNodes(
 	nodes []coreV1.Node,
-	// nolint: unparam // will be used in the future
-	ipFamilyType *coreV1.IPFamilyPolicyType,
 	ipFamilies []coreV1.IPFamily,
 ) []yawolv1beta1.LoadBalancerEndpoint {
 	// TODO check if ipFamilies and IPFamilyPolicyType is available?
 	eps := make([]yawolv1beta1.LoadBalancerEndpoint, 0)
-	for _, node := range nodes {
-		if !isNodeReady(node) {
+	for i := range nodes {
+		if !isNodeReady(nodes[i]) {
 			continue
 		}
-
-		eps = append(eps, getLoadBalancerEndpointFromNode(node, ipFamilies))
+		eps = append(eps, getLoadBalancerEndpointFromNode(nodes[i], ipFamilies))
 	}
 
 	return eps
+}
+
+func isNodeReady(node coreV1.Node) bool {
+	if node.DeletionTimestamp != nil {
+		return false
+	}
+
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == coreV1.NodeReady {
+			return condition.Status == coreV1.ConditionTrue
+		}
+	}
+	return false
 }

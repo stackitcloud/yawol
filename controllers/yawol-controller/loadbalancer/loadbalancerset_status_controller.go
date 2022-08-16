@@ -2,21 +2,22 @@ package loadbalancer
 
 import (
 	"context"
-	"encoding/json"
+
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
-type LoadBalancerSetStatusReconciler struct {
+type LoadBalancerSetStatusReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
 	Log         logr.Logger
 	Scheme      *runtime.Scheme
@@ -30,31 +31,27 @@ func (r *LoadBalancerSetStatusReconciler) Reconcile(ctx context.Context, req ctr
 
 	var loadBalancerSet yawolv1beta1.LoadBalancerSet
 	if err := r.Client.Get(ctx, req.NamespacedName, &loadBalancerSet); err != nil {
-		// Throw if error more serve than 404
-		if client.IgnoreNotFound(err) != nil {
-			return ctrl.Result{}, err
+		// If not found just add an info log and ignore error
+		if errors2.IsNotFound(err) {
+			r.Log.Info("LoadBalancerSet not found", "lbs", req.NamespacedName)
 		}
-		r.Log.Info("LoadBalancerSet not found", "lbs", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if loadBalancerSet.OwnerReferences == nil {
-		return ctrl.Result{}, nil
-	}
-	var lb yawolv1beta1.LoadBalancer
-	for _, ref := range loadBalancerSet.OwnerReferences {
-		if ref.Kind == LoadBalancerKind {
-			if err := r.Client.Get(ctx, types.NamespacedName{
-				Namespace: loadBalancerSet.Namespace,
-				Name:      ref.Name,
-			}, &lb); err != nil {
-				if client.IgnoreNotFound(err) != nil {
-					return ctrl.Result{}, err
-				}
-				r.Log.Info("could not find LoadBalancer for LoadBalancerSet")
-				return ctrl.Result{}, client.IgnoreNotFound(err)
-			}
+	var lb *yawolv1beta1.LoadBalancer
+	var err error
+
+	lb, err = helper.GetLoadBalancerForLoadBalancerSet(ctx, r.Client, &loadBalancerSet)
+	if err != nil {
+		if errors2.IsNotFound(err) {
+			r.Log.Info("could not find LoadBalancer for LoadBalancerSet", "lbs", req.NamespacedName)
 		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if lb == nil {
+		r.Log.Info("could not find LoadBalancer for LoadBalancerSet")
+		return ctrl.Result{}, nil
 	}
 
 	// Not the current revision
@@ -62,21 +59,21 @@ func (r *LoadBalancerSetStatusReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, nil
 	}
 
-	// Patch replicas from lbs to lb
+	// Patch replicas from lbs status to lb status
 	if loadBalancerSet.Status.Replicas != nil &&
 		(lb.Status.Replicas == nil || *lb.Status.Replicas != *loadBalancerSet.Status.Replicas) {
-		if err := r.patchLBStatus(ctx, &lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Client.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			Replicas: loadBalancerSet.Status.Replicas,
 		}); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
-	// Patch ready replicas from lbs to lb
+	// Patch ready replicas from lbs to lb status
 	if loadBalancerSet.Status.ReadyReplicas != nil &&
 		(lb.Status.ReadyReplicas == nil || *lb.Status.ReadyReplicas != *loadBalancerSet.Status.ReadyReplicas) {
-		if err := r.patchLBStatus(ctx, &lb, yawolv1beta1.LoadBalancerStatus{
+		if err := helper.PatchLBStatus(ctx, r.Client.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ReadyReplicas: loadBalancerSet.Status.ReadyReplicas,
 		}); err != nil {
 			return ctrl.Result{}, err
@@ -94,14 +91,4 @@ func (r *LoadBalancerSetStatusReconciler) SetupWithManager(mgr ctrl.Manager) err
 			MaxConcurrentReconciles: r.WorkerCount,
 		}).
 		Complete(r)
-}
-
-func (r *LoadBalancerSetStatusReconciler) patchLBStatus(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-	lbStatus yawolv1beta1.LoadBalancerStatus,
-) error {
-	lbStatusJson, _ := json.Marshal(lbStatus)
-	patch := []byte(`{"status":` + string(lbStatusJson) + `}`)
-	return r.Client.Status().Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 }

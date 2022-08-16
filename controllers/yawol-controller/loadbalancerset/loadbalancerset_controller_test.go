@@ -17,8 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	yawollet "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
-
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,12 +95,12 @@ var _ = Describe("LoadBalancerSet controller", func() {
 
 		It("Should create a LoadBalancerMachine", func() {
 			Eventually(func() int {
-				return len(getChildMachines(&ctx, &setStub))
+				return len(getChildMachines(ctx, &setStub))
 			}, timeout, interval).Should(Equal(1))
 		})
 
 		It("Should be a valid LoadBalancerMachine", func() {
-			machine := getChildMachines(&ctx, &setStub)[0]
+			machine := getChildMachines(ctx, &setStub)[0]
 			Eventually(isValidMachine(&setStub, &machine)).Should(BeTrue())
 		})
 	})
@@ -116,7 +115,7 @@ var _ = Describe("LoadBalancerSet controller", func() {
 
 		It("Should create four LoadBalancerMachines", func() {
 			Eventually(func() int {
-				return len(getChildMachines(&ctx, &setStub))
+				return len(getChildMachines(ctx, &setStub))
 			}, timeout, interval).Should(Equal(4))
 		})
 	})
@@ -127,7 +126,7 @@ var _ = Describe("LoadBalancerSet controller", func() {
 		cpy := make([]v1.NodeCondition, len(conditions))
 		copy(cpy, conditions)
 		It("Should be successfully", func() {
-			childMachines := getChildMachines(&ctx, &setStub)
+			childMachines := getChildMachines(ctx, &setStub)
 			for _, machine := range childMachines {
 				machine.Status.Conditions = &cpy
 				err := k8sClient.Status().Update(ctx, &machine)
@@ -152,11 +151,11 @@ var _ = Describe("LoadBalancerSet controller", func() {
 				Message:            "reconcile is not running",
 				Reason:             "YawolletIsNotReady",
 				Status:             "False",
-				Type:               v1.NodeConditionType(yawollet.ConfigReady),
+				Type:               v1.NodeConditionType(helper.ConfigReady),
 				LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 				LastTransitionTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
 			}
-			childMachines := getChildMachines(&ctx, &setStub)
+			childMachines := getChildMachines(ctx, &setStub)
 
 			for _, machine := range childMachines {
 				machine.Status.Conditions = &conditions
@@ -211,9 +210,9 @@ var _ = Describe("LoadBalancerSet controller", func() {
 	})
 })
 
-func getChildMachines(ctx *context.Context, set *yawolv1beta1.LoadBalancerSet) []yawolv1beta1.LoadBalancerMachine {
+func getChildMachines(ctx context.Context, set *yawolv1beta1.LoadBalancerSet) []yawolv1beta1.LoadBalancerMachine {
 	var childMachines yawolv1beta1.LoadBalancerMachineList
-	err := k8sClient.List(*ctx, &childMachines, &client.ListOptions{
+	err := k8sClient.List(ctx, &childMachines, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(set.Spec.Selector.MatchLabels),
 		Namespace:     set.Namespace,
 	})
@@ -282,7 +281,7 @@ func TestIsMachineReady(t *testing.T) {
 	t.Run("Failed condition should result in not ready machine", func(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
-			if string(condition.Type) == string(yawollet.ConfigReady) {
+			if string(condition.Type) == string(helper.ConfigReady) {
 				cons[index].Status = "False"
 				cons[index].LastTransitionTime = metav1.Time{Time: time.Now().Add(-290 * time.Second)}
 			}
@@ -298,7 +297,7 @@ func TestIsMachineReady(t *testing.T) {
 	t.Run("Heartbeat older than 60 seconds should result in not ready machine", func(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
-			if string(condition.Type) == string(yawollet.ConfigReady) {
+			if string(condition.Type) == string(helper.ConfigReady) {
 				cons[index].LastHeartbeatTime = metav1.Time{Time: time.Now().Add(-60 * time.Second)}
 			}
 		}
@@ -313,7 +312,7 @@ func TestIsMachineReady(t *testing.T) {
 	t.Run("Failed condition older than 5 min should result in not ready machine", func(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
-			if string(condition.Type) == string(yawollet.ConfigReady) {
+			if string(condition.Type) == string(helper.ConfigReady) {
 				cons[index].Status = "False"
 				cons[index].LastTransitionTime = metav1.Time{Time: time.Now().Add(-300 * time.Second)}
 			}
@@ -329,7 +328,7 @@ func TestIsMachineReady(t *testing.T) {
 	t.Run("Less than six conditions should result in not ready machine", func(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
-			if string(condition.Type) == string(yawollet.ConfigReady) {
+			if string(condition.Type) == string(helper.ConfigReady) {
 				cons[index] = v1.NodeCondition{}
 			}
 		}
@@ -367,7 +366,7 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 						Message:            "reconcile is running",
 						Reason:             "ConfigReady",
 						Status:             "False",
-						Type:               v1.NodeConditionType(yawollet.ConfigReady),
+						Type:               v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 						LastTransitionTime: metav1.Time{Time: time.Now()},
 					},
@@ -406,7 +405,7 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 						Message:           "reconcile is running",
 						Reason:            "ConfigReady",
 						Status:            "True",
-						Type:              v1.NodeConditionType(yawollet.ConfigReady),
+						Type:              v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
 					},
 				},
@@ -429,7 +428,7 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 						Message:            "reconcile is running",
 						Reason:             "ConfigReady",
 						Status:             "False",
-						Type:               v1.NodeConditionType(yawollet.ConfigReady),
+						Type:               v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
 					},

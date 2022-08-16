@@ -156,7 +156,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err = (&loadbalancer.LoadBalancerReconciler{
+		if err = (&loadbalancer.Reconciler{
 			Client:           loadBalancerMgr.GetClient(),
 			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancer"),
 			Scheme:           loadBalancerMgr.GetScheme(),
@@ -253,7 +253,7 @@ func main() {
 			Recorder:         loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
 			RecorderLB:       loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
 			Scheme:           loadBalancerMachineMgr.GetScheme(),
-			ApiEndpoint:      apiEndpoint,
+			APIEndpoint:      apiEndpoint,
 			MachineMetrics:   *machineMetrics,
 			OpenstackMetrics: *openstackMetrics,
 			OpenstackTimeout: openstackTimeout,
@@ -269,9 +269,9 @@ func main() {
 	signalHandler := ctrl.SetupSignalHandler()
 
 	select {
-	case err = <-startManager(loadBalancerMgr, signalHandler, lbController):
-	case err = <-startManager(loadBalancerSetMgr, signalHandler, lbSetController):
-	case err = <-startManager(loadBalancerMachineMgr, signalHandler, lbMachineController):
+	case err = <-startManager(signalHandler, loadBalancerMgr, lbController):
+	case err = <-startManager(signalHandler, loadBalancerSetMgr, lbSetController):
+	case err = <-startManager(signalHandler, loadBalancerMachineMgr, lbMachineController):
 	}
 	if err != nil {
 		setupLog.Error(err, "received runtime error")
@@ -279,7 +279,7 @@ func main() {
 	}
 }
 
-func startManager(mgr ctrl.Manager, signalHandler context.Context, enabled bool) <-chan error {
+func startManager(signalHandler context.Context, mgr ctrl.Manager, enabled bool) <-chan error {
 	r := make(chan error)
 
 	if !enabled {

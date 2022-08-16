@@ -67,11 +67,20 @@ type LoadBalancerMachineStatus struct {
 	// PortID contains the openstack port ID for a LoadBalancerMachine.
 	// +optional
 	PortID *string `json:"portID,omitempty"`
+	// ServiceAccountName contains the namespacedName from the ServiceAccount for a LoadBalancerMachine.
+	// +optional
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
+	// RoleName contains the namespacedName from the Role for a LoadBalancerMachine.
+	// +optional
+	RoleName *string `json:"roleName,omitempty"`
+	// RoleBindingName contains the namespacedName from the RoleBinding for a LoadBalancerMachine.
+	// +optional
+	RoleBindingName *string `json:"roleBindingName,omitempty"`
 }
 
 // LoadBalancerMachineMetric describes a metric of the LoadBalancerMachine
 type LoadBalancerMachineMetric struct {
-	// Type is the type of a metric
+	// Type is the type of the metric
 	Type string `json:"type"`
 	// Value is the value of a metric
 	Value string `json:"value"`

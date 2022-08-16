@@ -1,8 +1,7 @@
-package target_controller
+package targetcontroller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -54,7 +54,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Ports == nil || len(lb.Spec.Ports) != 1 {
-					return errors.New("none or more than one port in LB found")
+					return helper.ErrZeroOrMoreThanOnePortFoundInLB
 				}
 				if lb.Spec.Ports[0].Name == "port1" &&
 					lb.Spec.Ports[0].Port == 12345 &&
@@ -62,7 +62,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					lb.Spec.Ports[0].NodePort == 30001 {
 					return nil
 				}
-				return errors.New("port values wrong")
+				return helper.ErrPortValuesWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("Check Event for creation")
@@ -79,7 +79,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("Check Event for port sync")
@@ -96,7 +96,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -127,7 +127,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Ports == nil || len(lb.Spec.Ports) != 1 {
-					return errors.New("no or more than one port in LB found")
+					return helper.ErrZeroOrMoreThanOnePortFoundInLB
 				}
 				if lb.Spec.Ports[0].Name == "port1" &&
 					lb.Spec.Ports[0].Port == 65000 &&
@@ -135,7 +135,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					lb.Spec.Ports[0].NodePort == 30020 {
 					return nil
 				}
-				return errors.New("port values wrong")
+				return helper.ErrPortValuesWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("change protocol to tcp")
@@ -158,7 +158,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Ports == nil || len(lb.Spec.Ports) != 1 {
-					return errors.New("no or more than one port in LB found")
+					return helper.ErrZeroOrMoreThanOnePortFoundInLB
 				}
 				if lb.Spec.Ports[0].Name == "tcp-edit" &&
 					lb.Spec.Ports[0].Port == 65000 &&
@@ -166,7 +166,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					lb.Spec.Ports[0].NodePort == 30020 {
 					return nil
 				}
-				return errors.New("port values wrong")
+				return helper.ErrPortValuesWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("change protocol to udp")
@@ -211,7 +211,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Ports == nil || lb.Spec.Endpoints == nil {
-					return errors.New("wait for ports and endpoints")
+					return helper.ErrWaitingForPortsAndEndpoints
 				}
 				infraValue = lb.Spec.Infrastructure.DeepCopy()
 				return nil
@@ -248,8 +248,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if err != nil {
 					return err
 				}
-				if lb.Spec.Infrastructure.NetworkID == *testInfraDefaults.NetworkId &&
-					*lb.Spec.Infrastructure.FloatingNetID == *testInfraDefaults.FloatingNetworkId &&
+				if lb.Spec.Infrastructure.NetworkID == *testInfraDefaults.NetworkID &&
+					*lb.Spec.Infrastructure.FloatingNetID == *testInfraDefaults.FloatingNetworkID &&
 					*lb.Spec.Infrastructure.Flavor.FlavorID == *testInfraDefaults.FlavorRef.FlavorID &&
 					*lb.Spec.Infrastructure.Image.ImageID == *testInfraDefaults.ImageRef.ImageID {
 					return nil
@@ -291,15 +291,15 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 
-				if lb.Spec.LoadBalancerSourceRanges == nil || len(lb.Spec.LoadBalancerSourceRanges) != 1 {
-					return errors.New("none or more than one source range in LB found")
+				if lb.Spec.Options.LoadBalancerSourceRanges == nil || len(lb.Spec.Options.LoadBalancerSourceRanges) != 1 {
+					return helper.ErrZeroOrMoreThanOneSRFoundInLB
 				}
 
-				if lb.Spec.LoadBalancerSourceRanges[0] == "1.1.1.1/24" {
+				if lb.Spec.Options.LoadBalancerSourceRanges[0] == "1.1.1.1/24" {
 					return nil
 				}
 
-				return errors.New("source ranges are wrong")
+				return helper.ErrSourceRangesAreWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("Check Event for creation")
@@ -318,25 +318,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					}
 				}
 
-				return errors.New("no event found")
-			}, time.Second*5, time.Millisecond*500).Should(Succeed())
-
-			By("Check Event for source ranges sync")
-			Eventually(func() error {
-				eventList := v1.EventList{}
-				err := k8sClient.List(ctx, &eventList)
-				if err != nil {
-					return err
-				}
-
-				for _, event := range eventList.Items {
-					if event.InvolvedObject.Name == service.Name &&
-						event.InvolvedObject.Kind == "Service" &&
-						strings.Contains(event.Message, "LoadBalancer SourceRanges successfully synced with service SourceRange") {
-						return nil
-					}
-				}
-				return errors.New("no source ranges event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("change for reconcile")
@@ -359,16 +341,16 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 
-				if lb.Spec.LoadBalancerSourceRanges == nil || len(lb.Spec.LoadBalancerSourceRanges) != 2 {
-					return errors.New("source ranges update length does not match")
+				if lb.Spec.Options.LoadBalancerSourceRanges == nil || len(lb.Spec.Options.LoadBalancerSourceRanges) != 2 {
+					return helper.ErrSourceRangesWrongLength
 				}
 
-				if lb.Spec.LoadBalancerSourceRanges[0] == "1.1.1.1/24" &&
-					lb.Spec.LoadBalancerSourceRanges[1] == "2.2.2.2/16" {
+				if lb.Spec.Options.LoadBalancerSourceRanges[0] == "1.1.1.1/24" &&
+					lb.Spec.Options.LoadBalancerSourceRanges[1] == "2.2.2.2/16" {
 					return nil
 				}
 
-				return errors.New("source ranges are wrong")
+				return helper.ErrSourceRangesAreWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("clean up load balancer")
@@ -382,7 +364,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return client.IgnoreNotFound(err)
 				}
 
-				return errors.New("load balancer didn't clean up")
+				return helper.ErrLBNotCleanedUp
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -412,7 +394,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if err != nil {
 					return client.IgnoreNotFound(err)
 				}
-				return errors.New("invalid protocol LB created")
+				return helper.ErrInvalidProtocol
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			By("check for event on service")
@@ -429,7 +411,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -463,7 +445,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if err != nil {
 					return client.IgnoreNotFound(err)
 				}
-				return errors.New("invalid classname LB created")
+				return helper.ErrInvalidClassname
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -514,7 +496,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -546,8 +528,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			tries, maxTries := 0, 20
 			var err error = nil
 			for {
-				if tries += 1; tries > maxTries {
-					err = errors.New("max tries exceeded")
+				if tries++; tries > maxTries {
+					err = helper.ErrMaxTriesExceeded
 					break
 				}
 
@@ -593,7 +575,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if lb.Spec.ExistingFloatingIP != nil && *lb.Spec.ExistingFloatingIP == "123.123.123.123" {
 					return nil
 				}
-				return errors.New("no existingFloatingIP set")
+				return helper.ErrNoExistingFIP
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -626,8 +608,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			tries, maxTries := 0, 20
 			var err error = nil
 			for {
-				if tries += 1; tries > maxTries {
-					err = errors.New("max tries exceeded")
+				if tries++; tries > maxTries {
+					err = helper.ErrMaxTriesExceeded
 					break
 				}
 
@@ -675,7 +657,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 		})
@@ -740,7 +722,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					for _, addr := range port.Addresses {
 						ip := net.ParseIP(addr)
 						if ip == nil {
-							return errors.New("not a valid IP address")
+							return fmt.Errorf("%w: %v", helper.ErrNotAValidIP, addr)
 
 						}
 						if strings.Contains(addr, ":") {
@@ -815,7 +797,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					for _, addr := range port.Addresses {
 						ip := net.ParseIP(addr)
 						if ip == nil {
-							return errors.New("not a valid IP address")
+							return fmt.Errorf("%w: %v", helper.ErrNotAValidIP, addr)
 						}
 						if strings.Contains(addr, ".") {
 							return fmt.Errorf("no ipv6: %v service: %v", lb.Spec.Endpoints, service.Spec.IPFamilies)
@@ -921,7 +903,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					for _, addr := range port.Addresses {
 						ip := net.ParseIP(addr)
 						if ip == nil {
-							return fmt.Errorf("not a valid IP address: %v", addr)
+							return fmt.Errorf("%w: %v", helper.ErrNotAValidIP, addr)
 						}
 
 						if strings.Contains(addr, ".") {
@@ -937,7 +919,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				}
 
 				if !ipv4Node || !ipv6Node {
-					return errors.New("LB only has one IP family type")
+					return helper.ErrLBOnlyOneIPFamily
 				}
 
 				return nil
@@ -1213,8 +1195,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					*lb.Spec.Infrastructure.Image.ImageID != service.Annotations[yawolv1beta1.ServiceImageID] {
 					return fmt.Errorf("wrong infraDefaults image id %v", lb.Spec.Infrastructure)
 				}
-				if !lb.Spec.InternalLB {
-					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.InternalLB)
+				if !lb.Spec.Options.InternalLB {
+					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.Options.InternalLB)
 				}
 				return nil
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
@@ -1256,8 +1238,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					*lb.Spec.Infrastructure.Image.ImageID != *testInfraDefaults.ImageRef.ImageID {
 					return fmt.Errorf("wrong infraDefaults image id %v", lb.Spec.Infrastructure)
 				}
-				if lb.Spec.InternalLB != *testInfraDefaults.InternalLB {
-					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.InternalLB)
+				if lb.Spec.Options.InternalLB != *testInfraDefaults.InternalLB {
+					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.Options.InternalLB)
 				}
 
 				return nil
@@ -1286,8 +1268,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					*lb.Spec.Infrastructure.Image.ImageID != service.Annotations[yawolv1beta1.ServiceImageID] {
 					return fmt.Errorf("wrong infraDefaults image id %v", lb.Spec.Infrastructure)
 				}
-				if !lb.Spec.InternalLB {
-					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.InternalLB)
+				if !lb.Spec.Options.InternalLB {
+					return fmt.Errorf("wrong infraDefaults internalLB %v", lb.Spec.Options.InternalLB)
 				}
 				return nil
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())

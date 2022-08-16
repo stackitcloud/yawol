@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"os/exec"
@@ -17,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 )
 
 const StatusConditions int = 3
@@ -51,10 +51,12 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Name:      "test-lb",
 					Namespace: "testns"},
 				Spec: yawolv1beta1.LoadBalancerSpec{
-					Selector:                 metav1.LabelSelector{},
-					Replicas:                 1,
-					InternalLB:               false,
-					LoadBalancerSourceRanges: nil,
+					Selector: metav1.LabelSelector{},
+					Replicas: 1,
+					Options: yawolv1beta1.LoadBalancerOptions{
+						InternalLB:               false,
+						LoadBalancerSourceRanges: nil,
+					},
 					Endpoints: []yawolv1beta1.LoadBalancerEndpoint{{
 						Name:      "localhost",
 						Addresses: []string{"127.0.0.1"},
@@ -75,12 +77,12 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			By("check conditions")
 			Eventually(func() error {
 				return checkConditions(
-					&ctx,
+					ctx,
 					"test-lbm",
 					"testns",
-					ConditionTrue,
-					ConditionTrue,
-					ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
 					"TCP-8081::127.0.0.1:8081",
 				)
 			}, time.Second*15, time.Second*1).Should(Succeed())
@@ -100,19 +102,19 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			By("check if new port is present")
 			Eventually(func() error {
 				return checkConditions(
-					&ctx,
+					ctx,
 					"test-lbm",
 					"testns",
-					ConditionTrue,
-					ConditionTrue,
-					ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
 					"TCP-8082::127.0.0.1:8082",
 				)
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add source ranges and check if ports are ready", func() {
 			By("add source ranges")
-			lb.Spec.LoadBalancerSourceRanges = []string{
+			lb.Spec.Options.LoadBalancerSourceRanges = []string{
 				"127.0.0.1/24",
 				"2002::1234:abcd:ffff:c0a8:101/64",
 			}
@@ -121,30 +123,30 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			By("check if ports are present")
 			Eventually(func() error {
 				return checkConditions(
-					&ctx,
+					ctx,
 					"test-lbm",
 					"testns",
-					ConditionTrue,
-					ConditionTrue,
-					ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
 					"TCP-8081::127.0.0.1:8081",
 				)
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			Eventually(func() error {
 				return checkConditions(
-					&ctx,
+					ctx,
 					"test-lbm",
 					"testns",
-					ConditionTrue,
-					ConditionTrue,
-					ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
 					"TCP-8082::127.0.0.1:8082",
 				)
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("remove source ranges")
-			lb.Spec.LoadBalancerSourceRanges = nil
+			lb.Spec.Options.LoadBalancerSourceRanges = nil
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 		})
 		It("set envoy to fail and check envoyReady conditions", func() {
@@ -154,7 +156,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if envoyReady condition is False")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, ConditionFalse, ConditionTrue, "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, helper.ConditionFalse, helper.ConditionTrue, "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("set envoy ready back to ok")
@@ -163,7 +165,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if envoyReady condition is True")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", "", ConditionTrue, "", "")
+				return checkConditions(ctx, "test-lbm", "testns", "", helper.ConditionTrue, "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add port with bad protocol", func() {
@@ -180,7 +182,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionFalse, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete bad protocol port")
@@ -188,7 +190,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add port with udp protocol", func() {
@@ -205,7 +207,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete correct protocol port")
@@ -213,7 +215,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add port with correct protocol", func() {
@@ -230,7 +232,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete correct protocol port")
@@ -238,7 +240,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add new Port with Port out of range ", func() {
@@ -255,7 +257,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionFalse, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete too high port")
@@ -264,7 +266,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("add too low port")
@@ -279,7 +281,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionFalse, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete too low port")
@@ -288,7 +290,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add new Port with Port in valid range", func() {
@@ -305,7 +307,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete correct port")
@@ -314,7 +316,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add new Port with NodePort out of range", func() {
@@ -331,7 +333,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionFalse, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete too high NodePort")
@@ -340,7 +342,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("add too low NodePort")
@@ -356,7 +358,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("Check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete too low NodePort")
@@ -365,7 +367,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add new Port with NodePort in valid range", func() {
@@ -382,7 +384,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete valid NodePort")
@@ -391,7 +393,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with wrong IPv4 Address", func() {
@@ -405,7 +407,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with wrong IPv4 Address")
@@ -414,7 +416,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with valid IPv4 Address", func() {
@@ -428,7 +430,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with correct IP Address")
@@ -437,7 +439,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with wrong IPv6 Address", func() {
@@ -451,7 +453,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionFalse, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with wrong IPv6 Address")
@@ -460,7 +462,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with valid IPv6 Address", func() {
@@ -474,7 +476,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with valid IPv6 Address")
@@ -483,7 +485,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with wrong domain name", func() {
@@ -497,7 +499,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config fails")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with wrong DNS name")
@@ -506,7 +508,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("add Endpoint with valid domain name", func() {
@@ -520,7 +522,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("delete Endpoint with correct DNS name")
@@ -529,7 +531,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("test envoy not up to date", func() {
@@ -544,7 +546,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if EnvoyUpToDate is False")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", "", "", ConditionFalse, "")
+				return checkConditions(ctx, "test-lbm", "testns", "", "", helper.ConditionFalse, "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 
 			By("start envoy process")
@@ -559,39 +561,39 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			By("check if EnvoyUpToDate is True")
 			Eventually(func() error {
-				return checkConditions(&ctx, "test-lbm", "testns", "", "", ConditionTrue, "")
+				return checkConditions(ctx, "test-lbm", "testns", "", "", helper.ConditionTrue, "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 	})
 })
 
 func checkConditions(
-	ctx *context.Context,
+	ctx context.Context,
 	name, namespace string,
-	configReady, envoyReady, envoyUpToDate LoadbalancerConditionStatus,
+	configReady, envoyReady, envoyUpToDate helper.LoadbalancerConditionStatus,
 	listener string,
 ) error {
 	var curLbm yawolv1beta1.LoadBalancerMachine
-	err := k8sClient.Get(*ctx, types.NamespacedName{Name: name, Namespace: namespace}, &curLbm)
+	err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &curLbm)
 	if err != nil {
 		return err
 	}
 	if curLbm.Status.Conditions == nil || len(*curLbm.Status.Conditions) < StatusConditions {
-		return errors.New("no or not all conditions are set")
+		return helper.ErrNotAllConditionsSet
 	}
 	for _, condition := range *curLbm.Status.Conditions {
 		switch string(condition.Type) {
-		case string(ConfigReady):
+		case string(helper.ConfigReady):
 			if configReady != "" && string(condition.Status) != string(configReady) {
-				return errors.New("config not ready")
+				return helper.ErrConfigNotReady
 			}
-		case string(EnvoyReady):
+		case string(helper.EnvoyReady):
 			if envoyReady != "" && string(condition.Status) != string(envoyReady) {
-				return errors.New("envoy not ready")
+				return helper.ErrEnvoyNotReady
 			}
-		case string(EnvoyUpToDate):
+		case string(helper.EnvoyUpToDate):
 			if envoyUpToDate != "" && string(condition.Status) != string(envoyUpToDate) {
-				return errors.New("envoy not upToDate")
+				return helper.ErrEnvoyNotUpToDate
 			}
 		}
 	}
@@ -601,7 +603,7 @@ func checkConditions(
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close() // nolint: errcheck
+		defer resp.Body.Close() //nolint:errcheck // don't handle error in defer
 		// check if not 200 and return an empty snapshot version if status code is not 200
 		if resp.StatusCode != 200 {
 			return nil
@@ -617,7 +619,7 @@ func checkConditions(
 				return nil
 			}
 		}
-		return errors.New("envoy listener not found")
+		return helper.ErrEnvoyListenerNotFound
 	}
 	return nil
 }

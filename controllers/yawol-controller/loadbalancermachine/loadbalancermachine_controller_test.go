@@ -12,6 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack/testing"
 	. "github.com/onsi/ginkgo"
@@ -42,12 +43,12 @@ var (
 )
 
 func getLBName() string {
-	loadBalancerCounter += 1
+	loadBalancerCounter++
 	return loadBalancerName + fmt.Sprint(loadBalancerCounter)
 }
 
 func getLBMName() string {
-	loadBalancerMachineCounter += 1
+	loadBalancerMachineCounter++
 	return loadBalancerMachineName + fmt.Sprint(loadBalancerMachineCounter)
 }
 
@@ -249,34 +250,7 @@ var _ = Describe("load balancer machine", func() {
 })
 
 func getPolicyRules(lb *LB, lbm *LBM) []rbac.PolicyRule {
-	return []rbac.PolicyRule{{
-		Verbs:     []string{"create"},
-		APIGroups: []string{""},
-		Resources: []string{"events"},
-	}, {
-		Verbs:     []string{"list", "watch"},
-		APIGroups: []string{"yawol.stackit.cloud"},
-		Resources: []string{"loadbalancers"},
-	}, {
-		Verbs:         []string{"get"},
-		APIGroups:     []string{"yawol.stackit.cloud"},
-		Resources:     []string{"loadbalancers"},
-		ResourceNames: []string{lb.Name},
-	}, {
-		Verbs:     []string{"list", "watch"},
-		APIGroups: []string{"yawol.stackit.cloud"},
-		Resources: []string{"loadbalancermachines"},
-	}, {
-		Verbs:         []string{"get", "update", "patch"},
-		APIGroups:     []string{"yawol.stackit.cloud"},
-		Resources:     []string{"loadbalancermachines"},
-		ResourceNames: []string{lbm.Name},
-	}, {
-		Verbs:         []string{"get", "update", "patch"},
-		APIGroups:     []string{"yawol.stackit.cloud"},
-		Resources:     []string{"loadbalancermachines/status"},
-		ResourceNames: []string{lbm.Name},
-	}}
+	return helper.GetRoleRules(lb, lbm)
 }
 
 func getMockLB() *LB {
@@ -290,11 +264,6 @@ func getMockLB() *LB {
 			SecurityGroupID:   pointer.StringPtr("secgroup-id"),
 			SecurityGroupName: pointer.StringPtr("secgroup-name"),
 			PortID:            pointer.StringPtr("0"),
-			NodeRoleRef: &rbac.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "Role",
-				Name:     name,
-			},
 		},
 		Spec: yawolv1beta1.LoadBalancerSpec{
 			Selector: metav1.LabelSelector{
@@ -302,11 +271,13 @@ func getMockLB() *LB {
 					"test-label": name,
 				},
 			},
-			Replicas:                 1,
-			InternalLB:               false,
-			Endpoints:                nil,
-			Ports:                    nil,
-			LoadBalancerSourceRanges: nil,
+			Replicas: 1,
+			Options: yawolv1beta1.LoadBalancerOptions{
+				InternalLB:               false,
+				LoadBalancerSourceRanges: nil,
+			},
+			Endpoints: nil,
+			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				FloatingNetID: pointer.StringPtr("floatingnet-id"),
 				NetworkID:     "network-id",

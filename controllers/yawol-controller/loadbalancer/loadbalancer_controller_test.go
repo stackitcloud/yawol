@@ -21,7 +21,6 @@ import (
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack/testing"
 	v1 "k8s.io/api/core/v1"
 
-	rbac "k8s.io/api/rbac/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -96,7 +95,7 @@ var _ = Describe("loadbalancer controller", func() {
 				Port:     8080,
 				NodePort: 30000,
 			}}
-			lb.Spec.InternalLB = true
+			lb.Spec.Options.InternalLB = true
 		})
 
 		It("should create an internal lb", func() {
@@ -129,7 +128,7 @@ var _ = Describe("loadbalancer controller", func() {
 
 			By("swapping to an internal lb")
 			updateLB(lbNN, func(act *LB) {
-				act.Spec.InternalLB = true
+				act.Spec.Options.InternalLB = true
 			})
 
 			hopefully(lbNN, func(g Gomega, act LB) error {
@@ -359,7 +358,7 @@ var _ = Describe("loadbalancer controller", func() {
 					{Protocol: v1.ProtocolTCP, Port: 8080},
 					{Protocol: v1.ProtocolUDP, Port: 8081},
 				}
-				act.Spec.LoadBalancerSourceRanges = []string{
+				act.Spec.Options.LoadBalancerSourceRanges = []string{
 					"192.168.1.1/24",
 					"192.168.2.1/24",
 					"192.168.3.1/24",
@@ -377,7 +376,8 @@ var _ = Describe("loadbalancer controller", func() {
 
 				// default rules + len(ports) * len(sourceRanges)
 				if len(rls) != len(getDesiredSecGroups(*act.Status.SecurityGroupID))+6 {
-					return fmt.Errorf("no additional sec group rules were applied %v", len(rls))
+					return fmt.Errorf("no additional sec group rules were applied %v/%v",
+						len(rls), len(getDesiredSecGroups(*act.Status.SecurityGroupID))+6)
 				}
 
 				// test if not all traffic is allowed
@@ -392,32 +392,6 @@ var _ = Describe("loadbalancer controller", func() {
 			})
 		})
 	}) // security group rules context
-
-	When("openstack has timeouts", func() {
-		reached := false
-		BeforeEach(func() {
-			client.GroupClientObj = &testing.CallbackGroupClient{
-				ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
-					// wait for timeout to finish
-					<-ctx.Done()
-					reached = true
-					err := ctx.Err()
-					Expect(err).To(HaveOccurred())
-					return nil, err
-				},
-			}
-		})
-
-		It("should not create openstack resources", func() {
-			hopefully(lbNN, func(g Gomega, act LB) error {
-				g.Expect(reached).To(BeTrue())
-
-				g.Expect(act.Status).ShouldNot(BeNil())
-				g.Expect(act.Status.SecurityGroupID).Should(BeNil())
-				return nil
-			})
-		})
-	}) // openstack has timeouts
 
 	When("openstack is not working", func() {
 		BeforeEach(func() {
@@ -448,6 +422,12 @@ var _ = Describe("loadbalancer controller", func() {
 					return nil, gophercloud.ErrDefault403{}
 				},
 			}
+		})
+		AfterEach(func() {
+			Expect(k8sClient.Delete(ctx, lb)).To(Succeed())
+			updateLB(lbNN, func(l *LB) {
+				l.Finalizers = []string{}
+			})
 		})
 
 		It("should not create openstack resources", func() {
@@ -489,13 +469,13 @@ var _ = Describe("loadbalancer controller", func() {
 
 func cleanupLB(lbNN types.NamespacedName, timeout time.Duration) {
 	// delete LB
-	Expect(k8sClient.Delete(ctx, &LB{
+	Expect(runtimeClient.IgnoreNotFound(k8sClient.Delete(ctx, &LB{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: lbNN.Namespace,
 			Name:      lbNN.Name,
 		},
 	}),
-	).Should(Succeed())
+	)).Should(Succeed())
 
 	// check if LB is deleted
 	var actual LB
@@ -525,7 +505,7 @@ func getDesiredSecGroups(remoteID string) []rules.SecGroupRule {
 				EtherType:    string(etherType),
 				Direction:    string(rules.DirIngress),
 				Protocol:     string(rules.ProtocolICMP),
-				PortRangeMin: 0,
+				PortRangeMin: 1,
 				PortRangeMax: 8,
 			},
 		)
@@ -540,24 +520,19 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 			Name:      lbNN.Name,
 			Namespace: lbNN.Namespace,
 		},
-		Status: yawolv1beta1.LoadBalancerStatus{
-			NodeRoleRef: &rbac.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "Role",
-				Name:     lbNN.Name,
-			},
-		},
 		Spec: yawolv1beta1.LoadBalancerSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"test-label": lbNN.Name,
 				},
 			},
-			Replicas:                 1,
-			InternalLB:               false,
-			Endpoints:                nil,
-			Ports:                    nil,
-			LoadBalancerSourceRanges: nil,
+			Replicas: 1,
+			Options: yawolv1beta1.LoadBalancerOptions{
+				InternalLB:               false,
+				LoadBalancerSourceRanges: nil,
+			},
+			Endpoints: nil,
+			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				FloatingNetID: pointer.StringPtr("floatingnet-id"),
 				NetworkID:     "network-id",
@@ -583,9 +558,10 @@ func updateLB(
 	// handle "remote and local services are out of sync" error
 	var actual LB
 	tries := 0
-	var err error = nil
+	var err error
 	for {
-		if tries += 1; tries > 100 {
+		tries++
+		if tries > 100 {
 			err = fmt.Errorf("retries exceeded")
 			break
 		}

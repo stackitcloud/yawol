@@ -3,17 +3,15 @@ package testing
 import (
 	"context"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 )
 
-type CallbackGroupClient struct {
+type CallbackGroupClient struct { //nolint:dupl // no dupl
 	ListFunc   func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error)
 	CreateFunc func(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error)
 	GetFunc    func(ctx context.Context, id string) (*groups.SecGroup, error)
@@ -105,7 +103,7 @@ func (r *CallbackPortClient) Delete(ctx context.Context, id string) error {
 	return r.DeleteFunc(ctx, id)
 }
 
-type CallbackServerClient struct {
+type CallbackServerClient struct { //nolint:dupl // no dupl
 	ListFunc   func(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error)
 	CreateFunc func(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error)
 	GetFunc    func(ctx context.Context, id string) (*servers.Server, error)
@@ -147,75 +145,4 @@ func (r *CallbackKeypairClient) Get(ctx context.Context, name string) (*keypairs
 }
 func (r *CallbackKeypairClient) Delete(ctx context.Context, name string) error {
 	return r.DeleteFunc(ctx, name)
-}
-
-type CallbackAttachInterfaceClient struct {
-	ListFunc   func(ctx context.Context, serverID string) ([]attachinterfaces.Interface, error)
-	GetFunc    func(ctx context.Context, serverID, portID string) (*attachinterfaces.Interface, error)
-	CreateFunc func(ctx context.Context, serverID string, opts attachinterfaces.CreateOptsBuilder) (*attachinterfaces.Interface, error)
-	DeleteFunc func(ctx context.Context, serverID, portID string) error
-}
-
-func (r *CallbackAttachInterfaceClient) List(ctx context.Context, serverID string) ([]attachinterfaces.Interface, error) {
-	return r.ListFunc(ctx, serverID)
-}
-func (r *CallbackAttachInterfaceClient) Get(ctx context.Context, serverID, portID string) (*attachinterfaces.Interface, error) {
-	return r.GetFunc(ctx, serverID, portID)
-}
-func (r *CallbackAttachInterfaceClient) Create(
-	ctx context.Context,
-	serverID string,
-	opts attachinterfaces.CreateOptsBuilder,
-) (*attachinterfaces.Interface, error) {
-	return r.CreateFunc(ctx, serverID, opts)
-}
-func (r *CallbackAttachInterfaceClient) Delete(ctx context.Context, serverID, portID string) error {
-	return r.DeleteFunc(ctx, serverID, portID)
-}
-
-type CallbackLoadBalancerClient struct {
-	ListFunc        func(ctx context.Context, opts loadbalancers.ListOptsBuilder) ([]loadbalancers.LoadBalancer, error)
-	CreateFunc      func(ctx context.Context, opts loadbalancers.CreateOptsBuilder) (*loadbalancers.LoadBalancer, error)
-	GetFunc         func(ctx context.Context, id string) (*loadbalancers.LoadBalancer, error)
-	UpdateFunc      func(ctx context.Context, id string, opts loadbalancers.UpdateOpts) (*loadbalancers.LoadBalancer, error)
-	DeleteFunc      func(ctx context.Context, id string, opts loadbalancers.DeleteOptsBuilder) error
-	GetStatusesFunc func(ctx context.Context, id string) (*loadbalancers.StatusTree, error)
-	GetStatsFunc    func(ctx context.Context, id string) (*loadbalancers.Stats, error)
-	FailoverFunc    func(ctx context.Context, id string) error
-}
-
-func (r CallbackLoadBalancerClient) List(ctx context.Context, opts loadbalancers.ListOptsBuilder) ([]loadbalancers.LoadBalancer, error) {
-	return r.ListFunc(ctx, opts)
-}
-
-func (r CallbackLoadBalancerClient) Create(ctx context.Context, opts loadbalancers.CreateOptsBuilder) (*loadbalancers.LoadBalancer, error) {
-	return r.CreateFunc(ctx, opts)
-}
-
-func (r CallbackLoadBalancerClient) Get(ctx context.Context, id string) (*loadbalancers.LoadBalancer, error) {
-	return r.GetFunc(ctx, id)
-}
-
-func (r CallbackLoadBalancerClient) Update(
-	ctx context.Context,
-	id string,
-	opts loadbalancers.UpdateOpts,
-) (*loadbalancers.LoadBalancer, error) {
-	return r.UpdateFunc(ctx, id, opts)
-}
-
-func (r CallbackLoadBalancerClient) Delete(ctx context.Context, id string, opts loadbalancers.DeleteOptsBuilder) error {
-	return r.DeleteFunc(ctx, id, opts)
-}
-
-func (r CallbackLoadBalancerClient) GetStatuses(ctx context.Context, id string) (*loadbalancers.StatusTree, error) {
-	return r.GetStatusesFunc(ctx, id)
-}
-
-func (r CallbackLoadBalancerClient) GetStats(ctx context.Context, id string) (*loadbalancers.Stats, error) {
-	return r.GetStatsFunc(ctx, id)
-}
-
-func (r CallbackLoadBalancerClient) Failover(ctx context.Context, id string) error {
-	return r.FailoverFunc(ctx, id)
 }

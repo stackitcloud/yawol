@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func GetLoad() (load1 string, load5 string, load15 string, err error) {
+func GetLoad() (load1, load5, load15 string, err error) {
 	loadFile, err := os.ReadFile("/proc/loadavg")
 	if err != nil {
 		return "", "", "", err

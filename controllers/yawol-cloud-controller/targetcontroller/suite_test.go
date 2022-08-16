@@ -1,4 +1,4 @@
-package target_controller
+package targetcontroller
 
 import (
 	"context"
@@ -79,8 +79,8 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 	authSecretName := "secret"
-	floatingNetworkId := "floatingNetID"
-	networkId := "networkId"
+	floatingNetworkID := "floatingNetID"
+	networkID := "networkID"
 	namespace := "default"
 	flavorID := "flavorID"
 	flavorRef := yawolv1beta1.OpenstackFlavorRef{FlavorID: &flavorID}
@@ -90,8 +90,8 @@ var _ = BeforeSuite(func(done Done) {
 
 	testInfraDefaults = InfrastructureDefaults{
 		AuthSecretName:    &authSecretName,
-		FloatingNetworkId: &floatingNetworkId,
-		NetworkId:         &networkId,
+		FloatingNetworkID: &floatingNetworkID,
+		NetworkID:         &networkID,
 		Namespace:         &namespace,
 		FlavorRef:         &flavorRef,
 		ImageRef:          &imageRef,

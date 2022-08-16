@@ -1,15 +1,16 @@
-package control_controller
+package controlcontroller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -48,7 +49,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Name:      service.Namespace + "--" + service.Name,
 					Namespace: "default",
 					Annotations: map[string]string{
-						target_controller.ServiceAnnotation: service.Namespace + "/" + service.Name,
+						targetcontroller.ServiceAnnotation: service.Namespace + "/" + service.Name,
 					},
 				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
@@ -92,10 +93,10 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 							curEvent.Reason == event.Reason {
 							return nil
 						}
-						return errors.New("event not correct")
+						return helper.ErrIncorrectEvent
 					}
 				}
-				return errors.New("event on service not found")
+				return helper.ErrSvcEventNotFound
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 		})
 	})

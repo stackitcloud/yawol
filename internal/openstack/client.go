@@ -9,6 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/ini.v1"
 )
 
@@ -16,17 +17,18 @@ import (
 // When requesting any specific client the required resources will be created on first call. Mind, that you should
 // not call Configure() again, because the created resources will not be invalidated.
 type OSClient struct {
-	networkV2      *gophercloud.ServiceClient
-	computeV2      *gophercloud.ServiceClient
-	loadBalancerV2 *gophercloud.ServiceClient
-	ini            []byte
-	timeout        time.Duration
+	networkV2   *gophercloud.ServiceClient
+	computeV2   *gophercloud.ServiceClient
+	ini         []byte
+	timeout     time.Duration
+	promCounter *prometheus.CounterVec
 }
 
 // Configures the OSClient with the data of an os auth ini file.
 // Used and required flags are auth-url, username, password, domain-name, tenant-name, region in the [global] directive.
 //
 // Example ini file:
+//
 //	[Global]
 //	auth-url="https://this-is-my-keystone-ep:5000/v3"
 //	domain-name="default"
@@ -34,9 +36,10 @@ type OSClient struct {
 //	username="itmyuser"
 //	password="suupersecret"
 //	region="eu01"
-func (r *OSClient) Configure(iniBytes []byte, timeout time.Duration) error {
+func (r *OSClient) Configure(iniBytes []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error {
 	r.ini = iniBytes
 	r.timeout = timeout
+	r.promCounter = promCounter
 	return nil
 }
 
@@ -45,7 +48,7 @@ func (r *OSClient) Configure(iniBytes []byte, timeout time.Duration) error {
 func (r *OSClient) FipClient(ctx context.Context) (FipClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +56,7 @@ func (r *OSClient) FipClient(ctx context.Context) (FipClient, error) {
 	}
 
 	client := &OSFloatingIPClient{}
-	return client.Configure(r.networkV2), nil
+	return client.Configure(r.networkV2, r.timeout, r.promCounter), nil
 }
 
 // Returns a configured OSPortClient as PortClient.
@@ -61,7 +64,7 @@ func (r *OSClient) FipClient(ctx context.Context) (FipClient, error) {
 func (r *OSClient) PortClient(ctx context.Context) (PortClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +72,7 @@ func (r *OSClient) PortClient(ctx context.Context) (PortClient, error) {
 	}
 
 	client := &OSPortClient{}
-	return client.Configure(r.networkV2), nil
+	return client.Configure(r.networkV2, r.timeout, r.promCounter), nil
 }
 
 // Returns a configured OSGroupClient as GroupClient.
@@ -77,7 +80,7 @@ func (r *OSClient) PortClient(ctx context.Context) (PortClient, error) {
 func (r *OSClient) GroupClient(ctx context.Context) (GroupClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +88,7 @@ func (r *OSClient) GroupClient(ctx context.Context) (GroupClient, error) {
 	}
 
 	client := &OSGroupClient{}
-	return client.Configure(r.networkV2), nil
+	return client.Configure(r.networkV2, r.timeout, r.promCounter), nil
 }
 
 // Returns a configured OSRuleClient as RuleClient.
@@ -93,7 +96,7 @@ func (r *OSClient) GroupClient(ctx context.Context) (GroupClient, error) {
 func (r *OSClient) RuleClient(ctx context.Context) (RuleClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +104,7 @@ func (r *OSClient) RuleClient(ctx context.Context) (RuleClient, error) {
 	}
 
 	client := &OSRuleClient{}
-	return client.Configure(r.networkV2), nil
+	return client.Configure(r.networkV2, r.timeout, r.promCounter), nil
 }
 
 // Returns a configured OSServerClient as ServerClient.
@@ -109,7 +112,7 @@ func (r *OSClient) RuleClient(ctx context.Context) (RuleClient, error) {
 func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 	if r.computeV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +120,7 @@ func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 	}
 
 	client := &OSServerClient{}
-	return client.Configure(r.computeV2), nil
+	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
 }
 
 // Returns a configured OSKeypairClient as KeyPairClient.
@@ -125,7 +128,7 @@ func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {
 	if r.computeV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(r.ini, ctx, r.timeout)
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -133,43 +136,11 @@ func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {
 	}
 
 	client := &OSKeypairClient{}
-	return client.Configure(r.computeV2), nil
+	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
 }
 
-// Returns a configured OSAttachInterfacesClient as AttachInterfaceClient.
-// Make sure that you invoked Configure() before this.
-func (r *OSClient) AttachInterfaceClient(ctx context.Context) (AttachInterfaceClient, error) {
-	if r.computeV2 == nil {
-		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(r.ini, ctx, r.timeout)
-		if err != nil {
-			return nil, err
-		}
-		r.computeV2 = sc
-	}
-
-	client := &OSAttachInterfacesClient{}
-	return client.Configure(r.computeV2), nil
-}
-
-// Returns a configured OSAttachInterfacesClient as AttachInterfaceClient.
-// Make sure that you invoked Configure() before this.
-func (r *OSClient) LoadBalancerClient(ctx context.Context) (LoadBalancerClient, error) {
-	if r.computeV2 == nil {
-		var sc *gophercloud.ServiceClient
-		sc, err := createLoadbalancerV2FromIni(r.ini, ctx, r.timeout)
-		if err != nil {
-			return nil, err
-		}
-		r.loadBalancerV2 = sc
-	}
-
-	client := &OSLoadBalancerClient{}
-	return client.Configure(r.loadBalancerV2), nil
-}
-
-func createNetworkV2FromIni(iniData []byte, ctx context.Context, timeout time.Duration) (*gophercloud.ServiceClient, error) {
-	provider, opts, err := getProvider(iniData, ctx, timeout)
+func createNetworkV2FromIni(ctx context.Context, iniData []byte, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+	provider, opts, err := getProvider(ctx, iniData, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -182,8 +153,8 @@ func createNetworkV2FromIni(iniData []byte, ctx context.Context, timeout time.Du
 	return client, nil
 }
 
-func createComputeV2FromIni(iniData []byte, ctx context.Context, timeout time.Duration) (*gophercloud.ServiceClient, error) {
-	provider, opts, err := getProvider(iniData, ctx, timeout)
+func createComputeV2FromIni(ctx context.Context, iniData []byte, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+	provider, opts, err := getProvider(ctx, iniData, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -196,22 +167,10 @@ func createComputeV2FromIni(iniData []byte, ctx context.Context, timeout time.Du
 	return client, nil
 }
 
-func createLoadbalancerV2FromIni(iniData []byte, ctx context.Context, timeout time.Duration) (*gophercloud.ServiceClient, error) {
-	provider, opts, err := getProvider(iniData, ctx, timeout)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := openstack.NewLoadBalancerV2(provider, *opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
 func getProvider(
-	iniData []byte, ctx context.Context, timeout time.Duration,
+	ctx context.Context,
+	iniData []byte,
+	timeout time.Duration,
 ) (*gophercloud.ProviderClient, *gophercloud.EndpointOpts, error) {
 	cfg, err := ini.Load(iniData)
 	if err != nil {

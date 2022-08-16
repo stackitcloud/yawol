@@ -114,7 +114,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	log.Printf("management server listening on %d\n", 18000)
 	go func() {
-		grpcServer.Serve(lis) // nolint: errcheck
+		_ = grpcServer.Serve(lis)
 	}()
 
 	// start envoy

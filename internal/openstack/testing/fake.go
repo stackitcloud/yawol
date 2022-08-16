@@ -15,6 +15,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 )
 
+//nolint:funlen // long test function
 func GetFakeClient() *MockClient {
 	client := MockClient{}
 
@@ -339,7 +340,7 @@ func getID(client *MockClient) string {
 func generateIP() string {
 	min, max := 0, 255
 	gen := func() string {
-		return strconv.Itoa(rand.Intn(max-min) + min)
+		return strconv.Itoa(rand.Intn(max-min) + min) //nolint:gosec // do not need to be secure
 	}
 
 	return strings.Join([]string{gen(), gen(), gen(), gen()}, ".")

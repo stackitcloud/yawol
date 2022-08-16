@@ -1,15 +1,16 @@
+# LBM for testing yawollet locally
 apiVersion: yawol.stackit.cloud/v1beta1
 kind: LoadBalancerMachine
 metadata:
   name: loadbalancermachine-sample
+  namespace: yawol-test
 spec:
-  infrastructure:
-    networkID: none
+  floatingID: none # is not used by yawollet can be set to anything
+  infrastructure: # is not used by yawollet can be set to anything
     authSecretRef:
       name: none
       namespace: none
-  floatingID: none
-  portID: none
+    networkID: none
   loadBalancerRef:
     name: loadbalancer-sample
-    namespace: default
+    namespace: yawol-test

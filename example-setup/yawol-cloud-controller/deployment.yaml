@@ -1,22 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: nginx2
-  name: nginx2
-  namespace: default
+  name: nginx
+  namespace: yawol-test
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nginx2
+      app: nginx
   template:
     metadata:
       labels:
-        app: nginx2
+        app: nginx
     spec:
       containers:
       - image: nginx:latest
-        imagePullPolicy: Always
         name: nginx
-      restartPolicy: Always

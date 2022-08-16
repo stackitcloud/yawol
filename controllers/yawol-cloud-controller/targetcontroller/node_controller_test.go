@@ -1,17 +1,17 @@
-package target_controller
+package targetcontroller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,7 +45,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if lb.Spec.Endpoints == nil || len(lb.Spec.Endpoints) == 0 {
 					return nil
 				}
-				return errors.New("endpoints found")
+				return helper.ErrEndpointsFound
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 
 		})
@@ -98,7 +98,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					lb.Spec.Endpoints[0].Addresses[0] == "10.10.10.10" {
 					return nil
 				}
-				return errors.New("endpoint values wrong")
+				return helper.ErrEndpointValuesWrong
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 			By("check event for node sync")
 			Eventually(func() error {
@@ -114,7 +114,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -167,7 +167,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					lb.Spec.Endpoints[1].Addresses[0] == "10.10.10.11" {
 					return nil
 				}
-				return errors.New("endpoint values wrong")
+				return helper.ErrSourceRangesAreWrong
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 		})
 		It("not ready Node and check", func() {
@@ -179,7 +179,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Endpoints == nil {
-					return errors.New("no endpoint in LB found")
+					return helper.ErrNoEndpointFound
 				}
 				nodeCount = len(lb.Spec.Endpoints)
 				return nil
@@ -233,7 +233,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return err
 				}
 				if lb.Spec.Endpoints == nil || len(lb.Spec.Endpoints) != nodeCount {
-					return errors.New("less or more than two endpoint in LB found")
+					return helper.ErrEndpointDoesNotMatchingNodeCount
 				}
 				return nil
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())

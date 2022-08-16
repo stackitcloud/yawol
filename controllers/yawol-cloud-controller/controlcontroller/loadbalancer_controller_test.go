@@ -1,19 +1,20 @@
-package control_controller
+package controlcontroller
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/target_controller"
-	. "github.com/onsi/ginkgo"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
@@ -49,13 +50,15 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Name:      "default--service-test1",
 					Namespace: "default",
 					Annotations: map[string]string{
-						target_controller.ServiceAnnotation: "default/service-test1",
+						targetcontroller.ServiceAnnotation: "default/service-test1",
 					},
 				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
-					Selector:       metav1.LabelSelector{},
-					Replicas:       1,
-					InternalLB:     false,
+					Selector: metav1.LabelSelector{},
+					Replicas: 1,
+					Options: yawolv1beta1.LoadBalancerOptions{
+						InternalLB: false,
+					},
 					Endpoints:      nil,
 					Ports:          nil,
 					Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{},
@@ -71,7 +74,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				PortName:          nil,
 				SecurityGroupID:   nil,
 				SecurityGroupName: nil,
-				NodeRoleRef:       nil,
 			}
 			Expect(k8sClient.Status().Update(ctx, &lb)).Should(Succeed())
 
@@ -88,7 +90,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 						return nil
 					}
 				}
-				return errors.New("no event found")
+				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
@@ -118,13 +120,15 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Name:      "default--service-test2",
 					Namespace: "default",
 					Annotations: map[string]string{
-						target_controller.ServiceAnnotation: "default/service-test2",
+						targetcontroller.ServiceAnnotation: "default/service-test2",
 					},
 				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
-					Selector:       metav1.LabelSelector{},
-					Replicas:       1,
-					InternalLB:     false,
+					Selector: metav1.LabelSelector{},
+					Replicas: 1,
+					Options: yawolv1beta1.LoadBalancerOptions{
+						InternalLB: false,
+					},
 					Endpoints:      nil,
 					Ports:          nil,
 					Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{},
@@ -140,7 +144,6 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				PortName:          nil,
 				SecurityGroupID:   nil,
 				SecurityGroupName: nil,
-				NodeRoleRef:       nil,
 			}
 			Expect(k8sClient.Status().Update(ctx, &lb)).Should(Succeed())
 
@@ -152,7 +155,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if len(service.Status.LoadBalancer.Ingress) == 0 {
 					return nil
 				}
-				return errors.New("ip is set in status but lb is not ready")
+				return helper.ErrIPSetInStatusLBNotReady
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 			lb.Status.ReadyReplicas = &replicas
@@ -167,7 +170,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					service.Status.LoadBalancer.Ingress[0].IP == externalIP {
 					return nil
 				}
-				return errors.New("ip not in status")
+				return helper.ErrIPNotInStatus
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 		})

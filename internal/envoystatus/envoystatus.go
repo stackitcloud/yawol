@@ -37,7 +37,7 @@ func (c *Config) GetCurrentSnapshotVersion() (
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close() //nolint:errcheck // don't use error in defer
 
 	// check if not 200 and return an empty snapshot version if status code is not 200
 	if resp.StatusCode != 200 {
@@ -73,7 +73,7 @@ func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, er
 	if err != nil {
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close() //nolint:errcheck // don't use error in defer
 
 	// check if not 200 and return an empty snapshot version if status code is not 200
 	if resp.StatusCode != 200 {

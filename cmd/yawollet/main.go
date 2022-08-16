@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -16,6 +15,8 @@ import (
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	controllers "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -80,12 +81,13 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// ensure required flags
 	if namespace == "" || loadbalancerName == "" || loadbalancerMachineName == "" {
-		setupLog.Error(errors.New("namespace, loadbalancer-name and loadbalancer-machine-name are required flags"), "unable to get all parameter")
+		setupLog.Error(helper.ErrYawolletRequiredFlags, "unable to get all parameters")
 		os.Exit(1)
 	}
 
-	// force requeue time between 5 and 50 (to be inside the heartbeattime of yawoll-controller)
+	// force requeue time between 5 and 50 (to be inside the heartbeat#time of yawol-controller)
 	if requeueTime < 5 {
 		requeueTime = 5
 	} else if requeueTime > 50 {
@@ -114,7 +116,7 @@ func main() {
 				}
 			}
 			if listenAddress == "" {
-				setupLog.Error(errors.New("listen-interface is set but no IP found"), "no IP found for "+listenInterface)
+				setupLog.Error(helper.ErrYawolletIPNotFound, "no IP found for "+listenInterface)
 				os.Exit(1)
 			}
 		} else {

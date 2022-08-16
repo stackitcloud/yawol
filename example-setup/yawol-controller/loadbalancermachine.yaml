@@ -1,44 +1,91 @@
+# Example LBM as created by yawol-controller from LBS (some fields were omitted)
 apiVersion: yawol.stackit.cloud/v1beta1
 kind: LoadBalancerMachine
 metadata:
-  name: lbm-1
-  namespace: default
+  labels:
+    lbm-template-hash: r2dv4eyyfs25gkj2
+    yawol.stackit.cloud/loadbalancer: yyjki53tcryt5pcw
+  name: yawol-test--loadbalancer-r2dv4eyyfs25gkj2-1ca82
+  namespace: yawol-test
+  ownerReferences:
+  - apiVersion: yawol.stackit.cloud/v1beta1
+    kind: LoadBalancerSet
+    name: yawol-test--loadbalancer-r2dv4eyyfs25gkj2
 spec:
-  floatingID: 64e0c0ba-794d-4487-9383-c4c98cb469ed
+  floatingID: FIP-ID
   infrastructure:
     authSecretRef:
       name: cloud-provider-config
-      namespace: default
+      namespace: yawol-test
     flavor:
-      flavor_id: osAyv1W3z2TU5D6h
-    floatingNetID: floating-net
+      flavor_id: FLAVOR-ID
+    floatingNetID: FLOATINGNET-ID
     image:
-      image_id: 61d27f7d-959e-406b-a7a8-e4e05c0ead00
-    networkID: a9d32d04-87f1-47ef-8da4-a8fda4353bc1
+      image_id: IMAGE-ID-FOR-YAWOLLET-IMAGE
+    networkID: NETWORK-ID
   loadBalancerRef:
-    name: lb1
-    namespace: default
-  portID: 72cf7a7e-0b35-4cbc-aa20-8c6c1be90713
+    name: yawol-test--loadbalancer
+    namespace: yawol-test
 status:
+  conditions:
+  - lastHeartbeatTime: "TIMESTAMP"
+    lastTransitionTime: "TIMESTAMP"
+    message: envoy snapshot version is up to date
+    reason: EnvoySnapshotUpToDate
+    status: "True"
+    type: EnvoyUpToDate
+  - lastHeartbeatTime: "TIMESTAMP"
+    lastTransitionTime: "TIMESTAMP"
+    message: envoy response with 200
+    reason: EnvoyReady
+    status: "True"
+    type: EnvoyReady
+  - lastHeartbeatTime: "TIMESTAMP"
+    lastTransitionTime: "TIMESTAMP"
+    message: envoy config is already up to date
+    reason: EnvoyConfigurationCreated
+    status: "True"
+    type: ConfigReady
+  creationTimestamp: "TIMESTAMP"
+  lastOpenstackReconcile: "TIMESTAMP"
   metrics:
-  - timestamp: "2021-03-16T08:27:40Z"
-    type: stealTime
-    value: "46145"
-  - timestamp: "2021-03-16T08:27:40Z"
-    type: memAvailable
-    value: "770516"
-  - timestamp: "2021-03-16T08:27:40Z"
-    type: memFree
-    value: "582880"
-  - timestamp: "2021-03-16T08:27:40Z"
-    type: memTotal
-    value: "1013408"
-  - timestamp: "2021-03-16T08:27:40Z"
-    type: load15
-    value: "2.00"
-  - timestamp: "2021-03-16T08:27:39Z"
-    type: load5
-    value: "1.00"
-  - timestamp: "2021-03-16T08:27:39Z"
+  - timestamp: "TIMESTAMP"
     type: load1
-    value: "0.15"
+    value: "0.01"
+  - timestamp: "TIMESTAMP"
+    type: load5
+    value: "0.02"
+  - timestamp: "TIMESTAMP"
+    type: load15
+    value: "0.00"
+  - timestamp: "TIMESTAMP"
+    type: memTotal
+    value: "1011716"
+  - timestamp: "TIMESTAMP"
+    type: memFree
+    value: "822020"
+  - timestamp: "TIMESTAMP"
+    type: memAvailable
+    value: "935952"
+  - timestamp: "TIMESTAMP"
+    type: stealTime
+    value: "11"
+  - timestamp: "TIMESTAMP"
+    type: TCP-80-upstream_cx_active
+    value: "0"
+  - timestamp: "TIMESTAMP"
+    type: TCP-80-upstream_cx_connect_fail
+    value: "0"
+  - timestamp: "TIMESTAMP"
+    type: TCP-80-upstream_cx_rx_bytes_total
+    value: "853"
+  - timestamp: "TIMESTAMP"
+    type: TCP-80-upstream_cx_total
+    value: "1"
+  - timestamp: "TIMESTAMP"
+    type: TCP-80-upstream_cx_tx_bytes_total
+    value: "41"
+  portID: PORT-ID
+  roleName: yawol-test/yawol-test--loadbalancer-r2dv4eyyfs25gkj2-1ca82
+  serverID: SERVER-ID
+  serviceAccountName: yawol-test/yawol-test--loadbalancer-r2dv4eyyfs25gkj2-1ca82

@@ -37,7 +37,7 @@ var (
 	cfg                    *rest.Config
 	k8sClient              client.Client
 	testEnv                *envtest.Environment
-	loadBalancerReconciler *LoadBalancerReconciler
+	loadBalancerReconciler *Reconciler
 	ctx                    context.Context
 	cancel                 context.CancelFunc
 )
@@ -103,7 +103,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
-	loadBalancerReconciler = &LoadBalancerReconciler{
+	loadBalancerReconciler = &Reconciler{
 		Client:           k8sManager.GetClient(),
 		Log:              ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
 		Scheme:           k8sManager.GetScheme(),

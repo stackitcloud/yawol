@@ -8,8 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack/testing"
+
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,11 +44,6 @@ var _ = Describe("LB Status update", func() {
 			PortName:          pointer.StringPtr("port-name"),
 			SecurityGroupID:   pointer.StringPtr("sec-group-id"),
 			SecurityGroupName: pointer.StringPtr("sec-group-name"),
-			NodeRoleRef: &rbac.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "Role",
-				Name:     "testlb",
-			},
 		}
 		lb = yawolv1beta1.LoadBalancer{
 			ObjectMeta: metav1.ObjectMeta{
@@ -62,11 +59,13 @@ var _ = Describe("LB Status update", func() {
 						"lala": "land",
 					},
 				},
-				Replicas:                 1,
-				InternalLB:               false,
-				Endpoints:                nil,
-				Ports:                    nil,
-				LoadBalancerSourceRanges: nil,
+				Replicas: 1,
+				Options: yawolv1beta1.LoadBalancerOptions{
+					InternalLB:               false,
+					LoadBalancerSourceRanges: nil,
+				},
+				Endpoints: nil,
+				Ports:     nil,
 				Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 					FloatingNetID: pointer.StringPtr("floatingnetid"),
 					NetworkID:     "networkid",
@@ -99,7 +98,7 @@ var _ = Describe("LB Status update", func() {
 				Namespace: lbNN.Namespace,
 			},
 		}
-		hash, err := hashData(lbmSpec)
+		hash, err := helper.HashData(lbmSpec)
 		Expect(err).Should(BeNil())
 		lbSet = yawolv1beta1.LoadBalancerSet{
 			ObjectMeta: metav1.ObjectMeta{
