@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -298,9 +299,10 @@ func GetFakeClient() *MockClient {
 			opts := optsBuilder.(*servers.CreateOpts)
 
 			server := &servers.Server{
-				ID:     getID(&client),
-				Name:   opts.Name,
-				Status: "ACTIVE",
+				ID:      getID(&client),
+				Name:    opts.Name,
+				Status:  "ACTIVE",
+				Created: time.Now(),
 			}
 
 			srvs := client.StoredValues["servers"]
