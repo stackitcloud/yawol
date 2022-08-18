@@ -546,31 +546,36 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		return false, helper.ErrPortIDEmpty
 	}
 
-	// server already created
-	if srv != nil {
-		return false, nil
+	if srv == nil {
+		srv, err = r.createServer(
+			ctx,
+			srvClient,
+			loadBalancerMachine,
+			loadbalancer,
+			"eu01-m",
+			userData,
+		)
+		if err != nil {
+			return false, kubernetes.SendErrorAsEvent(r.Recorder, err, loadbalancer)
+		}
 	}
 
-	srv, err = r.createServer(
-		ctx,
-		srvClient,
-		loadBalancerMachine,
-		loadbalancer,
-		"eu01-m",
-		userData,
-	)
-	if err != nil {
-		return false, kubernetes.SendErrorAsEvent(r.Recorder, err, loadbalancer)
-	}
-
+	// update serverID
 	if loadBalancerMachine.Status.ServerID == nil || srv.ID != *loadBalancerMachine.Status.ServerID {
 		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
-			CreationTimestamp: &metav1.Time{Time: time.Now()},
-			ServerID:          &srv.ID,
+			ServerID: &srv.ID,
 		}); err != nil {
 			return false, err
 		}
-		return true, nil
+	}
+
+	// update creationTimestamp
+	if loadBalancerMachine.Status.CreationTimestamp == nil || srv.Created != loadBalancerMachine.Status.CreationTimestamp.Time {
+		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+			CreationTimestamp: &metav1.Time{Time: srv.Created},
+		}); err != nil {
+			return false, err
+		}
 	}
 
 	return false, nil
