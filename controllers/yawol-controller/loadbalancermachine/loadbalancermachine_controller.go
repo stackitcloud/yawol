@@ -178,13 +178,8 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	var requeue bool
-	requeue, err = r.reconcileServer(ctx, osClient, loadbalancer, loadBalancerMachine, sa, vip)
-	if err != nil {
+	if err := r.reconcileServer(ctx, osClient, loadbalancer, loadBalancerMachine, sa, vip); err != nil {
 		return ctrl.Result{}, err
-	}
-	if requeue {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
 	if err := helper.PatchLBMStatus(ctx, r.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
@@ -505,19 +500,19 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	serviceAccount v1.ServiceAccount,
 	vip string,
-) (bool, error) {
+) error {
 	var srvClient os.ServerClient
 	var err error
 
 	srvClient, err = osClient.ServerClient(ctx)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// get kubeconfig which will be passed to VM user-data for yawollet access
 	var kubeconfig string
 	if kubeconfig, err = r.getKubeConfigForServiceAccount(ctx, loadBalancerMachine.Namespace, serviceAccount); err != nil {
-		return false, err
+		return err
 	}
 
 	// Generate user-data for yawollet VM
@@ -534,16 +529,16 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 
 	srv, err = openstackhelper.GetServerByName(ctx, srvClient, loadBalancerMachine.Name)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// delete server if it is in error state
 	if srv != nil && srv.Status == openstackhelper.ServerStatusError {
-		return false, r.Client.Delete(ctx, loadBalancerMachine)
+		return r.Client.Delete(ctx, loadBalancerMachine)
 	}
 
 	if loadBalancerMachine.Status.PortID == nil {
-		return false, helper.ErrPortIDEmpty
+		return helper.ErrPortIDEmpty
 	}
 
 	if srv == nil {
@@ -556,7 +551,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 			userData,
 		)
 		if err != nil {
-			return false, kubernetes.SendErrorAsEvent(r.Recorder, err, loadbalancer)
+			return kubernetes.SendErrorAsEvent(r.Recorder, err, loadbalancer)
 		}
 	}
 
@@ -565,7 +560,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
 			ServerID: &srv.ID,
 		}); err != nil {
-			return false, err
+			return err
 		}
 	}
 
@@ -574,11 +569,11 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
 			CreationTimestamp: &metav1.Time{Time: srv.Created},
 		}); err != nil {
-			return false, err
+			return err
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 func (r *LoadBalancerMachineReconciler) createServer(

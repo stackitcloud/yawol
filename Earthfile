@@ -153,7 +153,7 @@ all:
 ###########
 
 golangci-lint:
-    FROM golangci/golangci-lint:v1.46.2
+    FROM golangci/golangci-lint:v1.48.0
     SAVE ARTIFACT /usr/bin/golangci-lint
 
 envoy:
