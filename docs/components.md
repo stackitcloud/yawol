@@ -1,0 +1,54 @@
+# Components Overview
+
+yawol has three main components: The `yawol-cloud-controller`, the
+`yawol-controller`, and the `yawollet`.
+
+The figure below shows the interaction of these components on a high level. Read
+on for a detailled description. 
+
+![Overview](overview.drawio.svg)
+
+
+## The yawol-cloud-controller
+
+The yawol-cloud-controller watches the Kubernetes cluster and translates
+information back and forth between Kubernetes `Services`/`Nodes` and
+`LoadBalancers`. `LoadBalancers` are one of the CRDs used by yawol. Whenever the
+user creates a `Service` with `type: LoadBalancer`, the yawol-cloud-controller
+creates a corresponding `LoadBalancer` resource.
+
+Once the Load Balancer is ready (courtesy of yawol-controller, see below), the
+yawol-cloud-controller reports the external IP back to the `Service`.
+Additionally, the yawol-cloud-controller updates endpoint lists on the `Nodes`.
+
+## The yawol-controller
+
+The yawol-controller creates the needed OpenStack resources for any
+`LoadBalancer` object. It manages the following OpenStack resources:
+
+* Floating IP
+* Port
+* SecurityGroup
+* Instance (VM)
+
+The instance is equipped with a `cloud-init` for the following settings:
+
+* `kubeconfig` and settings for yawollet (see below)
+* Debug settings
+
+In order to manage these resources "the Kubernetes way", yawol adopts the
+`Deployment` -> `ReplicaSet` -> `Pod` cascade and does the following:
+
+`LoadBalancer` -> `LoadBalancerSet` -> `LoadBalancerMachine`
+
+Where the `LoadBalancer` resource holds information on Floating IP, Port and
+SecurityGroup; the `LoadBalancerSet` resource recreates `LoadBalancerMachines`
+whenever they get unhealthy; and the `LoadBalancerMachine` itself represents the
+OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
+
+## yawollet
+
+The yawollet is running on an OpenStack instance (like the `kubelet`) to
+configure Envoy with information from the correspnding `LoadBalancer` object in
+the Kubernetes cluster. To get this information, the yawollet uses a
+`kubeconfig` that is provided by the yawol-controller via `cloud-init`.
