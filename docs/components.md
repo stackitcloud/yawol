@@ -8,7 +8,6 @@ on for a detailled description.
 
 ![Overview](overview.drawio.svg)
 
-
 ## The yawol-cloud-controller
 
 The yawol-cloud-controller watches the Kubernetes cluster and translates
@@ -20,6 +19,22 @@ creates a corresponding `LoadBalancer` resource.
 Once the Load Balancer is ready (courtesy of yawol-controller, see below), the
 yawol-cloud-controller reports the external IP back to the `Service`.
 Additionally, the yawol-cloud-controller updates endpoint lists on the `Nodes`.
+
+### Controllers
+
+#### **control-controller**
+
+* Copies events from `LoadBalancer` to `Service`
+* Writes external IP from `LoadBalancer` to `Service` once the LB is running and
+  ready
+
+#### **target-controller**
+
+* `node-controller`
+  * Watches K8s nodes and updates `LoadBalancer` endpoint list
+* `service-controller`
+  * creates a `LoadBalancer` from `Service` and enriches it with additional
+	OpenStack data from environment variables
 
 ## The yawol-controller
 
@@ -45,6 +60,32 @@ Where the `LoadBalancer` resource holds information on Floating IP, Port and
 SecurityGroup; the `LoadBalancerSet` resource recreates `LoadBalancerMachines`
 whenever they get unhealthy; and the `LoadBalancerMachine` itself represents the
 OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
+
+### Controllers
+
+#### **loadbalancer-controller**
+
+* Create/Reconcile/Delete following OpenStack resources for a `LoadBalancer`:
+	* Floating IP
+	* Port
+	* SecurityGroup
+* Creates/Recreate/Delete `LoadBalancerSet` if `LoadBalancer` is created/updated
+
+#### **loadbalancerset-controller**
+
+* Creates/Deletes `LoadBalancerMachines` from `LoadbalancerSet`
+* Monitor `LoadBalancerMachine` status and recreates `LoadBalancerMachine` if node is unhealthy
+
+#### **loadbalancermachine-controller**
+
+* Create/Reconcile/Delete following OpenStack resources for a `LoadBalancerMachine`:
+	* Instance (VM)
+		* With cloud-init for the following settings
+			* Kubeconfig for yawollet
+			* Settings for yawollet
+			* Debug settings
+	* Connect instance to port
+* Export metrics from `LoadBalancerMachine`
 
 ## yawollet
 
