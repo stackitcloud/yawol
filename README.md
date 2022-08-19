@@ -103,7 +103,7 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
    yawolNetworkID: <network-id>
 
    # default value for flavor that yawol Load Balancer instances should use
-   # can be ovverriden by annotation
+   # can be overridden by annotation
    #
    # Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
    yawolFlavorID: <flavor-id>

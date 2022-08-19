@@ -99,7 +99,7 @@ yawolFloatingID: floating-id
 yawolNetworkID: foobar
 
 # default value for flavor that yawol Load Balancer instances should use
-# can be ovverriden by annotation
+# can be overridden by annotation
 #
 # Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
 yawolFlavorID: foobar

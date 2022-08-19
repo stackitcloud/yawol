@@ -4,7 +4,7 @@ yawol has three main components: The `yawol-cloud-controller`, the
 `yawol-controller`, and the `yawollet`.
 
 The figure below shows the interaction of these components on a high level. Read
-on for a detailled description. 
+on for a detailed description. 
 
 ![Overview](overview.drawio.svg)
 
@@ -90,6 +90,6 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 ## yawollet
 
 The yawollet is running on an OpenStack instance (like the `kubelet`) to
-configure Envoy with information from the correspnding `LoadBalancer` object in
+configure Envoy with information from the corresponding `LoadBalancer` object in
 the Kubernetes cluster. To get this information, the yawollet uses a
 `kubeconfig` that is provided by the yawol-controller via `cloud-init`.
