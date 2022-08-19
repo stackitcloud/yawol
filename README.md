@@ -41,9 +41,32 @@ get yawol going, however, you need a yawol OpenStack VM image first.
 
 ### yawol OpenStack Image
 
-We provide a [base image](https://github.com/stackitcloud/alpine-openstack-image) 
-that uses Alpine. We are currently working on `Makefile` targets to simplify the
-creation of the image.
+We use an openstack alpine base image which can be created with this
+[packer file](https://github.com/stackitcloud/alpine-openstack-image).
+
+Before running our `Makefile` targets, set the needed environment variables:
+
+```shell
+export OS_PROJECT_ID=<from your openstack environment>
+export OS_SOURCE_IMAGE=<from your openstack environment>
+export OS_NETWORK_ID=<from your openstack environment>
+export OS_FLOATING_NETWORK_ID=<from your openstack environment>
+export OS_SECURITY_GROUP_ID=<from your openstack environment>
+export SOURCE_VERSION=1 # provided by your CI
+export BUILD_NUMBER=1 # provided by your CI
+export YAWOLLET_VERSION=1 # provided by your CI
+export BUILD_TYPE=release # one of {release|feature}
+```
+
+Then validate and build the image:
+
+```shell
+make validate-image-yawollet
+```
+
+```shell
+make build-image-yawollet
+```
 
 ### Cluster Installation
 
@@ -133,6 +156,10 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
 After successful installation, you can request `Services` of
 `type: LoadBalancer` and yawol will take care of creating an instance,
 allocating an IP, and updating the `Service` resource once the setup is ready.
+
+You can also specify custom annotations on the `Service` to further control the
+behavior of yawol, see [our example service](example-setup/yawol-cloud-controller/service.yaml)
+for an overview.
 
 ## Development
 

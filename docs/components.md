@@ -22,6 +22,9 @@ Additionally, the yawol-cloud-controller updates endpoint lists on the `Nodes`.
 
 ### Controllers
 
+The yawol-cloud-controller is split in two controllers. This allows to save the
+`LoadBalancer` objects in another cluster than the `Services` are placed.
+
 #### **control-controller**
 
 * Copies events from `LoadBalancer` to `Service`
