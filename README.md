@@ -130,7 +130,7 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
 
    This will also install the CRDs needed by yawol.
 
-After successfull installation, you can request `Services` of
+After successful installation, you can request `Services` of
 `type: LoadBalancer` and yawol will take care of creating an instance,
 allocating an IP, and updating the `Service` resource once the setup is ready.
 
