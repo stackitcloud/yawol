@@ -9,6 +9,17 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 KUBERNETES_VERSION = 1.21.x
 ENVOY_VERSION = 1.21.1
 
+# variables for packer build
+OS_PROJECT_ID ?= UNSET
+OS_NETWORK_ID ?= UNSET
+OS_FLOATING_NETWORK_ID ?= UNSET
+OS_SECURITY_GROUP_ID ?= UNSET
+OS_SOURCE_IMAGE ?= UNSET
+YAWOLLET_VERSION ?= UNSET
+SOURCE_VERSION ?= local-build
+BUILD_TYPE ?= local
+BUILD_NUMBER ?= -1
+
 all: git-hooks ## Initializes all tools and files
 
 out:
@@ -24,6 +35,33 @@ container-yawol-cloud-controller: ## Builds docker image
 
 container-yawol-controller: ## Builds docker image
 	docker build --target yawol-controller -t $(CONTAINER_REGISTRY)/yawol-controller:$(CONTAINER_TAG) .
+
+validate-image-yawollet:
+	$(PACKER) fmt -check -diff image/alpine-yawol.pkr.hcl
+	$(PACKER) validate -syntax-only \
+		-var 'os_project_id=UNSET' \
+		-var 'source_image=UNSET' \
+		-var 'image_tags=[]' \
+		-var 'image_version=UNSET' \
+		-var 'network_id=UNSET' \
+		-var 'floating_network_id=UNSET' \
+		-var 'security_group_id=UNSET' \
+		-var 'image_visibility=private' \
+		image/alpine-yawol.pkr.hcl
+
+# Builds yawollet VM image
+build-image-yawollet: build get-envoy get-packer
+	$(PACKER) build \
+		-var 'source_image=$(OS_SOURCE_IMAGE)' \
+		-var 'image_version=$(YAWOLLET_VERSION)' \
+		-var 'image_tags=["git-$(SOURCE_VERSION)", "build-$(BUILD_TYPE)-$(BUILD_NUMBER)", "$(YAWOLLET_VERSION)"]' \
+		-var 'os_project_id=$(OS_PROJECT_ID)' \
+		-var 'network_id=$(OS_NETWORK_ID)' \
+		-var 'floating_network_id=$(OS_FLOATING_NETWORK_ID)' \
+		-var 'security_group_id=$(OS_SECURITY_GROUP_ID)' \
+		-var 'image_visibility=private' \
+		-on-error=ask \
+		image/alpine-yawol.pkr.hcl
 
 GO_BUILD = mkdir -pv "$(@)" && go build -ldflags="-w -s" -o "$(@)" ./...
 .PHONY: out/bin
@@ -57,6 +95,20 @@ $(ENVOY): ## Download envoy binary for linux
 	ln -sf "envoy-$(ENVOY_VERSION)" "bin/envoy"
 
 get-envoy: $(ENVOY) ## alias to install latest envoy version
+
+PACKER_VERSION = 1.8.3
+PACKER_SHA256 = "0587f7815ed79589cd9c2b754c82115731c8d0b8fd3b746fe40055d969facba5"
+PACKER_DIR=bin/packer
+PACKER_ZIP = "packer_$(PACKER_VERSION)_$(OS)_amd64.zip"
+PACKER = "$(PACKER_DIR)/packer"
+
+bin/packer/packer:
+	mkdir -p $(PACKER_DIR)
+	wget -P $(PACKER_DIR) "https://releases.hashicorp.com/packer/$(PACKER_VERSION)/$(PACKER_ZIP)"
+	echo "$(PACKER_SHA256) $(PACKER_DIR)/$(PACKER_ZIP)" | sha256sum --check
+	unzip $(PACKER_DIR)/$(PACKER_ZIP) -d $(PACKER_DIR)
+
+get-packer: bin/packer/packer
 
 lint: fmt $(GOLANGCI_LINT) download ## Lints all code with golangci-lint
 	@$(GOLANGCI_LINT) run

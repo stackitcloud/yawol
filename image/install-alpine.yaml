@@ -87,7 +87,7 @@
 
     - name: upload yawollet
       copy:
-        src: ../bin/manager
+        src: ../out/bin/yawollet
         dest: /usr/local/bin/yawollet
         owner: root
         group: root

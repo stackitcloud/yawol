@@ -1,223 +1,196 @@
-# yawol - yet another working OpenStack Load Balancer
+<p align="center">
+  <img src="docs/logo.svg" alt="yawol">
+</p>
 
-yawol is a Load Balancer solution for OpenStack, based on the Kubernetes controller pattern.\
-yawol uses kubebuilder as K8s controller framework and gophercloud for the OpenStack integration.\
-The actual load balancing is done by [Envoy](https://www.envoyproxy.io/).
+<p align="center">
+    <em>Do OpenStack Load Balancing the Kubernetes Way.</em>
+</p>
 
-## yawol-cloud-controller
+****
 
-yawol-cloud-controller is part of the yawol Load Balancer solution.\
-The yawol-cloud-controller translates information from Kubernetes `Services` and `Nodes` to yawol `LoadBalancers`.
+yawol (**y**et **a**nother **w**orking **O**penStack **L**oad Balancer) is a
+Load Balancer solution for OpenStack, based on the Kubernetes controller
+pattern.
 
-### Controllers
-#### **control-controller**
+****
 
-* Copies events from `LoadBalancer` to `Service`
-* Writes external IP from `LoadBalancer` to `Service` once the LB is running and ready
+## Key Features
 
-#### **target-controller**
+* Replacement for OpenStack Octavia Load Balancing
+* Provides Load Balancers for Kubernetes `Services`
+* Fully manages the instance lifecycle of Load Balancer VMs
+* Kubernetes-native approach: All the benefits of CRDs and controllers
 
-* node-controller
-	* Watches K8s nodes and updates `LoadBalancer` endpoint list
-* service-controller
-	* creates a `LoadBalancer` from `Service` and enriches it with additional OpenStack data from environment variables
+## How It Works
 
+yawol uses [kubebuilder](https://kubebuilder.io/) as the controller
+framework and [gophercloud](https://github.com/gophercloud/gophercloud) for the
+OpenStack integration. The actual load balancing is done by
+[Envoy](https://www.envoyproxy.io/).
 
-## yawol-controller
+For a more in-detail description, see [the components documentation](docs/components.md).
 
-yawol-controller is a part of the yawol Load Balancer solution.\
-The yawol-controller creates an OpenStack instance (incl. other needed resources) for a `LoadBalancer` object.
+## Installation
 
-### Controllers
-#### **loadbalancer-controller**
+> If this installation guide doesn't work for you, or if some instructions are
+> unclear, please open an issue!
 
-* Create/Reconcile/Delete following OpenStack resources for a `LoadBalancer`:
-	* Floating IP
-	* Port
-	* SecurityGroup
-* Creates/Recreate/Delete `LoadBalancerSet` if `LoadBalancer` is created/updated
+We provide a Helm chart for yawol in [charts/yawol-controller](charts/yawol-controller/)
+that you can use for a quick installation on a Kubernetes cluster. In order to
+get yawol going, however, you need a yawol OpenStack VM image first.
 
-#### **loadbalancerset-controller**
+### yawol OpenStack Image
 
-* Creates/Deletes `LoadBalancerMachines` from `LoadbalancerSet`
-* Monitor `LoadBalancerMachine` status and recreates `LoadBalancerMachine` if node is unhealthy
+We use an openstack alpine base image which can be created with this
+[packer file](https://github.com/stackitcloud/alpine-openstack-image).
 
-#### **loadbalancermachine-controller**
+Before running our `Makefile` targets, set the needed environment variables:
 
-* Create/Reconcile/Delete following OpenStack resources for a `LoadBalancerMachine`:
-	* Instance (VM)
-		* With cloud-init for the following settings
-			* Kubeconfig for yawollet
-			* Settings for yawollet
-			* Debug settings
-	* Connect instance to port
-* Export metrics from `LoadBalancerMachine`
-
-### Resource Flow
-
-`LoadBalancer` -> `LoadBalancerSet` -> `LoadBalancerMachine`
-
-
-## yawollet
-
-yawollet is a part of the yawol Load Balancer solution.\
-The yawollet is running on a VM to configure Envoy with information from a `LoadBalancer` object.
-
-### Debugging yawollet
-
-1. Upload ssh key-pair to OpenStack
-```bash
-openstack keypair create <name> # create new keypair
-# or
-openstack keypair create --public-key <path> <name> # add existing pubkey
+```shell
+export OS_PROJECT_ID=<from your openstack environment>
+export OS_SOURCE_IMAGE=<from your openstack environment>
+export OS_NETWORK_ID=<from your openstack environment>
+export OS_FLOATING_NETWORK_ID=<from your openstack environment>
+export OS_SECURITY_GROUP_ID=<from your openstack environment>
+export SOURCE_VERSION=1 # provided by your CI
+export BUILD_NUMBER=1 # provided by your CI
+export YAWOLLET_VERSION=1 # provided by your CI
+export BUILD_TYPE=release # one of {release|feature}
 ```
 
-2. Add the following to `LoadBalancer`
+Then validate and build the image:
+
+```shell
+make validate-image-yawollet
+```
+
+```shell
+make build-image-yawollet
+```
+
+### Cluster Installation
+
+The in-cluster components of yawol (`yawol-cloud-controller` and
+`yawol-controller`) can now be installed.
+
+1. Make sure that `VerticalPodAutoscaler` is installed in the cluster.
+2. Create a Kubernetes `Secret` that contains the contents of an `.openrc`
+   file underneath the `cloudprovider.conf` key. The `.openrc` credentials need
+   the correct permission to be able to create instances and request floating
+   IPs.
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: cloud-provider-config
+   type: Opaque
+   stringData:
+     cloudprovider.conf: |-
+       [Global]
+       auth-url="""
+       domain-name=""
+       tenant-name=""
+       project-name=""
+       username=""
+       password=""
+       region=""
+   ```
+
+   Assuming you saved the secret as `secret-cloud-provider-config.yaml`, apply
+   it with:
+
+   ```shell
+   kubectl apply -f secret-cloud-provider-config.yaml
+   ```
+
+3. Configure the [Helm values](charts/yawol-controller/values.yaml) according to
+   your OpenStack environment:
+   
+   **Values for the yawol-cloud-controller**
+
+   ```yaml
+   # the name of the Kubernetes secret we created in the previous step
+   #
+   # Placed in LoadBalancer.spec.infrastructure.authSecretRef.name
+   yawolOSSecretName: cloud-provider-config
+
+   # floating IP ID of the IP pool that yawol uses to request IPs
+   #
+   # Placed in LoadBalancer.spec.infrastructure.floatingNetID
+   yawolFloatingID: <floating-id>
+
+   # OpenStack network ID in which the Load Balancer is placed
+   #
+   # Placed in LoadBalancer.spec.infrastructure.networkID
+   yawolNetworkID: <network-id>
+
+   # default value for flavor that yawol Load Balancer instances should use
+   # can be overridden by annotation
+   #
+   # Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
+   yawolFlavorID: <flavor-id>
+
+   # default value for ID of the image used for the Load Balancer instance
+   # can be overridden by annotation
+   #
+   # Placed in LoadBalancer.spec.infrastructure.image.image_id
+   yawolImageID: <image-id>
+   ```
+
+   **Values for the yawol-controller**
+
+   ```yaml
+   # URL/IP of the Kubernetes API server that contains the LoadBalancer resources
+   yawolAPIHost: <api-host>
+   ```
+
+3. With the values correctly configured, you can now install the Helm chart.
+
+   ```shell
+   helm install yawol ./charts/yawol-controller
+   ```
+
+   This will also install the CRDs needed by yawol.
+
+After successful installation, you can request `Services` of
+`type: LoadBalancer` and yawol will take care of creating an instance,
+allocating an IP, and updating the `Service` resource once the setup is ready.
+
+You can also specify custom annotations on the `Service` to further control the
+behavior of yawol.
+
 ```yaml
-...
-spec:
-  debugSettings:
-    enabled: true
-    sshkeyName: <name>
-...
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+  annotations:
+    # override the default  OpenStack image ID
+    yawol.stackit.cloud/imageId: "OS-imageId"
+    # override the default OpenStack machine flavor
+    yawol.stackit.cloud/flavorId: "OS-flavorId"
+    # specify if this should be an internal LoadBalancer 
+    yawol.stackit.cloud/internalLB: "false"
+    # run yawollet in debug mode
+    yawol.stackit.cloud/debug: "false"
+    # reference the name of the SSH key provided to OpenStack for debugging 
+    yawol.stackit.cloud/debugsshkey: "OS-keyName"
+    # allows filtering services in cloud-controller
+    yawol.stackit.cloud/className: "test"
+    # specify the number of LoadBalancer machines to deploy (default 1)
+    yawol.stackit.cloud/replicas: "3"
+    # specify an existing floating IP for yawol to use
+    yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
+    # enable/disable envoy support for proxy protocol
+    yawol.stackit.cloud/tcpProxyProtocol: "false"
+    # defines proxy protocol ports (comma separated list)
+    yawol.stackit.cloud/tcpProxyProtocolPortsFilter: "80,443"
 ```
 
-3. SSH into the VM with username `alpine` and `externalIP` from `LoadBalancer`
+See [our example service](example-setup/yawol-cloud-controller/service.yaml)
+for an overview.
 
----
+## Development
 
-## Run tests
-
-```bash
-make test
-```
-
-## Dev-Setup (controllers running locally)
-> In the following instruction the yawollet is running within an OpenStack VM that's booted from an OpenStack yawollet image.\
-If you want to run/test the yawollet locally see [local-yawollet](#local-yawollet)  
-
-### Requirements
-
-Only `yawol-cloud-controller` (To test creation of `LoadBalancer` from `Service`)
-- Any kind of Kubernetes cluster (remote or local with `kind`)
-
-End to end (`yawol-cloud-controller` and `yawol-controller` locally) (`yawollet` on VM)
-- Access to a K8s cluster that is publicly reachable
-- Access to OpenStack project via OpenStack API
-
-### Preparation
-
-1. Generate and install yawol CRDs
-```bash
-make install
-```
-2. Edit environment variables in `run-ycc.sh`
-
-These variables are required for yawol-cloud-controller and later used by yawol-controller
-- For a local cluster the variables can be left as is
-
-- For a remote cluster set the variables to match the OpenStack resources
-  - `FLOATING_NET_ID` = ID of `floating-net`
-  - `NETWORK_ID` = ID of `shoot--<project>--<cluster>`
-  - To use different yawollet OpenStack image set `IMAGE_ID`.\
-    If testing in different OS project ensure that the image can be accessed by the project.\
-    Set `visibility` to not be `private`, e.g.
-    ```bash
-    openstack image set --shared <ID>
-    openstack image add project <image> <project>
-    ```
-
-3. Edit environment variables in `run-yc.sh`
-
-These variables are required for yawol-controller
-- `API_ENDPOINT` = `https://` + IP/URL for Kubernetes API server (used by yawollet)
-
-4. Create `cloud-provider-config` secret (required for yawol-controller and later used by yawollet)
-
-Use `example-setup/yawol-controller/provider-config.yaml` as template.\
-Namespace needs to match `CLUSTER_NAMESPACE` in `run-ycc.sh` and `run-yc.sh`
-
-### Run
-> The controllers are using the default kubeconfig ($KUBECONFIG, InCluster or $HOME/.kube/config).\
-To use a different kubeconfig see the instructions below. 
-
-1. Run `yawol-cloud-controller`
-
-*(To use a different kubeconfig set the `--control-kubeconfig` and `--target-kubeconfig` flags in `run-ycc.sh`)*
-```bash
-./run-ycc.sh
-```
-
-2. Run `yawol-controller`
-
-*(To use a different kubeconfig set the `--kubeconfig` flag in `./run-yc.sh`)*
-```bash
-./run-yc.sh
-```
-
-### Test 
-#### **yawol-cloud-controller**
-1. Create deployment and service
-
-```bash
-kubectl apply -f example-setup/yawol-cloud-controller
-# or
-kubectl create deployment --image nginx:latest nginx --replicas 1
-kubectl expose deployment --port 80 --type LoadBalancer nginx --name loadbalancer
-kubectl annotate service loadbalancer yawol.stackit.cloud/className=test # annotation needs to match the value of the `classname` flag from `run-ycc.sh`
-```
-2. Check if the yawol-cloud-controller created a new `LoadBalancer` object
-
-#### **yawol-controller**
-1. Reuse created `LoadBalancer` from yawol-cloud-controller\
-**or**\
-Create new one (use `example-setup/yawol-controller/loadbalancer.yaml` as template)
-
-3. Check if the yawol-controller (loadbalancer-controller) created OpenStack resources (FloatingIP, Port, SecurityGroup) for the `LoadBalancer`
-3. Check if the yawol-controller (loadbalancer-controller) created a `LoadbalancerSet` from the `LoadBalancer`
-4. Check if the yawol-controller (loadbalancerset-controller) created a `LoadbalancerMachines` from the `LoadbalancerSet`
-5. Check if the yawol-controller (loadbalancermachine-controller) created and configured an OpenStack VM for the `LoadbalancerMachine`
-6. Once the VM (`LBM`) is ready check if the yawol-cloud-controller wrote the IP to the `Service`
-
-## Local yawollet
-### Requirements
-
-- Any kind of Kubernetes cluster (remote or local with `kind`)
-- Envoy locally installed `make get-envoy` (downloaded from https://github.com/tetratelabs/archive-envoy/releases)
-
-### Preparation
-
-1. Generate and install yawol CRDs
-```bash
-make install
-```
-
-2. Create `LoadBalancer` and `LoadBalancerMachine` object (use examples in `example-setup/yawollet/`)
-```
-kubectl apply -f example-setup/yawollet/lb.yaml
-kubectl apply -f example-setup/yawollet/lbm.yaml
-```
-*This example adds an TCP LoadBalancer to forward port 8085 to localhost:9000 which is the Envoy admin port*
-
-### Run
-1. Start Envoy
-```bash
-envoy -c image/envoy-config.yaml
-```
-2. Run yawollet
-
-*(To use a different kubeconfig set the `--kubeconfig` flag)*
-```bash
-go run ./cmd/yawollet/main.go --namespace=yawol-test --loadbalancer-name=loadbalancer-sample --loadbalancer-machine-name=loadbalancermachine-sample
-```
-### Test
-
-UDP testing with netcat:
-1. `netcat -u -l -p 9001`
-2. Open a new terminal
-3. `netcat -u 127.0.0.1 8086`
-4. Type something, hit enter and check if the message gets displayed in the first terminal
-
-TCP testing using the admin port of Envoy:
-1. Open http://localhost:8085 in your browser
-2. You should get forwarded to the admin port of Envoy which is listening to localhost:9000
+See the [development guide](docs/development.md).

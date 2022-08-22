@@ -79,11 +79,36 @@ resources:
       memory: 512Mi
 
 #yawolClassName: debug
-yawolOSSecretName: foobar
-yawolFloatingID: foobar
-yawolNetworkID: foobar
-yawolFlavorID: foobar
-yawolImageID: foobar
-yawolAPIHost: foobar
 #openstackTimeout: 20s
 yawolDebug: false
+
+# the name of the Kubernetes secret that contains the .openrc file contents
+# with the correct permissions to connect to the OpenStack API
+#
+# Placed in LoadBalancer.spec.infrastructure.authSecretRef.name
+yawolOSSecretName: openstack-secret
+
+# floating IP ID of the IP pool that yawol uses to request IPs
+#
+# Placed in LoadBalancer.spec.infrastructure.floatingNetID
+yawolFloatingID: floating-id
+
+# OpenStack network ID in which the Load Balancer is placed
+#
+# Placed in LoadBalancer.spec.infrastructure.networkID
+yawolNetworkID: foobar
+
+# default value for flavor that yawol Load Balancer instances should use
+# can be overridden by annotation
+#
+# Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
+yawolFlavorID: foobar
+
+# default value for ID of the image used for the Load Balancer instance
+# can be overridden by annotation
+#
+# Placed in LoadBalancer.spec.infrastructure.image.image_id
+yawolImageID: foobar
+
+# URL/IP of the Kubernetes API server that contains the LoadBalancer resources
+yawolAPIHost: foobar
