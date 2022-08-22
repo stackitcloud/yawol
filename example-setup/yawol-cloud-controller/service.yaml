@@ -5,7 +5,7 @@ metadata:
   namespace: yawol-test
   annotations:
     # yawol.stackit.cloud/imageId: "OS-imageId"
-    # yawol.stackit.cloud/flavorId: "osAyv1W3z2TU5D6h" # m1.amphora
+    # yawol.stackit.cloud/flavorId: "flavorId"
     # yawol.stackit.cloud/internalLB: "false"
     # yawol.stackit.cloud/debug: "false"
     # yawol.stackit.cloud/debugsshkey: "OS-keyName"
@@ -13,8 +13,7 @@ metadata:
     # yawol.stackit.cloud/replicas: "3"
     # yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
     # yawol.stackit.cloud/tcpProxyProtocol: "false"
-    # yawol.stackit.cloud/tcpProxyProtocolPortsFilter ""
-    # yawol.stackit.cloud/existingFloatingIP: "OS-fipName"
+    # yawol.stackit.cloud/tcpProxyProtocolPortsFilter: ""
 spec:
   type: LoadBalancer
   selector:
