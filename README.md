@@ -158,7 +158,37 @@ After successful installation, you can request `Services` of
 allocating an IP, and updating the `Service` resource once the setup is ready.
 
 You can also specify custom annotations on the `Service` to further control the
-behavior of yawol, see [our example service](example-setup/yawol-cloud-controller/service.yaml)
+behavior of yawol.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+  annotations:
+    # override the default  OpenStack image ID
+    yawol.stackit.cloud/imageId: "OS-imageId"
+    # override the default OpenStack machine flavor
+    yawol.stackit.cloud/flavorId: "OS-flavorId"
+    # specify if this should be an internal LoadBalancer 
+    yawol.stackit.cloud/internalLB: "false"
+    # run yawollet in debug mode
+    yawol.stackit.cloud/debug: "false"
+    # reference the name of the SSH key provided to OpenStack for debugging 
+    yawol.stackit.cloud/debugsshkey: "OS-keyName"
+    # allows filtering services in cloud-controller
+    yawol.stackit.cloud/className: "test"
+    # specify the number of LoadBalancer machines to deploy (default 1)
+    yawol.stackit.cloud/replicas: "3"
+    # specify an existing floating IP for yawol to use
+    yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
+    # enable/disable envoy support for proxy protocol
+    yawol.stackit.cloud/tcpProxyProtocol: "false"
+    # defines proxy protocol ports (comma separated list)
+    yawol.stackit.cloud/tcpProxyProtocolPortsFilter: "80,443"
+```
+
+See [our example service](example-setup/yawol-cloud-controller/service.yaml)
 for an overview.
 
 ## Development
