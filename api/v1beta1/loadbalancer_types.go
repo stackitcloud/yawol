@@ -25,7 +25,7 @@ const (
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
 	ServiceTCPProxyProtocolPortsFilter = "yawol.stackit.cloud/tcpProxyProtocolPortsFilter"
-	// ServiceExistingFloatingIP enables usage of existing Floating IP (use ID of Floating IP to reference)
+	// ServiceExistingFloatingIP enables usage of existing Floating IP
 	ServiceExistingFloatingIP = "yawol.stackit.cloud/existingFloatingIP"
 )
 
