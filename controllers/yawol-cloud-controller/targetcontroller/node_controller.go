@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
 
 	"github.com/go-logr/logr"
 	coreV1 "k8s.io/api/core/v1"

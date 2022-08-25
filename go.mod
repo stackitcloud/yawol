@@ -1,4 +1,4 @@
-module dev.azure.com/schwarzit/schwarzit.ske/yawol.git
+module github.com/stackitcloud/yawol
 
 go 1.18
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
 	"github.com/go-logr/logr"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
+	"github.com/stackitcloud/yawol/internal/helper"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"

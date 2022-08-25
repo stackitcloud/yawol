@@ -16,9 +16,9 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack/testing"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/openstack"
+	"github.com/stackitcloud/yawol/internal/openstack/testing"
 	v1 "k8s.io/api/core/v1"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"

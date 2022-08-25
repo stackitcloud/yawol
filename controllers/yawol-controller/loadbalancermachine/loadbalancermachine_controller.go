@@ -9,11 +9,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
-	openstackhelper "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/openstack"
-	os "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
+	os "github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"

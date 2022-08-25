@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
 	"github.com/prometheus/client_golang/prometheus"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"

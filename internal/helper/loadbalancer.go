@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -23,7 +23,7 @@ import (
 	"context"
 	"time"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+	"github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

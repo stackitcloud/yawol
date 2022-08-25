@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 
 	"github.com/go-logr/logr"
 	coreV1 "k8s.io/api/core/v1"
