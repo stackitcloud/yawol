@@ -138,7 +138,7 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
    yawolImageID: <image-id>
 
    # default value for the AZ used for the Load Balancer instance
-   # can be overridden by annotation
+   # can be overridden by annotation. If not set, empty string is used.
    #
    # Placed in LoadBalancer.spec.infrastructure.availabilityZone
    yawolAvailabilityZone: <availability-zone>

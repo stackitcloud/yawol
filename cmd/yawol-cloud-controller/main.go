@@ -311,10 +311,8 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		panic("could not read one of envs [" + EnvImageID + "," + EnvImageName + "," + EnvImageSearch + "]")
 	}
 
-	var availabilityZone string
-	if availabilityZone = os.Getenv(EnvAvailabilityZone); availabilityZone == "" {
-		panic("could not read env " + EnvAvailabilityZone)
-	}
+	// availability zone is optional, default is empty string
+	availabilityZone := os.Getenv(EnvAvailabilityZone)
 
 	var internalLb bool
 	iLb := os.Getenv(EnvInternalLB)
