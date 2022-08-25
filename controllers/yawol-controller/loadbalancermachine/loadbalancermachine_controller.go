@@ -547,7 +547,6 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 			srvClient,
 			loadBalancerMachine,
 			loadbalancer,
-			"eu01-m",
 			userData,
 		)
 		if err != nil {
@@ -581,7 +580,6 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	serverClient os.ServerClient,
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	loadBalancer *yawolv1beta1.LoadBalancer,
-	availabilityZone string,
 	userdata string,
 ) (*servers.Server, error) {
 	r.Log.Info("Create server", "loadBalancerMachineName", loadBalancerMachine.Name)
@@ -611,7 +609,7 @@ func (r *LoadBalancerMachineReconciler) createServer(
 		ImageRef:         imageID,
 		SecurityGroups:   nil,
 		UserData:         []byte(userdata),
-		AvailabilityZone: availabilityZone,
+		AvailabilityZone: loadBalancerMachine.Spec.Infrastructure.AvailabilityZone,
 		Networks:         []servers.Network{{UUID: loadBalancerMachine.Spec.Infrastructure.NetworkID, Port: *loadBalancerMachine.Status.PortID}},
 		Metadata:         nil,
 	}

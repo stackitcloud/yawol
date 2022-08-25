@@ -273,7 +273,7 @@ func (r *Reconciler) reconcileFIP(
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.FloatingName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			FloatingName: pointer.StringPtr(req.NamespacedName.String()),
+			FloatingName: pointer.String(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -389,7 +389,7 @@ func (r *Reconciler) reconcilePort(
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.PortName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			PortName: pointer.StringPtr(req.NamespacedName.String()),
+			PortName: pointer.String(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -524,7 +524,7 @@ func (r *Reconciler) reconcileSecGroup(
 	// Patch SecurityGroup Name, so we can reference it later
 	if lb.Status.SecurityGroupName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupName: pointer.StringPtr(req.NamespacedName.String()),
+			SecurityGroupName: pointer.String(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}

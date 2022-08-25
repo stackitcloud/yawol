@@ -37,13 +37,13 @@ var _ = Describe("LB Status update", func() {
 		lbStatus = yawolv1beta1.LoadBalancerStatus{
 			ReadyReplicas:     &one,
 			Replicas:          &one,
-			ExternalIP:        pointer.StringPtr("8.0.0.1"),
-			FloatingID:        pointer.StringPtr("floating-id"),
-			FloatingName:      pointer.StringPtr("floating-name"),
-			PortID:            pointer.StringPtr("port-id"),
-			PortName:          pointer.StringPtr("port-name"),
-			SecurityGroupID:   pointer.StringPtr("sec-group-id"),
-			SecurityGroupName: pointer.StringPtr("sec-group-name"),
+			ExternalIP:        pointer.String("8.0.0.1"),
+			FloatingID:        pointer.String("floating-id"),
+			FloatingName:      pointer.String("floating-name"),
+			PortID:            pointer.String("port-id"),
+			PortName:          pointer.String("port-name"),
+			SecurityGroupID:   pointer.String("sec-group-id"),
+			SecurityGroupName: pointer.String("sec-group-name"),
 		}
 		lb = yawolv1beta1.LoadBalancer{
 			ObjectMeta: metav1.ObjectMeta{
@@ -67,13 +67,13 @@ var _ = Describe("LB Status update", func() {
 				Endpoints: nil,
 				Ports:     nil,
 				Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-					FloatingNetID: pointer.StringPtr("floatingnetid"),
+					FloatingNetID: pointer.String("floatingnetid"),
 					NetworkID:     "networkid",
 					Flavor: &yawolv1beta1.OpenstackFlavorRef{
-						FlavorID: pointer.StringPtr("mycool-openstack-flavor-id"),
+						FlavorID: pointer.String("mycool-openstack-flavor-id"),
 					},
 					Image: &yawolv1beta1.OpenstackImageRef{
-						ImageID: pointer.StringPtr("mycool-openstack-image-id"),
+						ImageID: pointer.String("mycool-openstack-image-id"),
 					},
 					AuthSecretRef: v1.SecretReference{
 						Name:      "testsecret",

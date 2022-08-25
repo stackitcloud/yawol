@@ -136,6 +136,12 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
    #
    # Placed in LoadBalancer.spec.infrastructure.image.image_id
    yawolImageID: <image-id>
+
+   # default value for the AZ used for the Load Balancer instance
+   # can be overridden by annotation. If not set, empty string is used.
+   #
+   # Placed in LoadBalancer.spec.infrastructure.availabilityZone
+   yawolAvailabilityZone: <availability-zone>
    ```
 
    **Values for the yawol-controller**
@@ -170,6 +176,8 @@ metadata:
     yawol.stackit.cloud/imageId: "OS-imageId"
     # override the default OpenStack machine flavor
     yawol.stackit.cloud/flavorId: "OS-flavorId"
+    # override the default OpenStack availability zone
+    yawol.stackit.cloud/availabilityZone: "OS-AZ"
     # specify if this should be an internal LoadBalancer 
     yawol.stackit.cloud/internalLB: "false"
     # run yawollet in debug mode

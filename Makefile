@@ -3,7 +3,7 @@ PWD = $(shell pwd)
 
 # constants
 GOLANGCI_VERSION = 1.48.0
-CONTAINER_REGISTRY = reg.infra.ske.eu01.stackit.cloud/ske
+CONTAINER_REGISTRY = ghcr.io/stackitcloud/yawol/
 CONTAINER_TAG = dev
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 KUBERNETES_VERSION = 1.21.x

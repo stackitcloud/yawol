@@ -1,6 +1,6 @@
 VERSION 0.6
 FROM golang:1.18
-ARG DOCKER_REPO=reg.infra.ske.eu01.stackit.cloud/ske/
+ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
 

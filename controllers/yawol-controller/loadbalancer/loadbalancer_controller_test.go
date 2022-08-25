@@ -212,7 +212,7 @@ var _ = Describe("loadbalancer controller", func() {
 			By("changing flavorid")
 			updateLB(lbNN, func(act *LB) {
 				act.Spec.Infrastructure.Flavor = &yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.StringPtr("somenewid"),
+					FlavorID: pointer.String("somenewid"),
 				}
 			})
 
@@ -534,13 +534,13 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 			Endpoints: nil,
 			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.StringPtr("floatingnet-id"),
+				FloatingNetID: pointer.String("floatingnet-id"),
 				NetworkID:     "network-id",
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.StringPtr("flavor-id"),
+					FlavorID: pointer.String("flavor-id"),
 				},
 				Image: &yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.StringPtr("image-id"),
+					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,

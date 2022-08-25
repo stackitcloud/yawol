@@ -70,6 +70,10 @@ spec:
         - name: IMAGE_ID
           value: {{ .Values.yawolImageID }}
         {{- end }}
+        {{- if .Values.yawolAvailabilityZone }}
+        - name: AVAILABILITY_ZONE
+          value: {{ .Values.yawolAvailabilityZone }}
+        {{- end }}
         {{- if .Values.resources.yawolCloudController }}
         resources:
 {{ toYaml .Values.resources.yawolCloudController | indent 10 }}
