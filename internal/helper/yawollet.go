@@ -562,7 +562,7 @@ func WriteLBMMetrics(
 			Time:  v1.Now(),
 		}, {
 			Type:  string(MetricNumCPU),
-			Value: string(numCPU),
+			Value: strconv.Itoa(numCPU),
 			Time:  v1.Now(),
 		}, {
 			Type:  string(MetricMemTotal),
