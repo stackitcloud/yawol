@@ -20,10 +20,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/envoystatus"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/hostmetrics"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/envoystatus"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	"github.com/stackitcloud/yawol/internal/hostmetrics"
 
 	envoycluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"

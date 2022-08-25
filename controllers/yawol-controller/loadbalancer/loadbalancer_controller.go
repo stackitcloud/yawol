@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/kubernetes"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+	"github.com/stackitcloud/yawol/internal/helper"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	"github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -17,8 +17,8 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/prometheus/client_golang/prometheus"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	openstackhelper "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper/openstack"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"

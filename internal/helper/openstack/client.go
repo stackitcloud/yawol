@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
+	"github.com/stackitcloud/yawol/internal/openstack"
 
 	coreV1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"

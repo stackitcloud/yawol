@@ -3,13 +3,13 @@ package loadbalancer
 import (
 	"context"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	"github.com/stackitcloud/yawol/internal/helper"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	"github.com/go-logr/logr"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"

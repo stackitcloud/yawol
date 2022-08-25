@@ -3,8 +3,8 @@ package openstack
 import (
 	"context"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/stackitcloud/yawol/internal/openstack"
 )
 
 const ServerStatusError = "ERROR"

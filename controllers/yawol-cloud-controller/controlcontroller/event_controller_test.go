@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawol-cloud-controller/targetcontroller"
+	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

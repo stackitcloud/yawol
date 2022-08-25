@@ -3,9 +3,9 @@ package openstack
 import (
 	"context"
 
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/openstack"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
+	"github.com/stackitcloud/yawol/internal/openstack"
 )
 
 // CreateSecGroup creates a SecGroup and returns it.

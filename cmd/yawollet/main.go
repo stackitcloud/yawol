@@ -13,9 +13,9 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
-	controllers "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/controllers/yawollet"
-	"dev.azure.com/schwarzit/schwarzit.ske/yawol.git/internal/helper"
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	controllers "github.com/stackitcloud/yawol/controllers/yawollet"
+	"github.com/stackitcloud/yawol/internal/helper"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
