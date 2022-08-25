@@ -68,6 +68,7 @@ const (
 	MetricLoad1        LoadbalancerMetric = "load1"
 	MetricLoad5        LoadbalancerMetric = "load5"
 	MetricLoad15       LoadbalancerMetric = "load15"
+	MetricNumCPU       LoadbalancerMetric = "numCPU"
 	MetricMemTotal     LoadbalancerMetric = "memTotal"
 	MetricMemFree      LoadbalancerMetric = "memFree"
 	MetricMemAvailable LoadbalancerMetric = "memAvailable"
@@ -544,6 +545,8 @@ func WriteLBMMetrics(
 		return err
 	}
 
+	numCPU := hostmetrics.GetCPUNum()
+
 	metrics := []yawolv1beta1.LoadBalancerMachineMetric{
 		{
 			Type:  string(MetricLoad1),
@@ -556,6 +559,10 @@ func WriteLBMMetrics(
 		}, {
 			Type:  string(MetricLoad15),
 			Value: load15,
+			Time:  v1.Now(),
+		}, {
+			Type:  string(MetricNumCPU),
+			Value: string(numCPU),
 			Time:  v1.Now(),
 		}, {
 			Type:  string(MetricMemTotal),
