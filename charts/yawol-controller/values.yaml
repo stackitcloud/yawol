@@ -39,13 +39,13 @@ yawolCloudController:
       name: kubeconfig
       readOnly: true
   image:
-    repository: reg.infra.ske.eu01.stackit.cloud/ske/yawol-cloud-controller
+    repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
     tag: 0.7.2
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
-    repository: reg.infra.ske.eu01.stackit.cloud/ske/yawol-controller
+    repository: ghcr.io/stackitcloud/yawol/yawol-controller
     tag: 0.7.2
 
 resources:
