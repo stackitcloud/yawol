@@ -35,6 +35,10 @@ func GetMergedInfrastructureDetails(defaults InfrastructureDefaults, svc *v1.Ser
 		defaults.ImageRef = svcConfig.ImageRef
 	}
 
+	if svcConfig.AvailabilityZone != nil {
+		defaults.AvailabilityZone = svcConfig.AvailabilityZone
+	}
+
 	if svcConfig.FlavorRef != nil {
 		defaults.FlavorRef = svcConfig.FlavorRef
 	}
