@@ -81,6 +81,7 @@ var _ = BeforeSuite(func(done Done) {
 	authSecretName := "secret"
 	floatingNetworkID := "floatingNetID"
 	networkID := "networkID"
+	availabilityZone := "eu01"
 	namespace := "default"
 	flavorID := "flavorID"
 	flavorRef := yawolv1beta1.OpenstackFlavorRef{FlavorID: &flavorID}
@@ -92,6 +93,7 @@ var _ = BeforeSuite(func(done Done) {
 		AuthSecretName:    &authSecretName,
 		FloatingNetworkID: &floatingNetworkID,
 		NetworkID:         &networkID,
+		AvailabilityZone:  &availabilityZone,
 		Namespace:         &namespace,
 		FlavorRef:         &flavorRef,
 		ImageRef:          &imageRef,

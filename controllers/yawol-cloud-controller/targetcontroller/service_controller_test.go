@@ -223,6 +223,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				`"infrastructure":{` +
 				`"floatingNetID":"CHANGED",` +
 				`"networkID":"CHANGED",` +
+				`"availabilityZone":"CHANGED",` +
 				`"flavor":{"flavor_id":"CHANGED"},` +
 				`"image":{"image_id":"CHANGED"},` +
 				`"authSecretRef":{}}}}`)
