@@ -609,7 +609,7 @@ func (r *LoadBalancerMachineReconciler) createServer(
 		ImageRef:         imageID,
 		SecurityGroups:   nil,
 		UserData:         []byte(userdata),
-		AvailabilityZone: loadBalancer.Spec.Infrastructure.AvailabilityZone,
+		AvailabilityZone: loadBalancerMachine.Spec.Infrastructure.AvailabilityZone,
 		Networks:         []servers.Network{{UUID: loadBalancerMachine.Spec.Infrastructure.NetworkID, Port: *loadBalancerMachine.Status.PortID}},
 		Metadata:         nil,
 	}
