@@ -280,15 +280,15 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	var flavorID *string
-	if flavorID = pointer.StringPtr(os.Getenv(EnvFlavorID)); *flavorID == "" {
+	if flavorID = pointer.String(os.Getenv(EnvFlavorID)); *flavorID == "" {
 		flavorID = nil
 	}
 	var flavorName *string
-	if flavorName = pointer.StringPtr(os.Getenv(EnvFlavorName)); *flavorName == "" {
+	if flavorName = pointer.String(os.Getenv(EnvFlavorName)); *flavorName == "" {
 		flavorName = nil
 	}
 	var flavorSearch *string
-	if flavorSearch = pointer.StringPtr(os.Getenv(EnvFlavorSearch)); *flavorSearch == "" {
+	if flavorSearch = pointer.String(os.Getenv(EnvFlavorSearch)); *flavorSearch == "" {
 		flavorSearch = nil
 	}
 	if flavorID == nil && flavorName == nil && flavorSearch == nil {
@@ -296,15 +296,15 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	var imageID *string
-	if imageID = pointer.StringPtr(os.Getenv(EnvImageID)); *imageID == "" {
+	if imageID = pointer.String(os.Getenv(EnvImageID)); *imageID == "" {
 		imageID = nil
 	}
 	var imageName *string
-	if imageName = pointer.StringPtr(os.Getenv(EnvImageName)); *imageName == "" {
+	if imageName = pointer.String(os.Getenv(EnvImageName)); *imageName == "" {
 		imageName = nil
 	}
 	var imageSearch *string
-	if imageSearch = pointer.StringPtr(os.Getenv(EnvImageSearch)); *imageSearch == "" {
+	if imageSearch = pointer.String(os.Getenv(EnvImageSearch)); *imageSearch == "" {
 		imageSearch = nil
 	}
 	if imageID == nil && imageName == nil && imageSearch == nil {
@@ -330,10 +330,10 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	return targetcontroller.InfrastructureDefaults{
-		AuthSecretName:    pointer.StringPtr(authSecretName),
-		FloatingNetworkID: pointer.StringPtr(floatingNetworkID),
-		NetworkID:         pointer.StringPtr(networkID),
-		Namespace:         pointer.StringPtr(clusterNamespace),
+		AuthSecretName:    pointer.String(authSecretName),
+		FloatingNetworkID: pointer.String(floatingNetworkID),
+		NetworkID:         pointer.String(networkID),
+		Namespace:         pointer.String(clusterNamespace),
 		FlavorRef: &yawolv1beta1.OpenstackFlavorRef{
 			FlavorID:     flavorID,
 			FlavorName:   flavorName,
@@ -344,7 +344,7 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 			ImageName:   imageName,
 			ImageSearch: imageSearch,
 		},
-		AvailabilityZone: pointer.StringPtr(availabilityZone),
+		AvailabilityZone: pointer.String(availabilityZone),
 		InternalLB:       pointer.BoolPtr(internalLb),
 	}
 }

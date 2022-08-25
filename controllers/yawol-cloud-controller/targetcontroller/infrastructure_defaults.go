@@ -78,7 +78,7 @@ func GetInfrastructureDetailsFromService(svc *v1.Service) InfrastructureDefaults
 	}
 	if svc.Annotations[yawolv1beta1.ServiceAvailabilityZone] != "" {
 		az := svc.Annotations[yawolv1beta1.ServiceAvailabilityZone]
-		serviceInfraDefault.AvailabilityZone = pointer.StringPtr(az)
+		serviceInfraDefault.AvailabilityZone = pointer.String(az)
 	}
 	if svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer] != "" {
 		internalLB, err := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer])

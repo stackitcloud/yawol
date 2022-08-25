@@ -261,9 +261,9 @@ func getMockLB() *LB {
 			Namespace: namespace,
 		},
 		Status: yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupID:   pointer.StringPtr("secgroup-id"),
-			SecurityGroupName: pointer.StringPtr("secgroup-name"),
-			PortID:            pointer.StringPtr("0"),
+			SecurityGroupID:   pointer.String("secgroup-id"),
+			SecurityGroupName: pointer.String("secgroup-name"),
+			PortID:            pointer.String("0"),
 		},
 		Spec: yawolv1beta1.LoadBalancerSpec{
 			Selector: metav1.LabelSelector{
@@ -279,13 +279,13 @@ func getMockLB() *LB {
 			Endpoints: nil,
 			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.StringPtr("floatingnet-id"),
+				FloatingNetID: pointer.String("floatingnet-id"),
 				NetworkID:     "network-id",
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.StringPtr("flavor-id"),
+					FlavorID: pointer.String("flavor-id"),
 				},
 				Image: &yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.StringPtr("image-id"),
+					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,
@@ -310,13 +310,13 @@ func getMockLBM(lb *LB) *LBM {
 			},
 			FloatingID: "floating-id",
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.StringPtr("floatingnet-id"),
+				FloatingNetID: pointer.String("floatingnet-id"),
 				NetworkID:     "network-id",
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.StringPtr("flavor-id"),
+					FlavorID: pointer.String("flavor-id"),
 				},
 				Image: &yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.StringPtr("image-id"),
+					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,
