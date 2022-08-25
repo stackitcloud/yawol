@@ -110,5 +110,11 @@ yawolFlavorID: foobar
 # Placed in LoadBalancer.spec.infrastructure.image.image_id
 yawolImageID: foobar
 
+# default value for the AZ used for the Load Balancer instance
+# can be overridden by annotation
+#
+# Placed in LoadBalancer.spec.infrastructure.availabilityZone
+yawolAvailabilityZone: foobar
+
 # URL/IP of the Kubernetes API server that contains the LoadBalancer resources
 yawolAPIHost: foobar

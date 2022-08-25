@@ -50,6 +50,8 @@ const (
 	EnvImageID     = "IMAGE_ID"
 	EnvImageName   = "IMAGE_NAME"
 	EnvImageSearch = "IMAGE_SEARCH"
+	// Default Availability Zone must be set
+	EnvAvailabilityZone = "AVAILABILITY_ZONE"
 	// Set internal Flag to Loadbalancer CR true/false
 	EnvInternalLB = "INTERNAL_LB"
 )
@@ -309,6 +311,11 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		panic("could not read one of envs [" + EnvImageID + "," + EnvImageName + "," + EnvImageSearch + "]")
 	}
 
+	var availabilityZone string
+	if availabilityZone = os.Getenv(EnvAvailabilityZone); availabilityZone == "" {
+		panic("could not read env " + EnvAvailabilityZone)
+	}
+
 	var internalLb bool
 	iLb := os.Getenv(EnvInternalLB)
 	if iLb == "" {
@@ -337,6 +344,7 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 			ImageName:   imageName,
 			ImageSearch: imageSearch,
 		},
-		InternalLB: pointer.BoolPtr(internalLb),
+		AvailabilityZone: pointer.StringPtr(availabilityZone),
+		InternalLB:       pointer.BoolPtr(internalLb),
 	}
 }

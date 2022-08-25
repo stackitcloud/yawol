@@ -5,6 +5,7 @@ import (
 
 	yawolv1beta1 "dev.azure.com/schwarzit/schwarzit.ske/yawol.git/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 type InfrastructureDefaults struct {
@@ -14,6 +15,7 @@ type InfrastructureDefaults struct {
 	Namespace         *string
 	FlavorRef         *yawolv1beta1.OpenstackFlavorRef
 	ImageRef          *yawolv1beta1.OpenstackImageRef
+	AvailabilityZone  *string
 	InternalLB        *bool
 }
 
@@ -59,6 +61,7 @@ func GetInfrastructureDetailsFromService(svc *v1.Service) InfrastructureDefaults
 		NetworkID:         nil,
 		FlavorRef:         nil,
 		ImageRef:          nil,
+		AvailabilityZone:  nil,
 		InternalLB:        nil,
 	}
 	if svc.Annotations[yawolv1beta1.ServiceImageID] != "" {
@@ -72,6 +75,10 @@ func GetInfrastructureDetailsFromService(svc *v1.Service) InfrastructureDefaults
 		serviceInfraDefault.FlavorRef = &yawolv1beta1.OpenstackFlavorRef{
 			FlavorID: &flavorID,
 		}
+	}
+	if svc.Annotations[yawolv1beta1.ServiceAvailabilityZone] != "" {
+		az := svc.Annotations[yawolv1beta1.ServiceAvailabilityZone]
+		serviceInfraDefault.AvailabilityZone = pointer.StringPtr(az)
 	}
 	if svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer] != "" {
 		internalLB, err := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer])

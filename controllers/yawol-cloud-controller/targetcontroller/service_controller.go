@@ -202,10 +202,11 @@ func (r *ServiceReconciler) createLoadBalancer(
 			},
 			ExistingFloatingIP: helper.GetExistingFloatingIPFromAnnotation(svc),
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: infraConfig.FloatingNetworkID,
-				NetworkID:     *infraConfig.NetworkID,
-				Flavor:        infraConfig.FlavorRef,
-				Image:         infraConfig.ImageRef,
+				FloatingNetID:    infraConfig.FloatingNetworkID,
+				NetworkID:        *infraConfig.NetworkID,
+				Flavor:           infraConfig.FlavorRef,
+				Image:            infraConfig.ImageRef,
+				AvailabilityZone: *infraConfig.AvailabilityZone,
 				AuthSecretRef: coreV1.SecretReference{
 					Name:      *infraConfig.AuthSecretName,
 					Namespace: *infraConfig.Namespace,
@@ -225,10 +226,11 @@ func (r *ServiceReconciler) reconcileInfrastructure(
 	infraConfig InfrastructureDefaults,
 ) error {
 	newInfra := yawolv1beta1.LoadBalancerInfrastructure{
-		FloatingNetID: infraConfig.FloatingNetworkID,
-		NetworkID:     *infraConfig.NetworkID,
-		Flavor:        infraConfig.FlavorRef,
-		Image:         infraConfig.ImageRef,
+		FloatingNetID:    infraConfig.FloatingNetworkID,
+		NetworkID:        *infraConfig.NetworkID,
+		Flavor:           infraConfig.FlavorRef,
+		Image:            infraConfig.ImageRef,
+		AvailabilityZone: *infraConfig.AvailabilityZone,
 		AuthSecretRef: coreV1.SecretReference{
 			Name:      *infraConfig.AuthSecretName,
 			Namespace: *infraConfig.Namespace,

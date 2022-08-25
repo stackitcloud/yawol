@@ -102,6 +102,10 @@ spec:
                           secret name must be unique.
                         type: string
                     type: object
+                  availabilityZone:
+                    description: AvailabilityZone defines the openstack availability
+                      zone for the LoadBalancer.
+                    type: string
                   flavor:
                     description: Flavor defines openstack flavor for the LoadBalancer.
                       Uses a default if not defined.
@@ -150,6 +154,7 @@ spec:
                     type: string
                 required:
                 - authSecretRef
+                - availabilityZone
                 - networkID
                 type: object
               internalLB:

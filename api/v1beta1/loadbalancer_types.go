@@ -11,6 +11,8 @@ const (
 	ServiceImageID = "yawol.stackit.cloud/imageId"
 	// ServiceFlavorID overwrite default flavorID
 	ServiceFlavorID = "yawol.stackit.cloud/flavorId"
+	// AvailabilityZoneID set availability zone for specific service
+	ServiceAvailabilityZone = "yawol.stackit.cloud/availabilityZone"
 	// ServiceInternalLoadbalancer sets the internal flag in LB objects
 	ServiceInternalLoadbalancer = "yawol.stackit.cloud/internalLB"
 	// ServiceDebug set in lb object an debug setting
@@ -141,6 +143,8 @@ type LoadBalancerInfrastructure struct {
 	// Image defines openstack image for the LoadBalancer. Uses a default if not defined.
 	// +optional
 	Image *OpenstackImageRef `json:"image,omitempty"`
+	// AvailabilityZone defines the openstack availability zone for the LoadBalancer.
+	AvailabilityZone string `json:"availabilityZone"`
 	// AuthSecretRef defines a secretRef for the openstack secret.
 	AuthSecretRef corev1.SecretReference `json:"authSecretRef"`
 }
