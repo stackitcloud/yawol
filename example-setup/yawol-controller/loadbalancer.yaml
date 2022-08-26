@@ -1,0 +1,35 @@
+# Example LB as created by yawol-cloud-controller from Service (some fields were omitted)
+apiVersion: yawol.stackit.cloud/v1beta1
+kind: LoadBalancer
+metadata:
+  annotations:
+    yawol.stackit.cloud/serviceName: yawol-test/loadbalancer
+  name: yawol-test--loadbalancer
+  namespace: yawol-test
+spec:
+  debugSettings:
+    enabled: false
+  endpoints:
+    - addresses:
+      - 127.0.0.1
+      name: node1
+  infrastructure:
+    authSecretRef:
+      name: cloud-provider-config
+      namespace: yawol-test
+    flavor:
+      flavor_id: FLAVOR-ID
+    floatingNetID: FLOATINGNET-ID
+    image:
+      image_id: IMAGE-ID-FOR-YAWOLLET-IMAGE
+    networkID: NETWORK-ID
+  internalLB: false
+  ports:
+  - nodePort: NODE-PORT
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  replicas: 1
+  selector:
+    matchLabels:
+      yawol.stackit.cloud/loadbalancer: yyjki53tcryt5pcw

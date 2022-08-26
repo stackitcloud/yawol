@@ -1,0 +1,168 @@
+---
+- name: install dependencies and envoy to machine
+  hosts: default
+  become: true
+  tasks:
+
+    - name: update alpine
+      command: "apk upgrade --update-cache --available"
+
+    - name: update alpine
+      command: "apk upgrade --update-cache --available"
+
+    - name: install keepalived
+      command: "apk add keepalived"
+
+    - name: Delete keepalived config
+      file:
+        state: absent
+        path: /etc/keepalived/keepalived.conf
+
+    - name: Copy envoy in place
+      copy:
+        src: ../bin/envoy
+        dest: /usr/local/bin/envoy
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Creating yawol user
+      user:
+        name: "yawol"
+        shell: /bin/bash
+
+    - name: Create a directory for yawol
+      file:
+        path: /etc/yawol
+        state: directory
+        mode: '0755'
+
+    - name: Delete folder with wrong permissions
+      file:
+        path: /dev/shm/envoy_shared_memory_0
+        state: absent
+        mode: '0755'
+
+    - name: add envoy config
+      copy:
+        src: ./envoy-config.yaml
+        dest: /etc/yawol/envoy.yaml
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: add openrc envoy
+      copy:
+        src: ./envoy.sh
+        dest: /etc/init.d/envoy
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: add cap_net_bind_service for envoy
+      capabilities:
+        path: /usr/local/bin/envoy
+        capability: cap_net_bind_service=ep
+        state: present
+
+    # wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+    # wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk
+    - name : Add apk key for alpine
+      get_url:
+        dest: /etc/apk/keys/sgerrand.rsa.pub
+        url: https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+
+    - name : Get glibc apk
+      get_url:
+        dest: /tmp/glibc.apk
+        url: https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk
+
+    - name: Install glibc apk
+      command: apk add /tmp/glibc.apk
+
+    - name: Delete tmp glibc apk
+      file:
+        path: /tmp/glibc.apk
+        state: absent
+
+    - name: upload yawollet
+      copy:
+        src: ../out/bin/yawollet
+        dest: /usr/local/bin/yawollet
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: add openrc yawollet
+      copy:
+        src: ./yawollet.sh
+        dest: /etc/init.d/yawollet
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Reload openrc
+      command: "rc-update -u"
+
+    - name: enable envoy
+      command: "rc-update add envoy default"
+
+    - name: enable yawollet
+      command: "rc-update add yawollet default"
+
+    - name: enable keepalived
+      command: "rc-update add keepalived default"
+
+    - name: enable cloud-config
+      command: "rc-update add cloud-config default"
+    - name: enable cloud-init-local
+      command: "rc-update add cloud-init-local default"
+    - name: enable cloud-final
+      command: "rc-update add cloud-final default"
+
+    - name: add sysctl file
+      copy:
+        src: ./sysctl-yawollet.conf
+        dest: /etc/sysctl.d/yawollet.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Create log folder
+      file:
+        path: /var/log/yawol
+        state: directory
+        mode: '0755'
+        owner: yawol
+
+    - name: Set ulimit
+      lineinfile:
+        path: /etc/rc.conf
+        regexp: "rc_ulimit="
+        line: "rc_ulimit='-n 100000'"
+
+    - name: Set boot timout to 1
+      lineinfile:
+        path: /boot/extlinux.conf
+        regexp: "TIMEOUT"
+        line: "TIMEOUT 1"
+
+    - name: Set chrony fast boot
+      lineinfile:
+        path: /etc/conf.d/chronyd
+        regexp: "FAST_STARTUP"
+        line: "FAST_STARTUP=yes"
+
+    - name: Set boot to parallel
+      lineinfile:
+        path: /etc/rc.conf
+        regexp: "rc_parallel"
+        line: "rc_parallel='YES'"
+
+    - name: disable ssh service
+      command: "rc-update del sshd"
+
+    - name: Cleanup zeuchs
+      command: "rm -rf /var/cache/apk/*"
+    - name: Cleanup mehr zeuchs
+      command: "cloud-init clean -l -s"

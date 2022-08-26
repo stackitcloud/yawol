@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+  namespace: yawol-test
+  annotations:
+    # yawol.stackit.cloud/imageId: "OS-imageId"
+    # yawol.stackit.cloud/flavorId: "flavorId"
+    # yawol.stackit.cloud/internalLB: "false"
+    # yawol.stackit.cloud/debug: "false"
+    # yawol.stackit.cloud/debugsshkey: "OS-keyName"
+    yawol.stackit.cloud/className: "test"
+    # yawol.stackit.cloud/replicas: "3"
+    # yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
+    # yawol.stackit.cloud/tcpProxyProtocol: "false"
+    # yawol.stackit.cloud/tcpProxyProtocolPortsFilter: ""
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  # loadBalancerSourceRanges:
+  # - 10.0.0.1/32
