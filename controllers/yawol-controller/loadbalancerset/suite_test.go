@@ -2,6 +2,7 @@ package loadbalancerset
 
 import (
 	"context"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"path/filepath"
 	"testing"
 
@@ -72,10 +73,13 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&LoadBalancerSetReconciler{
-		Client:   k8sManager.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("LoadBalancerSet"),
-		Recorder: k8sManager.GetEventRecorderFor("LoadBalancerSet"),
-		Scheme:   k8sManager.GetScheme(),
+		Client:                                k8sManager.GetClient(),
+		Log:                                   ctrl.Log.WithName("controllers").WithName("LoadBalancerSet"),
+		Recorder:                              k8sManager.GetEventRecorderFor("LoadBalancerSet"),
+		Scheme:                                k8sManager.GetScheme(),
+		LoadBalancerSetReplicasMetrics:        helpermetrics.LoadBalancerSetReplicasMetrics,
+		LoadBalancerSetReplicasCurrentMetrics: helpermetrics.LoadBalancerSetReplicasCurrentMetrics,
+		LoadBalancerSetReplicasReadyMetrics:   helpermetrics.LoadBalancerSetReplicasReadyMetrics,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

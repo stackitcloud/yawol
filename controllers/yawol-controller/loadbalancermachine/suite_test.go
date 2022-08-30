@@ -5,15 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,17 +61,6 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "charts", "yawol-controller", "crds")},
 	}
 
-	machineMetrics := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "loadbalancermachine",
-		Help: "Metrics of machine",
-	}, []string{"type", "lbm", "namespace"})
-	openstackMetrics := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openstack",
-		Help: "Metrics of Openstack API usage",
-	}, []string{"API"})
-	metrics.Registry.MustRegister(machineMetrics)
-	metrics.Registry.MustRegister(openstackMetrics)
-
 	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
@@ -111,14 +98,14 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
-		APIEndpoint:      "https://lala.com",
-		Client:           k8sManager.GetClient(),
-		Log:              ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
-		Scheme:           k8sManager.GetScheme(),
-		Recorder:         k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
-		RecorderLB:       k8sManager.GetEventRecorderFor("yawol-service"),
-		OpenstackMetrics: *openstackMetrics,
-		MachineMetrics:   *machineMetrics,
+		APIEndpoint:                "https://lala.com",
+		Client:                     k8sManager.GetClient(),
+		Log:                        ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
+		Scheme:                     k8sManager.GetScheme(),
+		Recorder:                   k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
+		RecorderLB:                 k8sManager.GetEventRecorderFor("yawol-service"),
+		OpenstackMetrics:           helpermetrics.OpenstackMetrics,
+		LoadBalancerMachineMetrics: helpermetrics.LoadBalancerMachineMetrics,
 	}
 
 	err = loadBalancerMachineReconciler.SetupWithManager(k8sManager)

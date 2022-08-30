@@ -2,12 +2,10 @@ package loadbalancer
 
 import (
 	"context"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,11 +60,6 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "charts", "yawol-controller", "crds")},
 	}
 
-	openstackMetrics := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openstack",
-		Help: "Metrics of Openstack API usage",
-	}, []string{"API"})
-	metrics.Registry.MustRegister(openstackMetrics)
 	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
@@ -104,13 +97,18 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerReconciler = &Reconciler{
-		Client:           k8sManager.GetClient(),
-		Log:              ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
-		Scheme:           k8sManager.GetScheme(),
-		RecorderLB:       k8sManager.GetEventRecorderFor("yawol-service"),
-		Recorder:         k8sManager.GetEventRecorderFor("Loadbalancer"),
-		OpenstackMetrics: *openstackMetrics,
-		OpenstackTimeout: 1 * time.Second,
+		Client:                             k8sManager.GetClient(),
+		Log:                                ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
+		Scheme:                             k8sManager.GetScheme(),
+		RecorderLB:                         k8sManager.GetEventRecorderFor("yawol-service"),
+		Recorder:                           k8sManager.GetEventRecorderFor("Loadbalancer"),
+		OpenstackMetrics:                   helpermetrics.OpenstackMetrics,
+		LoadBalancerInfoMetric:             helpermetrics.LoadBalancerInfoMetrics,
+		LoadBalancerOpenstackMetrics:       helpermetrics.LoadBalancerOpenstackMetrics,
+		LoadBalancerReplicasMetrics:        helpermetrics.LoadBalancerReplicasMetrics,
+		LoadBalancerReplicasCurrentMetrics: helpermetrics.LoadBalancerReplicasCurrentMetrics,
+		LoadBalancerReplicasReadyMetrics:   helpermetrics.LoadBalancerReplicasReadyMetrics,
+		OpenstackTimeout:                   1 * time.Second,
 	}
 
 	err = loadBalancerReconciler.SetupWithManager(k8sManager)

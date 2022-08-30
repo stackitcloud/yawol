@@ -40,16 +40,21 @@ const (
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
 type Reconciler struct {
 	client.Client
-	Log               logr.Logger
-	Scheme            *runtime.Scheme
-	Recorder          record.EventRecorder
-	RecorderLB        record.EventRecorder
-	skipReconciles    bool
-	skipAllButNN      *types.NamespacedName
-	OpenstackMetrics  prometheus.CounterVec
-	getOsClientForIni func(iniData []byte) (openstack.Client, error)
-	WorkerCount       int
-	OpenstackTimeout  time.Duration
+	Log                                logr.Logger
+	Scheme                             *runtime.Scheme
+	Recorder                           record.EventRecorder
+	RecorderLB                         record.EventRecorder
+	skipReconciles                     bool
+	skipAllButNN                       *types.NamespacedName
+	OpenstackMetrics                   *prometheus.CounterVec
+	LoadBalancerInfoMetric             *prometheus.GaugeVec
+	LoadBalancerOpenstackMetrics       *prometheus.GaugeVec
+	LoadBalancerReplicasMetrics        *prometheus.GaugeVec
+	LoadBalancerReplicasCurrentMetrics *prometheus.GaugeVec
+	LoadBalancerReplicasReadyMetrics   *prometheus.GaugeVec
+	getOsClientForIni                  func(iniData []byte) (openstack.Client, error)
+	WorkerCount                        int
+	OpenstackTimeout                   time.Duration
 }
 
 // Reconcile function for LoadBalancer object
@@ -74,6 +79,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if res, err := r.migrateDeprecations(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
+
+	// update metrics
+	helper.ParseLoadBalancerMetrics(
+		lb,
+		r.LoadBalancerInfoMetric,
+		r.LoadBalancerOpenstackMetrics,
+		r.LoadBalancerReplicasMetrics,
+		r.LoadBalancerReplicasCurrentMetrics,
+		r.LoadBalancerReplicasReadyMetrics,
+	)
 
 	// get OpenStack Client for LoadBalancer
 	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
@@ -152,7 +167,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, &r.OpenstackMetrics)
+			err := osClient.Configure(iniData, r.OpenstackTimeout, r.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -401,7 +416,6 @@ func (r *Reconciler) reconcilePort(
 	// try to get port my name to use it if possible
 	if lb.Status.PortID == nil {
 		port, err = openstackhelper.GetPortByName(ctx, portClient, *lb.Status.PortName)
-		r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
 		if err != nil {
 			return false, err
 		}
@@ -456,10 +470,7 @@ func (r *Reconciler) reconcilePort(
 		// check if security groups are attached to port
 		if lb.Status.SecurityGroupID != nil &&
 			(len(port.SecurityGroups) != 1 || port.SecurityGroups[0] != *lb.Status.SecurityGroupID) {
-			r.OpenstackMetrics.WithLabelValues("Neutron").Inc()
-			tctx, cancel := context.WithTimeout(ctx, r.OpenstackTimeout)
-			defer cancel()
-			if _, err := portClient.Update(tctx, port.ID, ports.UpdateOpts{
+			if _, err := portClient.Update(ctx, port.ID, ports.UpdateOpts{
 				SecurityGroups: &[]string{*lb.Status.SecurityGroupID},
 			}); err != nil {
 				r.Log.Error(err, "could not update port.securitygroups", "lb", lb)
@@ -821,6 +832,15 @@ func (r *Reconciler) deletionRoutine(
 	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	helper.RemoveLoadBalancerMetrics(
+		*lb,
+		r.LoadBalancerInfoMetric,
+		r.LoadBalancerOpenstackMetrics,
+		r.LoadBalancerReplicasMetrics,
+		r.LoadBalancerReplicasCurrentMetrics,
+		r.LoadBalancerReplicasReadyMetrics,
+	)
 
 	return ctrl.Result{}, nil
 }

@@ -47,19 +47,40 @@ func GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb *yawolv1beta1.LoadBala
 	})
 }
 
-func ParseLoadBalancerMachineMetrics(p prometheus.GaugeVec, loadBalancerMachine *yawolv1beta1.LoadBalancerMachine) {
+func ParseLoadBalancerMachineMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	loadBalancerMachineMetric *prometheus.GaugeVec,
+) {
 	if loadBalancerMachine.Status.Metrics == nil {
+		return
+	}
+	if loadBalancerMachineMetric == nil {
 		return
 	}
 	for _, metric := range *loadBalancerMachine.Status.Metrics {
 		if value, err := strconv.ParseFloat(metric.Value, 64); err == nil {
 			// metric labels: type, lb, lbm, namespace
-			p.WithLabelValues(metric.Type,
+			loadBalancerMachineMetric.WithLabelValues(metric.Type,
 				loadBalancerMachine.Spec.LoadBalancerRef.Name,
 				loadBalancerMachine.Name,
 				loadBalancerMachine.Namespace).Set(value)
 		}
 	}
+}
+
+func RemoveLoadBalancerMachineMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	loadBalancerMachineMetric *prometheus.GaugeVec,
+) {
+	if loadBalancerMachineMetric == nil {
+		return
+	}
+
+	loadBalancerMachineMetric.DeletePartialMatch(map[string]string{
+		"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
+		"lbm":       loadBalancerMachine.Name,
+		"namespace": loadBalancerMachine.Namespace,
+	})
 }
 
 // RemoveFromLBMStatus removes key from loadbalancermachine status.
