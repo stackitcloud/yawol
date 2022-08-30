@@ -12,6 +12,7 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
+	"github.com/prometheus/client_golang/prometheus"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -296,4 +297,119 @@ func getSecGroupRulesForDebugSettings(r record.EventRecorder, lb *yawolv1beta1.L
 		PortRangeMax:   22,
 		Protocol:       string(rules.ProtocolTCP),
 	}}
+}
+
+func ParseLoadBalancerMetrics(
+	lb yawolv1beta1.LoadBalancer,
+	loadbalancerInfoMetric *prometheus.GaugeVec,
+	loadbalancerOpenstackMetric *prometheus.GaugeVec,
+	loadBalancerReplicasMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasCurrentMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasReadyMetrics *prometheus.GaugeVec,
+) {
+	parseLoadBalancerInfoMetric(lb, loadbalancerInfoMetric)
+	parseLoadBalancerOpenstackMetric(lb, loadbalancerOpenstackMetric)
+	parseLoadBalancerReadyMetric(lb, loadBalancerReplicasMetrics, loadBalancerReplicasCurrentMetrics, loadBalancerReplicasReadyMetrics)
+}
+
+func parseLoadBalancerInfoMetric(
+	lb yawolv1beta1.LoadBalancer,
+	loadbalancerInfoMetric *prometheus.GaugeVec,
+) {
+	if loadbalancerInfoMetric == nil {
+		return
+	}
+
+	labels := map[string]string{
+		"lb":               lb.Name,
+		"namespace":        lb.Namespace,
+		"isInternal":       strconv.FormatBool(lb.Spec.Options.InternalLB),
+		"tcpProxyProtocol": strconv.FormatBool(lb.Spec.Options.TCPProxyProtocol),
+		"externalIP":       "nil",
+	}
+
+	if lb.Status.ExternalIP != nil {
+		labels["externalIP"] = *lb.Status.ExternalIP
+	}
+
+	loadbalancerInfoMetric.DeletePartialMatch(map[string]string{"lb": lb.Name, "namespace": lb.Namespace})
+	loadbalancerInfoMetric.With(labels).Set(1)
+}
+
+func parseLoadBalancerOpenstackMetric(
+	lb yawolv1beta1.LoadBalancer,
+	loadbalancerOpenstackMetric *prometheus.GaugeVec,
+) {
+	if loadbalancerOpenstackMetric == nil {
+		return
+	}
+	labels := map[string]string{
+		"lb":              lb.Name,
+		"namespace":       lb.Namespace,
+		"portID":          "nil",
+		"floatingID":      "nil",
+		"securityGroupID": "nil",
+	}
+
+	if lb.Status.PortID != nil {
+		labels["portID"] = *lb.Status.PortID
+	}
+
+	if lb.Status.FloatingID != nil {
+		labels["floatingID"] = *lb.Status.FloatingID
+	}
+
+	if lb.Status.SecurityGroupID != nil {
+		labels["securityGroupID"] = *lb.Status.SecurityGroupID
+	}
+
+	loadbalancerOpenstackMetric.DeletePartialMatch(map[string]string{"lb": lb.Name, "namespace": lb.Namespace})
+	loadbalancerOpenstackMetric.With(labels).Set(1)
+}
+
+func parseLoadBalancerReadyMetric(
+	lb yawolv1beta1.LoadBalancer,
+	loadBalancerReplicasMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasCurrentMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasReadyMetrics *prometheus.GaugeVec,
+) {
+	if loadBalancerReplicasMetrics == nil ||
+		loadBalancerReplicasCurrentMetrics == nil ||
+		loadBalancerReplicasReadyMetrics == nil {
+		return
+	}
+
+	loadBalancerReplicasMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(lb.Spec.Replicas))
+	if lb.Status.Replicas != nil {
+		loadBalancerReplicasCurrentMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(*lb.Status.Replicas))
+	}
+	if lb.Status.ReadyReplicas != nil {
+		loadBalancerReplicasReadyMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(*lb.Status.ReadyReplicas))
+	}
+}
+
+func RemoveLoadBalancerMetrics(
+	lb yawolv1beta1.LoadBalancer,
+	loadbalancerInfoMetric *prometheus.GaugeVec,
+	loadbalancerOpenstackMetric *prometheus.GaugeVec,
+	loadBalancerReplicasMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasCurrentMetrics *prometheus.GaugeVec,
+	loadBalancerReplicasReadyMetrics *prometheus.GaugeVec,
+) {
+	if loadbalancerInfoMetric == nil ||
+		loadbalancerOpenstackMetric == nil ||
+		loadBalancerReplicasMetrics == nil ||
+		loadBalancerReplicasCurrentMetrics == nil ||
+		loadBalancerReplicasReadyMetrics == nil {
+		return
+	}
+	l := map[string]string{
+		"lb":        lb.Name,
+		"namespace": lb.Namespace,
+	}
+	loadbalancerInfoMetric.DeletePartialMatch(l)
+	loadbalancerOpenstackMetric.DeletePartialMatch(l)
+	loadBalancerReplicasMetrics.DeletePartialMatch(l)
+	loadBalancerReplicasCurrentMetrics.DeletePartialMatch(l)
+	loadBalancerReplicasReadyMetrics.DeletePartialMatch(l)
 }

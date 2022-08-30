@@ -10,6 +10,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -262,4 +263,52 @@ func LoadBalancerSetConditionIsFalse(condition v1.NodeCondition) bool {
 		}
 	}
 	return false
+}
+
+func ParseLoadBalancerSetMetrics(
+	lbs yawolv1beta1.LoadBalancerSet,
+	loadBalancerSetReplicasMetrics *prometheus.GaugeVec,
+	loadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec,
+	loadBalancerSetReplicasReadyMetrics *prometheus.GaugeVec,
+) {
+	if loadBalancerSetReplicasMetrics == nil ||
+		loadBalancerSetReplicasCurrentMetrics == nil ||
+		loadBalancerSetReplicasReadyMetrics == nil {
+		return
+	}
+
+	loadBalancerSetReplicasMetrics.
+		WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
+		Set(float64(lbs.Spec.Replicas))
+	if lbs.Status.Replicas != nil {
+		loadBalancerSetReplicasCurrentMetrics.
+			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
+			Set(float64(*lbs.Status.Replicas))
+	}
+	if lbs.Status.ReadyReplicas != nil {
+		loadBalancerSetReplicasReadyMetrics.
+			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
+			Set(float64(*lbs.Status.ReadyReplicas))
+	}
+}
+
+func RemoveLoadBalancerSetMetrics(
+	lbs yawolv1beta1.LoadBalancerSet,
+	loadBalancerSetReplicasMetrics *prometheus.GaugeVec,
+	loadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec,
+	loadBalancerSetReplicasReadyMetrics *prometheus.GaugeVec,
+) {
+	if loadBalancerSetReplicasMetrics == nil ||
+		loadBalancerSetReplicasCurrentMetrics == nil ||
+		loadBalancerSetReplicasReadyMetrics == nil {
+		return
+	}
+	l := map[string]string{
+		"lb":        lbs.Spec.Template.Spec.LoadBalancerRef.Name,
+		"lbs":       lbs.Name,
+		"namespace": lbs.Namespace,
+	}
+	loadBalancerSetReplicasMetrics.DeletePartialMatch(l)
+	loadBalancerSetReplicasCurrentMetrics.DeletePartialMatch(l)
+	loadBalancerSetReplicasReadyMetrics.DeletePartialMatch(l)
 }

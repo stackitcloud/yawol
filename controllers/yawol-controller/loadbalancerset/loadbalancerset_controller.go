@@ -3,7 +3,6 @@ package loadbalancerset
 import (
 	"context"
 	"crypto/rand"
-
 	"encoding/json"
 	"fmt"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/client_golang/prometheus"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,10 +29,13 @@ const FINALIZER = "stackit.cloud/loadbalancermachine"
 // LoadBalancerSetReconciler reconciles service Objects with type LoadBalancer
 type LoadBalancerSetReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
-	Log         logr.Logger
-	Scheme      *runtime.Scheme
-	Recorder    record.EventRecorder
-	WorkerCount int
+	Log                                   logr.Logger
+	Scheme                                *runtime.Scheme
+	Recorder                              record.EventRecorder
+	LoadBalancerSetReplicasMetrics        *prometheus.GaugeVec
+	LoadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec
+	LoadBalancerSetReplicasReadyMetrics   *prometheus.GaugeVec
+	WorkerCount                           int
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -50,6 +53,13 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if set.ObjectMeta.DeletionTimestamp != nil {
 		return r.deletionRoutine(ctx, &set)
 	}
+
+	helper.ParseLoadBalancerSetMetrics(
+		set,
+		r.LoadBalancerSetReplicasMetrics,
+		r.LoadBalancerSetReplicasCurrentMetrics,
+		r.LoadBalancerSetReplicasReadyMetrics,
+	)
 
 	// obj is not being deleted, set finalizer
 	kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &set, FINALIZER)
@@ -120,6 +130,13 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 
 	// remove finalizer
 	kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, set, FINALIZER)
+
+	helper.RemoveLoadBalancerSetMetrics(
+		*set,
+		r.LoadBalancerSetReplicasMetrics,
+		r.LoadBalancerSetReplicasCurrentMetrics,
+		r.LoadBalancerSetReplicasReadyMetrics,
+	)
 
 	// stop reconciliation as item is being deleted
 	return ctrl.Result{}, nil
