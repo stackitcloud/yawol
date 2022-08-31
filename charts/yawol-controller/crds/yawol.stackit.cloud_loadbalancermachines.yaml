@@ -22,6 +22,12 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="EnvoyUpToDate")].status
       name: EnvoyUpToDate
       type: string
+    - jsonPath: .status.conditions[?(@.type=="KeepalivedMaster")].status
+      name: KeepalivedMaster
+      type: string
+    - jsonPath: .status.metrics[?(@.type=="load1")].value
+      name: Load1
+      type: string
     - jsonPath: .status.creationTimestamp
       name: creationTimestamp
       type: string

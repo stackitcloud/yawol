@@ -101,6 +101,22 @@
         group: root
         mode: 0755
 
+    - name: upload yawollet
+      copy:
+        src: ./keepalivedstats-script.sh
+        dest: /usr/local/bin/keepalivedstats-script.sh
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: add openrc keepalivedstats
+      copy:
+        src: ./keepalivedstats.sh
+        dest: /etc/init.d/keepalivedstats
+        owner: root
+        group: root
+        mode: 0755
+
     - name: Reload openrc
       command: "rc-update -u"
 
@@ -112,6 +128,9 @@
 
     - name: enable keepalived
       command: "rc-update add keepalived default"
+
+    - name: enable keepalivedstats
+      command: "rc-update add keepalivedstats default"
 
     - name: enable cloud-config
       command: "rc-update add cloud-config default"

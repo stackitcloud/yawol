@@ -32,6 +32,7 @@ type LoadBalancerReconciler struct {
 	EnvoyCache              envoycache.SnapshotCache
 	ListenAddress           string
 	RequeueTime             int
+	KeepalivedStatsFile     string
 }
 
 // Reconcile handles reconciliation of loadbalancer object
@@ -119,8 +120,14 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
+	// update keepalived status condition
+	err = helper.UpdateKeepalivedStatus(ctx, r.Status(), r.KeepalivedStatsFile, lbm)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// update Metrics
-	err = helper.WriteLBMMetrics(ctx, r.Status(), lbm)
+	err = helper.WriteLBMMetrics(ctx, r.Status(), r.KeepalivedStatsFile, lbm)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -9,6 +9,8 @@ import (
 // +kubebuilder:resource:shortName=lbm
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="EnvoyUpToDate",type=string,JSONPath=`.status.conditions[?(@.type=="EnvoyUpToDate")].status`
+// +kubebuilder:printcolumn:name="KeepalivedMaster",type=string,JSONPath=`.status.conditions[?(@.type=="KeepalivedMaster")].status`
+// +kubebuilder:printcolumn:name="Load1",type=string,JSONPath=`.status.metrics[?(@.type=="load1")].value`
 // +kubebuilder:printcolumn:name="creationTimestamp",type=string,JSONPath=`.status.creationTimestamp`
 // +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 
