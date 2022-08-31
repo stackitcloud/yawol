@@ -101,7 +101,7 @@
         group: root
         mode: 0755
 
-    - name: upload yawollet
+    - name: upload keepalivedstats-script.sh
       copy:
         src: ./keepalivedstats-script.sh
         dest: /usr/local/bin/keepalivedstats-script.sh

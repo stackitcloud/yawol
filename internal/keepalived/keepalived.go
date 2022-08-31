@@ -12,6 +12,8 @@ type StatsEntry struct {
 	VRRPInstance `yaml:"VRRP Instance"`
 }
 
+// VRRPInstance represents the content of the /tmp/keepalived.stats file
+// The content of the file is given by keepalived, that is the reason for spaces in yaml
 type VRRPInstance struct {
 	Advertisements struct {
 		Received int `yaml:"Received"`
