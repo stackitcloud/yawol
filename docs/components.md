@@ -96,3 +96,27 @@ The yawollet is running on an OpenStack instance (like the `kubelet`) to
 configure Envoy with information from the corresponding `LoadBalancer` object in
 the Kubernetes cluster. To get this information, the yawollet uses a
 `kubeconfig` that is provided by the yawol-controller via `cloud-init`.
+
+### Metrics
+
+The yawollet exposes metrics via the `LoadBalancerMachine` Object (`.status.metrics`). 
+If the yawollet cant get a metric this metric is ignored to get always as much metrics as possible 
+(for example the keepalived metrics cant be parsed all metrics from keepalived will be ignored)
+
+List of metrics:
+
+| metric                           | description                                        |
+|----------------------------------|----------------------------------------------------|
+| load1                            | load1 from the vm                                  |
+| load5                            | load5 from the vm                                  |
+| load15                           | load15 from the vm                                 |
+| numCPU                           | number of CPU Cores from the VM                    |
+| memTotal                         | total memory from the vm in kB                     |
+| memFree                          | free memory from the vm in kB                      |
+| memAvailable                     | available memory from the vm in kB                 |
+| stealTime                        | stealTime in hundredths of a second since vm start |
+| keepalivedIsMaster               | keepalived master status                           |
+| keepalivedBecameMaster           | keepalived counter became master                   |
+| keepalivedReleasedMaster         | keepalived counter released master                 |
+| keepalivedAdvertisementsSent     | keepalived counter of sent advertisements          |
+| keepalivedAdvertisementsReceived | keepalived counter of received advertisements      |
