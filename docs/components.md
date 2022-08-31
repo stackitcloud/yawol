@@ -90,6 +90,23 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 	* Connect instance to port
 * Export metrics from `LoadBalancerMachine`
 
+### Metrics
+
+The yawol-controller adds some metrics which are exposed via the metrics endpoint.
+
+| metric                           | description                                                                                      | exposed by                                      |
+|----------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| openstack                        | Openstack usage counter by API                                                                   | loadbalancer and loadbalancermachine controller |
+| loadbalancer_info                | Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP, tcpProxyProtocol | loadbalancer controller                         |
+| loadbalancer_openstack_info      | Openstack Info contains labels with the OpenStackIDs for LoadBalancer                            | loadbalancer controller                         |
+| loadbalancer_replicas            | Replicas for LoadBalancer (from lb.spec.replicas)                                                | loadbalancer controller                         |
+| loadbalancer_replicas_current    | Current replicas for LoadBalancer (from lb.status.replicas)                                      | loadbalancer controller                         |
+| loadbalancer_replicas_ready      | Ready replicas for LoadBalancer (from lb.status.readyReplicas)                                   | loadbalancer controller                         |
+| loadbalancerset_replicas         | Replicas for LoadBalancerSet (from lbs.spec.replicas)                                            | loadbalancerset controller                      |
+| loadbalancerset_replicas_current | Current replicas for LoadBalancerSet (from lbs.status.replicas)                                  | loadbalancerset controller                      |
+| loadbalancerset_replicas_ready   | Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)                               | loadbalancerset controller                      |
+| loadbalancermachine              | Metrics of loadbalancermachine (all metrics from lbm.status.metrics)                             | loadbalancermachine controller                  |
+
 ## yawollet
 
 The yawollet is running on an OpenStack instance (like the `kubelet`) to
