@@ -7,4 +7,5 @@ const (
 	RevisionAnnotation = "loadbalancer.yawol.stackit.cloud/revision"
 	HashLabel          = "lbm-template-hash"
 	LoadBalancerKind   = "LoadBalancer"
+	VRRPInstanceName   = "ENVOY"
 )

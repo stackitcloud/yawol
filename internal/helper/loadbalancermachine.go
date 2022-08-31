@@ -187,7 +187,7 @@ vrrp_track_process envoy {
 	weight 100
 }
 
-vrrp_instance ENVOY {
+vrrp_instance ` + VRRPInstanceName + ` {
 	state MASTER
 	interface eth0
 	virtual_router_id 100

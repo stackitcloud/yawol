@@ -58,6 +58,7 @@ func main() {
 	var listenAddress string
 	var listenInterface string
 	var requeueTime int
+	var keepalivedStatsFile string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", "0", "The address the probe endpoint binds to. Default is disabled.")
@@ -72,6 +73,10 @@ func main() {
 	flag.StringVar(&listenInterface, "listen-interface", "", "Interface that envoy should listen on. Ignored if listen-address is set.")
 	flag.IntVar(&requeueTime, "requeue-time", 30, "Requeue Time for reconcile if object was successful reconciled. "+
 		"Values less than 5 are set to 5 and greater than 50 are set to 50")
+
+	flag.StringVar(&keepalivedStatsFile, "keepalived-stats-file", "/tmp/keepalived.stats",
+		"Stats file for keepalived (default: /tmp/keepalived.stats). "+
+			"If set to empty no keepalived stats will be used for conditions and metrics.")
 
 	opts := zap.Options{
 		Development: true,
@@ -193,6 +198,7 @@ func main() {
 		EnvoyCache:              cache,
 		ListenAddress:           listenAddress,
 		RequeueTime:             requeueTime,
+		KeepalivedStatsFile:     keepalivedStatsFile,
 		Recorder:                mgr.GetEventRecorderFor("yawollet"),
 		RecorderLB:              mgr.GetEventRecorderFor("yawol-service"),
 	}).SetupWithManager(mgr); err != nil {

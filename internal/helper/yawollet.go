@@ -24,6 +24,7 @@ import (
 	"github.com/stackitcloud/yawol/internal/envoystatus"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 	"github.com/stackitcloud/yawol/internal/hostmetrics"
+	"github.com/stackitcloud/yawol/internal/keepalived"
 
 	envoycluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -58,21 +59,28 @@ const (
 
 // Condition name const
 const (
-	ConfigReady   LoadbalancerCondition = "ConfigReady"
-	EnvoyReady    LoadbalancerCondition = "EnvoyReady"
-	EnvoyUpToDate LoadbalancerCondition = "EnvoyUpToDate"
+	ConfigReady         LoadbalancerCondition = "ConfigReady"
+	EnvoyReady          LoadbalancerCondition = "EnvoyReady"
+	EnvoyUpToDate       LoadbalancerCondition = "EnvoyUpToDate"
+	KeepalivedStatsFile LoadbalancerCondition = "KeepalivedStatsFile"
+	KeepalivedMaster    LoadbalancerCondition = "KeepalivedMaster"
 )
 
 // Metric name const
 const (
-	MetricLoad1        LoadbalancerMetric = "load1"
-	MetricLoad5        LoadbalancerMetric = "load5"
-	MetricLoad15       LoadbalancerMetric = "load15"
-	MetricNumCPU       LoadbalancerMetric = "numCPU"
-	MetricMemTotal     LoadbalancerMetric = "memTotal"
-	MetricMemFree      LoadbalancerMetric = "memFree"
-	MetricMemAvailable LoadbalancerMetric = "memAvailable"
-	MetricStealTime    LoadbalancerMetric = "stealTime"
+	MetricLoad1                            LoadbalancerMetric = "load1"
+	MetricLoad5                            LoadbalancerMetric = "load5"
+	MetricLoad15                           LoadbalancerMetric = "load15"
+	MetricNumCPU                           LoadbalancerMetric = "numCPU"
+	MetricMemTotal                         LoadbalancerMetric = "memTotal"
+	MetricMemFree                          LoadbalancerMetric = "memFree"
+	MetricMemAvailable                     LoadbalancerMetric = "memAvailable"
+	MetricStealTime                        LoadbalancerMetric = "stealTime"
+	MetricKeepalivedIsMaster               LoadbalancerMetric = "keepalivedIsMaster"
+	MetricKeepalivedBecameMaster           LoadbalancerMetric = "keepalivedBecameMaster"
+	MetricKeepalivedReleasedMaster         LoadbalancerMetric = "keepalivedReleasedMaster "
+	MetricKeepalivedAdvertisementsSent     LoadbalancerMetric = "keepalivedAdvertisementsSent"
+	MetricKeepalivedAdvertisementsReceived LoadbalancerMetric = "keepalivedAdvertisementsReceived"
 )
 
 // Envoy health check parameters
@@ -528,74 +536,95 @@ func UpdateLBMConditions(
 func WriteLBMMetrics(
 	ctx context.Context,
 	c client.StatusWriter,
+	keepalivedStatsFile string,
 	lbm *yawolv1beta1.LoadBalancerMachine,
 ) error {
-	load1, load5, load15, err := hostmetrics.GetLoad()
-	if err != nil {
-		return err
+	metrics := []yawolv1beta1.LoadBalancerMachineMetric{}
+	if load1, load5, load15, err := hostmetrics.GetLoad(); err == nil {
+		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
+			{
+				Type:  string(MetricLoad1),
+				Value: load1,
+				Time:  v1.Now(),
+			}, {
+				Type:  string(MetricLoad5),
+				Value: load5,
+				Time:  v1.Now(),
+			}, {
+				Type:  string(MetricLoad15),
+				Value: load15,
+				Time:  v1.Now(),
+			}}...)
 	}
 
-	memTotal, memFree, memAvailable, err := hostmetrics.GetMem()
-	if err != nil {
-		return err
+	if memTotal, memFree, memAvailable, err := hostmetrics.GetMem(); err == nil {
+		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
+			{
+				Type:  string(MetricMemTotal),
+				Value: memTotal,
+				Time:  v1.Now(),
+			}, {
+				Type:  string(MetricMemFree),
+				Value: memFree,
+				Time:  v1.Now(),
+			}, {
+				Type:  string(MetricMemAvailable),
+				Value: memAvailable,
+				Time:  v1.Now(),
+			}}...)
 	}
 
-	stealTime, err := hostmetrics.GetCPUStealTime()
-	if err != nil {
-		return err
-	}
-
-	numCPU := hostmetrics.GetCPUNum()
-
-	metrics := []yawolv1beta1.LoadBalancerMachineMetric{
-		{
-			Type:  string(MetricLoad1),
-			Value: load1,
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricLoad5),
-			Value: load5,
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricLoad15),
-			Value: load15,
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricNumCPU),
-			Value: strconv.Itoa(numCPU),
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricMemTotal),
-			Value: memTotal,
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricMemFree),
-			Value: memFree,
-			Time:  v1.Now(),
-		}, {
-			Type:  string(MetricMemAvailable),
-			Value: memAvailable,
-			Time:  v1.Now(),
-		}, {
+	if stealTime, err := hostmetrics.GetCPUStealTime(); err == nil {
+		metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
 			Type:  string(MetricStealTime),
 			Value: stealTime,
 			Time:  v1.Now(),
-		},
+		})
 	}
+
+	metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
+		Type:  string(MetricNumCPU),
+		Value: strconv.Itoa(hostmetrics.GetCPUNum()),
+		Time:  v1.Now(),
+	})
+
 	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
-	var envoyMetrics []yawolv1beta1.LoadBalancerMachineMetric
-	envoyMetrics, err = envoyStatus.GetCurrentStats()
-	if err != nil {
-		return err
-	}
-	metrics = append(metrics, envoyMetrics...)
-
-	err = updateLBMMetrics(ctx, c, lbm, metrics)
-	if err != nil {
-		return err
+	if envoyMetrics, err := envoyStatus.GetCurrentStats(); err == nil {
+		metrics = append(metrics, envoyMetrics...)
 	}
 
-	return nil
+	if keepalivedStatsFile != "" {
+		if keepalivedStats, _, err := keepalived.ReadStatsForInstanceName(VRRPInstanceName, keepalivedStatsFile); err == nil {
+			masterInt := "0"
+			if keepalivedStats.IsMaster() {
+				masterInt = "1"
+			}
+			metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
+				{
+					Type:  string(MetricKeepalivedIsMaster),
+					Value: masterInt,
+					Time:  v1.Now(),
+				}, {
+					Type:  string(MetricKeepalivedReleasedMaster),
+					Value: strconv.Itoa(keepalivedStats.ReleasedMaster),
+					Time:  v1.Now(),
+				}, {
+					Type:  string(MetricKeepalivedBecameMaster),
+					Value: strconv.Itoa(keepalivedStats.BecameMaster),
+					Time:  v1.Now(),
+				}, {
+					Type:  string(MetricKeepalivedAdvertisementsSent),
+					Value: strconv.Itoa(keepalivedStats.Advertisements.Sent),
+					Time:  v1.Now(),
+				}, {
+					Type:  string(MetricKeepalivedAdvertisementsReceived),
+					Value: strconv.Itoa(keepalivedStats.Advertisements.Received),
+					Time:  v1.Now(),
+				}}...)
+		}
+	}
+
+	return updateLBMMetrics(ctx, c, lbm, metrics)
 }
 
 // updateLBMMetrics update metrics in lbm object
@@ -647,4 +676,54 @@ func UpdateEnvoyStatus(
 		return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionTrue, "EnvoyReady", "envoy response with 200")
 	}
 	return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionFalse, "EnvoyNotReady", "envoy response not with 200")
+}
+
+func UpdateKeepalivedStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	keepalivedStatsFile string,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
+	if keepalivedStatsFile == "" {
+		return nil
+	}
+
+	keepalivedStats, modTime, err := keepalived.ReadStatsForInstanceName(VRRPInstanceName, keepalivedStatsFile)
+	if err != nil {
+		if err := UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedStatsFile,
+			ConditionFalse,
+			"CouldNotReadStats", "Could not get stats file"); err != nil {
+			return err
+		}
+		if err := UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedMaster, ConditionFalse,
+			"CouldNotReadStats", "Could not get stats file"); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	keepalivedIsMaster := ConditionFalse
+	if keepalivedStats.IsMaster() {
+		keepalivedIsMaster = ConditionTrue
+	}
+	if err := UpdateLBMConditions(ctx, c, lbm,
+		KeepalivedMaster,
+		keepalivedIsMaster,
+		"KeepalivedStatus", "Read master status from stats file"); err != nil {
+		return err
+	}
+
+	if modTime.Before(time.Now().Add(-5 * time.Minute)) {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedStatsFile,
+			ConditionFalse,
+			"StatsNotUpToDate", "Keepalived stat file is older than 5 min")
+	}
+
+	return UpdateLBMConditions(ctx, c, lbm,
+		KeepalivedStatsFile,
+		ConditionTrue,
+		"StatsUpToDate", "Keepalived stat file is newer than 5 min")
 }
