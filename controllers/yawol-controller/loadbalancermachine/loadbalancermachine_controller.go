@@ -7,12 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	os "github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/go-logr/logr"
@@ -48,18 +47,17 @@ var ipv4RegexC, _ = regexp.Compile(ipv4Regex)
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
 type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
-	APIHost                    string
-	CACert                     []byte
-	Log                        logr.Logger
-	Scheme                     *runtime.Scheme
-	Recorder                   record.EventRecorder
-	RecorderLB                 record.EventRecorder
-	APIEndpoint                string
-	LoadBalancerMachineMetrics *prometheus.GaugeVec
-	OpenstackMetrics           *prometheus.CounterVec
-	getOsClientForIni          func(iniData []byte) (os.Client, error)
-	WorkerCount                int
-	OpenstackTimeout           time.Duration
+	APIHost           string
+	CACert            []byte
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	Recorder          record.EventRecorder
+	RecorderLB        record.EventRecorder
+	APIEndpoint       string
+	Metrics           *helpermetrics.LoadBalancerMachineMetricList
+	getOsClientForIni func(iniData []byte) (os.Client, error)
+	WorkerCount       int
+	OpenstackTimeout  time.Duration
 }
 
 // Reconcile Reconciles a LoadBalancerMachine
@@ -76,7 +74,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	helper.ParseLoadBalancerMachineMetrics(loadBalancerMachine, r.LoadBalancerMachineMetrics)
+	helper.ParseLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
 
 	var err error
 	var osClient os.Client
@@ -120,7 +118,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
-		helper.RemoveLoadBalancerMachineMetrics(loadBalancerMachine, r.LoadBalancerMachineMetrics)
+		helper.RemoveLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
 
 		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
@@ -198,7 +196,7 @@ func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (os.Client, error) {
 			osClient := os.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.OpenstackMetrics)
+			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}

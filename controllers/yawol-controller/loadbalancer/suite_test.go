@@ -2,7 +2,6 @@ package loadbalancer
 
 import (
 	"context"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"path/filepath"
 	"testing"
 	"time"
@@ -13,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -97,18 +97,13 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerReconciler = &Reconciler{
-		Client:                             k8sManager.GetClient(),
-		Log:                                ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
-		Scheme:                             k8sManager.GetScheme(),
-		RecorderLB:                         k8sManager.GetEventRecorderFor("yawol-service"),
-		Recorder:                           k8sManager.GetEventRecorderFor("Loadbalancer"),
-		OpenstackMetrics:                   helpermetrics.OpenstackMetrics,
-		LoadBalancerInfoMetric:             helpermetrics.LoadBalancerInfoMetrics,
-		LoadBalancerOpenstackMetrics:       helpermetrics.LoadBalancerOpenstackMetrics,
-		LoadBalancerReplicasMetrics:        helpermetrics.LoadBalancerReplicasMetrics,
-		LoadBalancerReplicasCurrentMetrics: helpermetrics.LoadBalancerReplicasCurrentMetrics,
-		LoadBalancerReplicasReadyMetrics:   helpermetrics.LoadBalancerReplicasReadyMetrics,
-		OpenstackTimeout:                   1 * time.Second,
+		Client:           k8sManager.GetClient(),
+		Log:              ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
+		Scheme:           k8sManager.GetScheme(),
+		RecorderLB:       k8sManager.GetEventRecorderFor("yawol-service"),
+		Recorder:         k8sManager.GetEventRecorderFor("Loadbalancer"),
+		Metrics:          &helpermetrics.LoadBalancerMetrics,
+		OpenstackTimeout: 1 * time.Second,
 	}
 
 	err = loadBalancerReconciler.SetupWithManager(k8sManager)

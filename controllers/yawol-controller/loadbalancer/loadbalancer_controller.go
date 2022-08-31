@@ -15,10 +15,9 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/prometheus/client_golang/prometheus"
-
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,24 +36,19 @@ const (
 	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
 )
 
-// LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
+// LoadBalancerReconciler reconciles service Objects with type LoadBalancer
 type Reconciler struct {
 	client.Client
-	Log                                logr.Logger
-	Scheme                             *runtime.Scheme
-	Recorder                           record.EventRecorder
-	RecorderLB                         record.EventRecorder
-	skipReconciles                     bool
-	skipAllButNN                       *types.NamespacedName
-	OpenstackMetrics                   *prometheus.CounterVec
-	LoadBalancerInfoMetric             *prometheus.GaugeVec
-	LoadBalancerOpenstackMetrics       *prometheus.GaugeVec
-	LoadBalancerReplicasMetrics        *prometheus.GaugeVec
-	LoadBalancerReplicasCurrentMetrics *prometheus.GaugeVec
-	LoadBalancerReplicasReadyMetrics   *prometheus.GaugeVec
-	getOsClientForIni                  func(iniData []byte) (openstack.Client, error)
-	WorkerCount                        int
-	OpenstackTimeout                   time.Duration
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	Recorder          record.EventRecorder
+	RecorderLB        record.EventRecorder
+	skipReconciles    bool
+	skipAllButNN      *types.NamespacedName
+	Metrics           *helpermetrics.LoadBalancerMetricList
+	getOsClientForIni func(iniData []byte) (openstack.Client, error)
+	WorkerCount       int
+	OpenstackTimeout  time.Duration
 }
 
 // Reconcile function for LoadBalancer object
@@ -83,11 +77,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// update metrics
 	helper.ParseLoadBalancerMetrics(
 		lb,
-		r.LoadBalancerInfoMetric,
-		r.LoadBalancerOpenstackMetrics,
-		r.LoadBalancerReplicasMetrics,
-		r.LoadBalancerReplicasCurrentMetrics,
-		r.LoadBalancerReplicasReadyMetrics,
+		r.Metrics,
 	)
 
 	// get OpenStack Client for LoadBalancer
@@ -167,7 +157,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
 		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.OpenstackMetrics)
+			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -835,11 +825,7 @@ func (r *Reconciler) deletionRoutine(
 
 	helper.RemoveLoadBalancerMetrics(
 		*lb,
-		r.LoadBalancerInfoMetric,
-		r.LoadBalancerOpenstackMetrics,
-		r.LoadBalancerReplicasMetrics,
-		r.LoadBalancerReplicasCurrentMetrics,
-		r.LoadBalancerReplicasReadyMetrics,
+		r.Metrics,
 	)
 
 	return ctrl.Result{}, nil

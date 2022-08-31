@@ -10,6 +10,7 @@ import (
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	"github.com/prometheus/client_golang/prometheus"
@@ -301,15 +302,14 @@ func getSecGroupRulesForDebugSettings(r record.EventRecorder, lb *yawolv1beta1.L
 
 func ParseLoadBalancerMetrics(
 	lb yawolv1beta1.LoadBalancer,
-	loadbalancerInfoMetric *prometheus.GaugeVec,
-	loadbalancerOpenstackMetric *prometheus.GaugeVec,
-	loadBalancerReplicasMetrics *prometheus.GaugeVec,
-	loadBalancerReplicasCurrentMetrics *prometheus.GaugeVec,
-	loadBalancerReplicasReadyMetrics *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerMetricList,
 ) {
-	parseLoadBalancerInfoMetric(lb, loadbalancerInfoMetric)
-	parseLoadBalancerOpenstackMetric(lb, loadbalancerOpenstackMetric)
-	parseLoadBalancerReadyMetric(lb, loadBalancerReplicasMetrics, loadBalancerReplicasCurrentMetrics, loadBalancerReplicasReadyMetrics)
+	if metrics == nil {
+		return
+	}
+	parseLoadBalancerInfoMetric(lb, metrics.InfoMetrics)
+	parseLoadBalancerOpenstackMetric(lb, metrics.OpenstackInfoMetrics)
+	parseLoadBalancerReadyMetric(lb, metrics.ReplicasMetrics, metrics.ReplicasCurrentMetrics, metrics.ReplicasReadyMetrics)
 }
 
 func parseLoadBalancerInfoMetric(
@@ -390,26 +390,23 @@ func parseLoadBalancerReadyMetric(
 
 func RemoveLoadBalancerMetrics(
 	lb yawolv1beta1.LoadBalancer,
-	loadbalancerInfoMetric *prometheus.GaugeVec,
-	loadbalancerOpenstackMetric *prometheus.GaugeVec,
-	loadBalancerReplicasMetrics *prometheus.GaugeVec,
-	loadBalancerReplicasCurrentMetrics *prometheus.GaugeVec,
-	loadBalancerReplicasReadyMetrics *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerMetricList,
 ) {
-	if loadbalancerInfoMetric == nil ||
-		loadbalancerOpenstackMetric == nil ||
-		loadBalancerReplicasMetrics == nil ||
-		loadBalancerReplicasCurrentMetrics == nil ||
-		loadBalancerReplicasReadyMetrics == nil {
+	if metrics == nil ||
+		metrics.InfoMetrics == nil ||
+		metrics.OpenstackInfoMetrics == nil ||
+		metrics.ReplicasMetrics == nil ||
+		metrics.ReplicasCurrentMetrics == nil ||
+		metrics.ReplicasReadyMetrics == nil {
 		return
 	}
 	l := map[string]string{
 		"lb":        lb.Name,
 		"namespace": lb.Namespace,
 	}
-	loadbalancerInfoMetric.DeletePartialMatch(l)
-	loadbalancerOpenstackMetric.DeletePartialMatch(l)
-	loadBalancerReplicasMetrics.DeletePartialMatch(l)
-	loadBalancerReplicasCurrentMetrics.DeletePartialMatch(l)
-	loadBalancerReplicasReadyMetrics.DeletePartialMatch(l)
+	metrics.InfoMetrics.DeletePartialMatch(l)
+	metrics.OpenstackInfoMetrics.DeletePartialMatch(l)
+	metrics.ReplicasMetrics.DeletePartialMatch(l)
+	metrics.ReplicasCurrentMetrics.DeletePartialMatch(l)
+	metrics.ReplicasReadyMetrics.DeletePartialMatch(l)
 }

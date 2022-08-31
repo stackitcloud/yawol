@@ -2,13 +2,13 @@ package loadbalancerset
 
 import (
 	"context"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -73,13 +73,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&LoadBalancerSetReconciler{
-		Client:                                k8sManager.GetClient(),
-		Log:                                   ctrl.Log.WithName("controllers").WithName("LoadBalancerSet"),
-		Recorder:                              k8sManager.GetEventRecorderFor("LoadBalancerSet"),
-		Scheme:                                k8sManager.GetScheme(),
-		LoadBalancerSetReplicasMetrics:        helpermetrics.LoadBalancerSetReplicasMetrics,
-		LoadBalancerSetReplicasCurrentMetrics: helpermetrics.LoadBalancerSetReplicasCurrentMetrics,
-		LoadBalancerSetReplicasReadyMetrics:   helpermetrics.LoadBalancerSetReplicasReadyMetrics,
+		Client:   k8sManager.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("LoadBalancerSet"),
+		Recorder: k8sManager.GetEventRecorderFor("LoadBalancerSet"),
+		Scheme:   k8sManager.GetScheme(),
+		Metrics:  &helpermetrics.LoadBalancerSetMetrics,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

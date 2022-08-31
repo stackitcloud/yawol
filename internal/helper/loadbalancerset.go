@@ -9,8 +9,8 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -267,26 +267,25 @@ func LoadBalancerSetConditionIsFalse(condition v1.NodeCondition) bool {
 
 func ParseLoadBalancerSetMetrics(
 	lbs yawolv1beta1.LoadBalancerSet,
-	loadBalancerSetReplicasMetrics *prometheus.GaugeVec,
-	loadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec,
-	loadBalancerSetReplicasReadyMetrics *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerSetMetricList,
 ) {
-	if loadBalancerSetReplicasMetrics == nil ||
-		loadBalancerSetReplicasCurrentMetrics == nil ||
-		loadBalancerSetReplicasReadyMetrics == nil {
+	if metrics == nil ||
+		metrics.ReplicasMetrics == nil ||
+		metrics.ReplicasCurrentMetrics == nil ||
+		metrics.ReplicasReadyMetrics == nil {
 		return
 	}
 
-	loadBalancerSetReplicasMetrics.
+	metrics.ReplicasMetrics.
 		WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
 		Set(float64(lbs.Spec.Replicas))
 	if lbs.Status.Replicas != nil {
-		loadBalancerSetReplicasCurrentMetrics.
+		metrics.ReplicasCurrentMetrics.
 			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
 			Set(float64(*lbs.Status.Replicas))
 	}
 	if lbs.Status.ReadyReplicas != nil {
-		loadBalancerSetReplicasReadyMetrics.
+		metrics.ReplicasReadyMetrics.
 			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
 			Set(float64(*lbs.Status.ReadyReplicas))
 	}
@@ -294,21 +293,21 @@ func ParseLoadBalancerSetMetrics(
 
 func RemoveLoadBalancerSetMetrics(
 	lbs yawolv1beta1.LoadBalancerSet,
-	loadBalancerSetReplicasMetrics *prometheus.GaugeVec,
-	loadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec,
-	loadBalancerSetReplicasReadyMetrics *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerSetMetricList,
 ) {
-	if loadBalancerSetReplicasMetrics == nil ||
-		loadBalancerSetReplicasCurrentMetrics == nil ||
-		loadBalancerSetReplicasReadyMetrics == nil {
+	if metrics == nil ||
+		metrics.ReplicasMetrics == nil ||
+		metrics.ReplicasCurrentMetrics == nil ||
+		metrics.ReplicasReadyMetrics == nil {
 		return
 	}
+
 	l := map[string]string{
 		"lb":        lbs.Spec.Template.Spec.LoadBalancerRef.Name,
 		"lbs":       lbs.Name,
 		"namespace": lbs.Namespace,
 	}
-	loadBalancerSetReplicasMetrics.DeletePartialMatch(l)
-	loadBalancerSetReplicasCurrentMetrics.DeletePartialMatch(l)
-	loadBalancerSetReplicasReadyMetrics.DeletePartialMatch(l)
+	metrics.ReplicasMetrics.DeletePartialMatch(l)
+	metrics.ReplicasCurrentMetrics.DeletePartialMatch(l)
+	metrics.ReplicasReadyMetrics.DeletePartialMatch(l)
 }

@@ -92,7 +92,7 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 
 ### Metrics
 
-The yawol-controller adds some metrics which are exposed via the metrics endpoint.
+The yawol-controller provides some metrics which are exposed via the `/metrics` endpoint.
 
 | metric                           | description                                                                                      | exposed by                                      |
 |----------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------|
