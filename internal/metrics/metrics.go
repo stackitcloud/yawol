@@ -6,52 +6,58 @@ import (
 )
 
 var (
-	// overall
+	// OpenstackMetrics Openstack usage counter by API
 	OpenstackMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "openstack",
-		Help: "Metrics of Openstack API usage",
+		Help: "Openstack usage counter by API",
 	}, []string{"API"})
 
-	// loadbalancer controller
+	// LoadBalancerInfoMetrics Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP
 	LoadBalancerInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_info",
-		Help: "Info Metric for LoadBalancer",
+		Help: "Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP",
 	}, []string{"lb", "namespace", "isInternal", "tcpProxyProtocol", "externalIP"})
+	// LoadBalancerOpenstackMetrics Openstack Info contains labels with the OpenStackIDs for LoadBalancer
 	LoadBalancerOpenstackMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_openstack_info",
-		Help: "Openstack Info Metric for LoadBalancer",
+		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancer",
 	}, []string{"lb", "namespace", "portID", "floatingID", "securityGroupID"})
+	// LoadBalancerReplicasMetrics Replicas for LoadBalancer (from lb.spec.replicas)
 	LoadBalancerReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_replicas",
-		Help: "Replicas for LoadBalancer",
+		Help: "Replicas for LoadBalancer (from lb.spec.replicas)",
 	}, []string{"lb", "namespace"})
+	// LoadBalancerReplicasCurrentMetrics Current replicas for LoadBalancer (from lb.status.replicas)
 	LoadBalancerReplicasCurrentMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_replicas_current",
-		Help: "Current replicas for LoadBalancer",
+		Help: "Current replicas for LoadBalancer (from lb.status.replicas)",
 	}, []string{"lb", "namespace"})
+	// LoadBalancerReplicasReadyMetrics Ready replicas for LoadBalancer (from lb.status.readyReplicas)
 	LoadBalancerReplicasReadyMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_replicas_ready",
-		Help: "Ready replicas for LoadBalancer",
+		Help: "Ready replicas for LoadBalancer (from lb.status.readyReplicas)",
 	}, []string{"lb", "namespace"})
 
-	// loadbalancerset controller
+	// LoadBalancerSetReplicasMetrics Replicas for LoadBalancerSet (from lbs.spec.replicas)
 	LoadBalancerSetReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_replicas",
-		Help: "Replicas for LoadBalancerSet",
+		Help: "Replicas for LoadBalancerSet (from lbs.spec.replicas)",
 	}, []string{"lb", "lbs", "namespace"})
+	// LoadBalancerSetReplicasCurrentMetrics Current replicas for LoadBalancerSet (from lbs.status.replicas)
 	LoadBalancerSetReplicasCurrentMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_replicas_current",
-		Help: "Current replicas for LoadBalancerSet",
+		Help: "Current replicas for LoadBalancerSet (from lbs.status.replicas)",
 	}, []string{"lb", "lbs", "namespace"})
+	// LoadBalancerSetReplicasReadyMetrics Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)
 	LoadBalancerSetReplicasReadyMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_replicas_ready",
-		Help: "Ready replicas for LoadBalancerSet",
+		Help: "Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)",
 	}, []string{"lb", "lbs", "namespace"})
 
-	// loadbalancermachine controller
+	// LoadBalancerMachineMetrics Metrics of loadbalancermachine (all metrics from lbm.status.metrics)
 	LoadBalancerMachineMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine",
-		Help: "Metrics of machine",
+		Help: "Metrics of loadbalancermachine (all metrics from lbm.status.metrics)",
 	}, []string{"type", "lb", "lbm", "namespace"})
 )
 
