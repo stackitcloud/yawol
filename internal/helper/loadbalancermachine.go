@@ -9,8 +9,8 @@ import (
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
-	"github.com/prometheus/client_golang/prometheus"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,18 +49,18 @@ func GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb *yawolv1beta1.LoadBala
 
 func ParseLoadBalancerMachineMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
-	loadBalancerMachineMetric *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
 	if loadBalancerMachine.Status.Metrics == nil {
 		return
 	}
-	if loadBalancerMachineMetric == nil {
+	if metrics == nil || metrics.VM == nil {
 		return
 	}
 	for _, metric := range *loadBalancerMachine.Status.Metrics {
 		if value, err := strconv.ParseFloat(metric.Value, 64); err == nil {
 			// metric labels: type, lb, lbm, namespace
-			loadBalancerMachineMetric.WithLabelValues(metric.Type,
+			metrics.VM.WithLabelValues(metric.Type,
 				loadBalancerMachine.Spec.LoadBalancerRef.Name,
 				loadBalancerMachine.Name,
 				loadBalancerMachine.Namespace).Set(value)
@@ -70,13 +70,14 @@ func ParseLoadBalancerMachineMetrics(
 
 func RemoveLoadBalancerMachineMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
-	loadBalancerMachineMetric *prometheus.GaugeVec,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
-	if loadBalancerMachineMetric == nil {
+	if metrics == nil ||
+		metrics.VM == nil {
 		return
 	}
 
-	loadBalancerMachineMetric.DeletePartialMatch(map[string]string{
+	metrics.VM.DeletePartialMatch(map[string]string{
 		"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
 		"lbm":       loadBalancerMachine.Name,
 		"namespace": loadBalancerMachine.Namespace,

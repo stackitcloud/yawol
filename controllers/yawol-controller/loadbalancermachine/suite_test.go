@@ -98,14 +98,13 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
-		APIEndpoint:                "https://lala.com",
-		Client:                     k8sManager.GetClient(),
-		Log:                        ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
-		Scheme:                     k8sManager.GetScheme(),
-		Recorder:                   k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
-		RecorderLB:                 k8sManager.GetEventRecorderFor("yawol-service"),
-		OpenstackMetrics:           helpermetrics.OpenstackMetrics,
-		LoadBalancerMachineMetrics: helpermetrics.LoadBalancerMachineMetrics,
+		APIEndpoint: "https://lala.com",
+		Client:      k8sManager.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
+		Scheme:      k8sManager.GetScheme(),
+		Recorder:    k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
+		RecorderLB:  k8sManager.GetEventRecorderFor("yawol-service"),
+		Metrics:     &helpermetrics.LoadBalancerMachineMetrics,
 	}
 
 	err = loadBalancerMachineReconciler.SetupWithManager(k8sManager)

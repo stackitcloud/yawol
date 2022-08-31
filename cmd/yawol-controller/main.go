@@ -3,19 +3,20 @@ package main
 import (
 	"context"
 	"flag"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"os"
 	"time"
 
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancer"
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancermachine"
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancerset"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -142,19 +143,14 @@ func main() {
 		}
 
 		if err = (&loadbalancer.Reconciler{
-			Client:                             loadBalancerMgr.GetClient(),
-			Log:                                ctrl.Log.WithName("controller").WithName("LoadBalancer"),
-			Scheme:                             loadBalancerMgr.GetScheme(),
-			WorkerCount:                        concurrentWorkersPerReconciler,
-			RecorderLB:                         loadBalancerMgr.GetEventRecorderFor("yawol-service"),
-			Recorder:                           loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
-			OpenstackMetrics:                   helpermetrics.OpenstackMetrics,
-			LoadBalancerInfoMetric:             helpermetrics.LoadBalancerInfoMetrics,
-			LoadBalancerOpenstackMetrics:       helpermetrics.LoadBalancerOpenstackMetrics,
-			LoadBalancerReplicasMetrics:        helpermetrics.LoadBalancerReplicasMetrics,
-			LoadBalancerReplicasCurrentMetrics: helpermetrics.LoadBalancerReplicasCurrentMetrics,
-			LoadBalancerReplicasReadyMetrics:   helpermetrics.LoadBalancerReplicasReadyMetrics,
-			OpenstackTimeout:                   openstackTimeout,
+			Client:           loadBalancerMgr.GetClient(),
+			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancer"),
+			Scheme:           loadBalancerMgr.GetScheme(),
+			WorkerCount:      concurrentWorkersPerReconciler,
+			RecorderLB:       loadBalancerMgr.GetEventRecorderFor("yawol-service"),
+			Recorder:         loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
+			Metrics:          &helpermetrics.LoadBalancerMetrics,
+			OpenstackTimeout: openstackTimeout,
 		}).SetupWithManager(loadBalancerMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)
@@ -190,14 +186,12 @@ func main() {
 		}
 
 		if err = (&loadbalancerset.LoadBalancerSetReconciler{
-			Client:                                loadBalancerSetMgr.GetClient(),
-			Log:                                   ctrl.Log.WithName("controller").WithName("LoadBalancerSet"),
-			Scheme:                                loadBalancerSetMgr.GetScheme(),
-			WorkerCount:                           concurrentWorkersPerReconciler,
-			Recorder:                              loadBalancerSetMgr.GetEventRecorderFor("LoadBalancerSet"),
-			LoadBalancerSetReplicasMetrics:        helpermetrics.LoadBalancerSetReplicasMetrics,
-			LoadBalancerSetReplicasCurrentMetrics: helpermetrics.LoadBalancerSetReplicasCurrentMetrics,
-			LoadBalancerSetReplicasReadyMetrics:   helpermetrics.LoadBalancerSetReplicasReadyMetrics,
+			Client:      loadBalancerSetMgr.GetClient(),
+			Log:         ctrl.Log.WithName("controller").WithName("LoadBalancerSet"),
+			Scheme:      loadBalancerSetMgr.GetScheme(),
+			WorkerCount: concurrentWorkersPerReconciler,
+			Recorder:    loadBalancerSetMgr.GetEventRecorderFor("LoadBalancerSet"),
+			Metrics:     &helpermetrics.LoadBalancerSetMetrics,
 		}).SetupWithManager(loadBalancerSetMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerSet")
 			os.Exit(1)
@@ -238,18 +232,17 @@ func main() {
 		}
 
 		if err = (&loadbalancermachine.LoadBalancerMachineReconciler{
-			Client:                     loadBalancerMachineMgr.GetClient(),
-			WorkerCount:                concurrentWorkersPerReconciler,
-			APIHost:                    loadBalancerMachineMgr.GetConfig().Host,
-			CACert:                     loadBalancerMachineMgr.GetConfig().CAData,
-			Log:                        ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
-			Recorder:                   loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
-			RecorderLB:                 loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
-			Scheme:                     loadBalancerMachineMgr.GetScheme(),
-			APIEndpoint:                apiEndpoint,
-			LoadBalancerMachineMetrics: helpermetrics.LoadBalancerMachineMetrics,
-			OpenstackMetrics:           helpermetrics.OpenstackMetrics,
-			OpenstackTimeout:           openstackTimeout,
+			Client:           loadBalancerMachineMgr.GetClient(),
+			WorkerCount:      concurrentWorkersPerReconciler,
+			APIHost:          loadBalancerMachineMgr.GetConfig().Host,
+			CACert:           loadBalancerMachineMgr.GetConfig().CAData,
+			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
+			Recorder:         loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
+			RecorderLB:       loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
+			Scheme:           loadBalancerMachineMgr.GetScheme(),
+			APIEndpoint:      apiEndpoint,
+			Metrics:          &helpermetrics.LoadBalancerMachineMetrics,
+			OpenstackTimeout: openstackTimeout,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)

@@ -5,6 +5,46 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+type LoadBalancerMetricList struct {
+	OpenstackMetrics       *prometheus.CounterVec
+	InfoMetrics            *prometheus.GaugeVec
+	OpenstackInfoMetrics   *prometheus.GaugeVec
+	ReplicasMetrics        *prometheus.GaugeVec
+	ReplicasCurrentMetrics *prometheus.GaugeVec
+	ReplicasReadyMetrics   *prometheus.GaugeVec
+}
+
+var LoadBalancerMetrics = LoadBalancerMetricList{
+	OpenstackMetrics:       OpenstackMetrics,
+	InfoMetrics:            LoadBalancerInfoMetrics,
+	OpenstackInfoMetrics:   LoadBalancerOpenstackMetrics,
+	ReplicasMetrics:        LoadBalancerReplicasMetrics,
+	ReplicasCurrentMetrics: LoadBalancerReplicasCurrentMetrics,
+	ReplicasReadyMetrics:   LoadBalancerReplicasReadyMetrics,
+}
+
+type LoadBalancerSetMetricList struct {
+	ReplicasMetrics        *prometheus.GaugeVec
+	ReplicasCurrentMetrics *prometheus.GaugeVec
+	ReplicasReadyMetrics   *prometheus.GaugeVec
+}
+
+var LoadBalancerSetMetrics = LoadBalancerSetMetricList{
+	ReplicasMetrics:        LoadBalancerSetReplicasMetrics,
+	ReplicasCurrentMetrics: LoadBalancerSetReplicasCurrentMetrics,
+	ReplicasReadyMetrics:   LoadBalancerSetReplicasReadyMetrics,
+}
+
+type LoadBalancerMachineMetricList struct {
+	VM               *prometheus.GaugeVec
+	OpenstackMetrics *prometheus.CounterVec
+}
+
+var LoadBalancerMachineMetrics = LoadBalancerMachineMetricList{
+	VM:               LoadBalancerMachineVMMetrics,
+	OpenstackMetrics: OpenstackMetrics,
+}
+
 var (
 	// OpenstackMetrics Openstack usage counter by API
 	OpenstackMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -54,8 +94,8 @@ var (
 		Help: "Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)",
 	}, []string{"lb", "lbs", "namespace"})
 
-	// LoadBalancerMachineMetrics Metrics of loadbalancermachine (all metrics from lbm.status.metrics)
-	LoadBalancerMachineMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// LoadBalancerMachineVMMetrics Metrics of loadbalancermachine (all metrics from lbm.status.metrics)
+	LoadBalancerMachineVMMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine",
 		Help: "Metrics of loadbalancermachine (all metrics from lbm.status.metrics)",
 	}, []string{"type", "lb", "lbm", "namespace"})
@@ -72,5 +112,5 @@ func init() {
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasCurrentMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasReadyMetrics)
-	metrics.Registry.MustRegister(LoadBalancerMachineMetrics)
+	metrics.Registry.MustRegister(LoadBalancerMachineVMMetrics)
 }

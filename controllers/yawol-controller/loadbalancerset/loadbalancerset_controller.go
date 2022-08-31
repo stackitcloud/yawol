@@ -10,9 +10,9 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"github.com/go-logr/logr"
-	"github.com/prometheus/client_golang/prometheus"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,13 +29,11 @@ const FINALIZER = "stackit.cloud/loadbalancermachine"
 // LoadBalancerSetReconciler reconciles service Objects with type LoadBalancer
 type LoadBalancerSetReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
-	Log                                   logr.Logger
-	Scheme                                *runtime.Scheme
-	Recorder                              record.EventRecorder
-	LoadBalancerSetReplicasMetrics        *prometheus.GaugeVec
-	LoadBalancerSetReplicasCurrentMetrics *prometheus.GaugeVec
-	LoadBalancerSetReplicasReadyMetrics   *prometheus.GaugeVec
-	WorkerCount                           int
+	Log         logr.Logger
+	Scheme      *runtime.Scheme
+	Recorder    record.EventRecorder
+	Metrics     *helpermetrics.LoadBalancerSetMetricList
+	WorkerCount int
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -56,9 +54,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	helper.ParseLoadBalancerSetMetrics(
 		set,
-		r.LoadBalancerSetReplicasMetrics,
-		r.LoadBalancerSetReplicasCurrentMetrics,
-		r.LoadBalancerSetReplicasReadyMetrics,
+		r.Metrics,
 	)
 
 	// obj is not being deleted, set finalizer
@@ -133,9 +129,7 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 
 	helper.RemoveLoadBalancerSetMetrics(
 		*set,
-		r.LoadBalancerSetReplicasMetrics,
-		r.LoadBalancerSetReplicasCurrentMetrics,
-		r.LoadBalancerSetReplicasReadyMetrics,
+		r.Metrics,
 	)
 
 	// stop reconciliation as item is being deleted
