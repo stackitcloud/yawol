@@ -634,8 +634,8 @@ func (r *Reconciler) reconcileFIPAssociate(
 		return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	// fip is already on coorect port
-	if fip.PortID == *lb.Status.PortID {
+	// fip is already on correct port and fip status is Active - skip binding
+	if fip.PortID == *lb.Status.PortID && fip.Status == "ACTIVE" {
 		return false, nil
 	}
 
