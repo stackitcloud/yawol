@@ -36,7 +36,7 @@ func (r *OSPortClient) Configure(
 // Invokes ports.List() in gophercloud's ports package and extracts all ports.
 // Uses the networkV2 client provided in Configure().
 func (r *OSPortClient) List(ctx context.Context, opts ports.ListOptsBuilder) ([]ports.Port, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -53,7 +53,7 @@ func (r *OSPortClient) List(ctx context.Context, opts ports.ListOptsBuilder) ([]
 
 // Invokes groups.Get() in gophercloud's ports package. Uses the networkV2 client provided in Configure().
 func (r *OSPortClient) Get(ctx context.Context, id string) (*ports.Port, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -67,7 +67,7 @@ func (r *OSPortClient) Get(ctx context.Context, id string) (*ports.Port, error) 
 
 // Invokes groups.Create() in gophercloud's ports package. Uses the networkV2 client provided in Configure().
 func (r *OSPortClient) Create(ctx context.Context, opts ports.CreateOptsBuilder) (*ports.Port, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -81,7 +81,7 @@ func (r *OSPortClient) Create(ctx context.Context, opts ports.CreateOptsBuilder)
 
 // Invokes groups.Update() in gophercloud's ports package. Uses the networkV2 client provided in Configure().
 func (r *OSPortClient) Update(ctx context.Context, id string, opts ports.UpdateOptsBuilder) (*ports.Port, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -95,7 +95,7 @@ func (r *OSPortClient) Update(ctx context.Context, id string, opts ports.UpdateO
 
 // Invokes groups.Delete() in gophercloud's ports package. Uses the networkV2 client provided in Configure().
 func (r *OSPortClient) Delete(ctx context.Context, id string) error {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx

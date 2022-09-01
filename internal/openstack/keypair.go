@@ -35,7 +35,7 @@ func (r *OSKeypairClient) Configure(
 
 // Invokes keypairs.List() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) List(ctx context.Context) ([]keypairs.KeyPair, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -52,7 +52,7 @@ func (r *OSKeypairClient) List(ctx context.Context) ([]keypairs.KeyPair, error) 
 
 // Invokes keypairs.Create() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Create(ctx context.Context, opts keypairs.CreateOptsBuilder) (*keypairs.KeyPair, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -66,7 +66,7 @@ func (r *OSKeypairClient) Create(ctx context.Context, opts keypairs.CreateOptsBu
 
 // Invokes keypairs.Get() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Get(ctx context.Context, name string) (*keypairs.KeyPair, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -80,7 +80,7 @@ func (r *OSKeypairClient) Get(ctx context.Context, name string) (*keypairs.KeyPa
 
 // Invokes keypairs.Delete() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Delete(ctx context.Context, name string) error {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
