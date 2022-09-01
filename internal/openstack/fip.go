@@ -35,7 +35,7 @@ func (r *OSFloatingIPClient) Configure(
 // Invokes floatingips.List() in gophercloud's floating ip package and extracts all floating ips.
 // Uses the networkV2 client provided in Configure().
 func (r *OSFloatingIPClient) List(ctx context.Context, opts floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -52,7 +52,7 @@ func (r *OSFloatingIPClient) List(ctx context.Context, opts floatingips.ListOpts
 
 // Invokes floatingips.Create() in gophercloud's floatingip package. Uses the networkV2 client provided in Configure().
 func (r *OSFloatingIPClient) Create(ctx context.Context, opts floatingips.CreateOptsBuilder) (*floatingips.FloatingIP, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -66,7 +66,7 @@ func (r *OSFloatingIPClient) Create(ctx context.Context, opts floatingips.Create
 
 // Invokes floatingips.Update() in gophercloud's floatingip package. Uses the networkV2 client provided in Configure().
 func (r *OSFloatingIPClient) Update(ctx context.Context, id string, opts floatingips.UpdateOptsBuilder) (*floatingips.FloatingIP, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -80,7 +80,7 @@ func (r *OSFloatingIPClient) Update(ctx context.Context, id string, opts floatin
 
 // Invokes floatingips.Get() in gophercloud's floatingip package. Uses the networkV2 client provided in Configure().
 func (r *OSFloatingIPClient) Get(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -94,7 +94,7 @@ func (r *OSFloatingIPClient) Get(ctx context.Context, id string) (*floatingips.F
 
 // Invokes floatingips.Delete() in gophercloud's floatingip package. Uses the networkV2 client provided in Configure().
 func (r *OSFloatingIPClient) Delete(ctx context.Context, id string) error {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx

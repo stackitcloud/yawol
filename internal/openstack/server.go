@@ -35,7 +35,7 @@ func (r *OSServerClient) Configure(
 
 // Invokes servers.List() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -52,7 +52,7 @@ func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder)
 
 // Invokes servers.Create() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -67,7 +67,7 @@ func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuil
 
 // Invokes servers.Get() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Get(ctx context.Context, id string) (*servers.Server, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -81,7 +81,7 @@ func (r *OSServerClient) Get(ctx context.Context, id string) (*servers.Server, e
 
 // Invokes servers.Update() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Update(ctx context.Context, id string, opts servers.UpdateOptsBuilder) (*servers.Server, error) {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -95,7 +95,7 @@ func (r *OSServerClient) Update(ctx context.Context, id string, opts servers.Upd
 
 // Invokes servers.Delete() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerClient) Delete(ctx context.Context, id string) error {
-	increasePromCounter(r.promCounter, "nova")
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx

@@ -48,9 +48,9 @@ var LoadBalancerMachineMetrics = LoadBalancerMachineMetricList{
 var (
 	// OpenstackMetrics Openstack usage counter by API
 	OpenstackMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openstack",
-		Help: "Openstack usage counter by API",
-	}, []string{"API"})
+		Name: "yawol_openstack",
+		Help: "Openstack usage counter by api, object, operation",
+	}, []string{"api", "object", "operation"})
 
 	// LoadBalancerInfoMetrics Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP
 	LoadBalancerInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{

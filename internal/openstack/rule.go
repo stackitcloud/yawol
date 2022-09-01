@@ -36,7 +36,7 @@ func (r *OSRuleClient) Configure(
 // Invokes rules.List() in gophercloud's rules package and extracts all security groups.
 // Uses the networkV2 client provided in Configure().
 func (r *OSRuleClient) List(ctx context.Context, opts rules.ListOpts) ([]rules.SecGroupRule, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -54,7 +54,7 @@ func (r *OSRuleClient) List(ctx context.Context, opts rules.ListOpts) ([]rules.S
 // Invokes rules.Create() in gophercloud's rules package and extracts all security groups.
 // Uses the networkV2 client provided in Configure().
 func (r *OSRuleClient) Create(ctx context.Context, opts rules.CreateOptsBuilder) (*rules.SecGroupRule, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -70,7 +70,7 @@ func (r *OSRuleClient) Create(ctx context.Context, opts rules.CreateOptsBuilder)
 // Invokes rules.Get() in gophercloud's rules package and extracts all security groups.
 // Uses the networkV2 client provided in Configure().
 func (r *OSRuleClient) Get(ctx context.Context, id string) (*rules.SecGroupRule, error) {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx
@@ -86,7 +86,7 @@ func (r *OSRuleClient) Get(ctx context.Context, id string) (*rules.SecGroupRule,
 // Invokes rules.Delete() in gophercloud's rules package
 // Uses the networkV2 client provided in Configure().
 func (r *OSRuleClient) Delete(ctx context.Context, id string) error {
-	increasePromCounter(r.promCounter, "neutron")
+	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.networkV2.Context = tctx

@@ -96,7 +96,7 @@ The yawol-controller provides some metrics which are exposed via the `/metrics` 
 
 | metric                           | description                                                                                      | exposed by                                      |
 |----------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| openstack                        | Openstack usage counter by API                                                                   | loadbalancer and loadbalancermachine controller |
+| yawol_openstack                  | Openstack usage counter by api, object, operation                                                | loadbalancer and loadbalancermachine controller |
 | loadbalancer_info                | Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP, tcpProxyProtocol | loadbalancer controller                         |
 | loadbalancer_openstack_info      | Openstack Info contains labels with the OpenStackIDs for LoadBalancer                            | loadbalancer controller                         |
 | loadbalancer_replicas            | Replicas for LoadBalancer (from lb.spec.replicas)                                                | loadbalancer controller                         |
