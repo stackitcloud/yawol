@@ -59,10 +59,7 @@ func parseLoadBalancerMachineVMMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
-	if loadBalancerMachine.Status.Metrics == nil {
-		return
-	}
-	if metrics == nil || metrics.VM == nil {
+	if loadBalancerMachine.Status.Metrics == nil || metrics == nil || metrics.VM == nil {
 		return
 	}
 	for _, metric := range *loadBalancerMachine.Status.Metrics {
@@ -80,10 +77,7 @@ func parseLoadBalancerMachineConditionsMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
-	if loadBalancerMachine.Status.Conditions == nil {
-		return
-	}
-	if metrics == nil || metrics.Conditions == nil {
+	if loadBalancerMachine.Status.Conditions == nil || metrics == nil || metrics.Conditions == nil {
 		return
 	}
 	for _, conditions := range *loadBalancerMachine.Status.Conditions {
