@@ -37,11 +37,13 @@ var LoadBalancerSetMetrics = LoadBalancerSetMetricList{
 
 type LoadBalancerMachineMetricList struct {
 	VM               *prometheus.GaugeVec
+	Conditions       *prometheus.GaugeVec
 	OpenstackMetrics *prometheus.CounterVec
 }
 
 var LoadBalancerMachineMetrics = LoadBalancerMachineMetricList{
 	VM:               LoadBalancerMachineVMMetrics,
+	Conditions:       LoadBalancerMachineConditionMetrics,
 	OpenstackMetrics: OpenstackMetrics,
 }
 
@@ -99,6 +101,11 @@ var (
 		Name: "loadbalancermachine",
 		Help: "Metrics of loadbalancermachine (all metrics from lbm.status.metrics)",
 	}, []string{"type", "lb", "lbm", "namespace"})
+	// LoadBalancerMachineConditionMetrics Conditions of loadbalancermachine (lbm.status.conditions
+	LoadBalancerMachineConditionMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "loadbalancermachine_condition",
+		Help: "Conditions of loadbalancermachine (lbm.status.conditions)",
+	}, []string{"lb", "lbm", "namespace", "condition", "reason", "status"})
 )
 
 func init() {
@@ -113,4 +120,5 @@ func init() {
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasCurrentMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasReadyMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineVMMetrics)
+	metrics.Registry.MustRegister(LoadBalancerMachineConditionMetrics)
 }

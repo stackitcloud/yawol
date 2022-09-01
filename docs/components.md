@@ -106,6 +106,7 @@ The yawol-controller provides some metrics which are exposed via the `/metrics` 
 | loadbalancerset_replicas_current | Current replicas for LoadBalancerSet (from lbs.status.replicas)                                  | loadbalancerset controller                      |
 | loadbalancerset_replicas_ready   | Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)                               | loadbalancerset controller                      |
 | loadbalancermachine              | Metrics of loadbalancermachine (all metrics from lbm.status.metrics)                             | loadbalancermachine controller                  |
+| loadbalancermachine_condition    | Conditions of loadbalancermachine (lbm.status.conditions)                                        | loadbalancermachine controller                  |
 
 ## yawollet
 
