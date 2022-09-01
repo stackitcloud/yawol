@@ -51,6 +51,14 @@ func ParseLoadBalancerMachineMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
+	parseLoadBalancerMachineVMMetrics(loadBalancerMachine, metrics)
+	parseLoadBalancerMachineConditionsMetrics(loadBalancerMachine, metrics)
+}
+
+func parseLoadBalancerMachineVMMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
+) {
 	if loadBalancerMachine.Status.Metrics == nil {
 		return
 	}
@@ -65,6 +73,35 @@ func ParseLoadBalancerMachineMetrics(
 				loadBalancerMachine.Name,
 				loadBalancerMachine.Namespace).Set(value)
 		}
+	}
+}
+
+func parseLoadBalancerMachineConditionsMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
+) {
+	if loadBalancerMachine.Status.Conditions == nil {
+		return
+	}
+	if metrics == nil || metrics.Conditions == nil {
+		return
+	}
+	for _, conditions := range *loadBalancerMachine.Status.Conditions {
+		metrics.Conditions.DeletePartialMatch(map[string]string{
+			"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
+			"lbm":       loadBalancerMachine.Name,
+			"namespace": loadBalancerMachine.Namespace,
+			"condition": string(conditions.Type),
+		})
+		// metric labels: lb, lbm, namespace, condition, reason, status
+		metrics.Conditions.WithLabelValues(
+			loadBalancerMachine.Spec.LoadBalancerRef.Name,
+			loadBalancerMachine.Name,
+			loadBalancerMachine.Namespace,
+			string(conditions.Type),
+			conditions.Reason,
+			string(conditions.Status),
+		).Set(1)
 	}
 }
 
