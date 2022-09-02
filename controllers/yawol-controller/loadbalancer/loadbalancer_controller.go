@@ -183,6 +183,8 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 		return ctrl.Result{}, nil
 	}
 
+	r.Log.Info("Reconcile Openstack", "lb", lb.Name)
+
 	var requeue, overallRequeue bool
 	var err error
 
@@ -263,6 +265,7 @@ func (r *Reconciler) reconcileFIP(
 	if lb.Spec.Options.InternalLB {
 		return r.deleteFips(ctx, osClient, lb)
 	}
+	r.Log.Info("Reconcile FloatingIP", "lb", lb.Name)
 
 	var err error
 
@@ -294,6 +297,7 @@ func (r *Reconciler) reconcileFIP(
 			return false, err
 		}
 		if fip != nil {
+			r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
 			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID}); err != nil {
 				return false, err
 			}
@@ -304,6 +308,7 @@ func (r *Reconciler) reconcileFIP(
 	if lb.Status.FloatingID == nil {
 		// Use existing Floating IP if specified
 		if lb.Spec.ExistingFloatingIP != nil {
+			r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
 			if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
 				switch err.(type) {
 				case gophercloud.ErrDefault404:
@@ -323,6 +328,7 @@ func (r *Reconciler) reconcileFIP(
 			}
 		} else {
 			// create fip
+			r.Log.Info("Create FloatingIP", "lb", lb.Name)
 			if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
 				switch err.(type) {
 				case gophercloud.ErrDefault400:
@@ -365,6 +371,7 @@ func (r *Reconciler) reconcileFIP(
 
 	// patch floatingIP in status
 	if lb.Status.ExternalIP == nil || *lb.Status.ExternalIP != fip.FloatingIP {
+		r.Log.Info("Update ExternalIP", "lb", lb.Name)
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &fip.FloatingIP,
 		}); err != nil {
@@ -382,6 +389,7 @@ func (r *Reconciler) reconcilePort(
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
 ) (bool, error) {
+	r.Log.Info("Reconcile Port", "lb", lb.Name)
 	var requeue bool
 	var portClient openstack.PortClient
 	var err error
@@ -420,6 +428,7 @@ func (r *Reconciler) reconcilePort(
 
 	// Create Port
 	if lb.Status.PortID == nil {
+		r.Log.Info("Create Port", "lb", lb.Name)
 		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
@@ -507,6 +516,8 @@ func (r *Reconciler) reconcileSecGroup(
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
 ) (bool, error) {
+	r.Log.Info("Reconcile SecGroup", "lb", lb.Name)
+
 	var requeue bool
 	var err error
 
@@ -541,6 +552,7 @@ func (r *Reconciler) reconcileSecGroup(
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 		if secGroup != nil {
+			r.Log.Info("Found SecGroup by name", "lb", lb.Name)
 			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{SecurityGroupID: &secGroup.ID}); err != nil {
 				return false, err
 			}
@@ -550,6 +562,7 @@ func (r *Reconciler) reconcileSecGroup(
 
 	// Create SecGroup
 	if lb.Status.SecurityGroupID == nil {
+		r.Log.Info("Create SecGroup", "lb", lb.Name)
 		secGroup, err = openstackhelper.CreateSecGroup(ctx, groupClient, req.NamespacedName.String())
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a fip", "lb", req.NamespacedName)
@@ -590,6 +603,7 @@ func (r *Reconciler) reconcileSecGroup(
 		return false, helper.ErrSecGroupNil
 	}
 
+	r.Log.Info("Reconcile SecGroupRules", "lb", lb.Name)
 	desiredSecGroups := helper.GetDesiredSecGroupRulesForLoadBalancer(r.RecorderLB, lb, secGroup.ID)
 
 	err = openstackhelper.DeleteUnusedSecGroupRulesFromSecGroup(ctx, ruleClient, secGroup, desiredSecGroups)
@@ -615,6 +629,8 @@ func (r *Reconciler) reconcileFIPAssociate(
 		return false, nil
 	}
 
+	r.Log.Info("Reconcile FIPAssociate", "lb", lb.Name)
+
 	var err error
 
 	var fipClient openstack.FipClient
@@ -638,6 +654,8 @@ func (r *Reconciler) reconcileFIPAssociate(
 	if fip.PortID == *lb.Status.PortID && fip.Status == "ACTIVE" {
 		return false, nil
 	}
+
+	r.Log.Info("Bind FloatingIP to Port", "lb", lb.Name)
 
 	if err := openstackhelper.BindFIPToPort(ctx, fipClient, *lb.Status.FloatingID, lb.Status.PortID); err != nil {
 		r.Log.WithName("reconcileFIPAssociate").
