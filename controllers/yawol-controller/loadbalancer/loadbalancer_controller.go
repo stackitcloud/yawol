@@ -111,7 +111,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return res, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
 // migrateDeprecations moves the deprecated fields to the new object
@@ -311,7 +311,7 @@ func (r *Reconciler) reconcileFIP(
 			r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
 			if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
 					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				default:
@@ -356,7 +356,7 @@ func (r *Reconciler) reconcileFIP(
 	// Get FIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
-		case gophercloud.ErrDefault404:
+		case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
 			// fip not found by ID, remove it from status and trigger reconcile
 			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
@@ -454,7 +454,7 @@ func (r *Reconciler) reconcilePort(
 	if lb.Status.PortID != nil {
 		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port not found in openstack", "portID", *lb.Status.PortID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID"); err != nil {
 					return false, err
@@ -585,7 +585,7 @@ func (r *Reconciler) reconcileSecGroup(
 	if lb.Status.SecurityGroupID != nil {
 		if secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("SecurityGroupID not found in openstack", "SecurityGroupID", *lb.Status.SecurityGroupID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id"); err != nil {
 					return false, err
@@ -893,7 +893,7 @@ func (r *Reconciler) deleteFips(
 		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
 				if err != nil {
@@ -909,7 +909,7 @@ func (r *Reconciler) deleteFips(
 			err = openstackhelper.DeleteFIP(ctx, fipClient, fip.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
@@ -942,7 +942,7 @@ func (r *Reconciler) deleteFips(
 			err = openstackhelper.DeleteFIP(ctx, fipClient, fipByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
@@ -982,7 +982,7 @@ func (r *Reconciler) deletePorts(
 		port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
 				if err != nil {
@@ -997,7 +997,7 @@ func (r *Reconciler) deletePorts(
 			err = openstackhelper.DeletePort(ctx, portClient, port.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
@@ -1029,7 +1029,7 @@ func (r *Reconciler) deletePorts(
 			err = openstackhelper.DeletePort(ctx, portClient, portByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting port, already deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
@@ -1079,7 +1079,7 @@ func (r *Reconciler) deleteSecGroups(
 		secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
 				if err != nil {
@@ -1094,7 +1094,7 @@ func (r *Reconciler) deleteSecGroups(
 			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
@@ -1127,7 +1127,7 @@ func (r *Reconciler) deleteSecGroups(
 			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroupByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting secGroup, already deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
