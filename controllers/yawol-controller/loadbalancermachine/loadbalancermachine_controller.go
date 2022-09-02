@@ -314,13 +314,13 @@ func (r *LoadBalancerMachineReconciler) reconcileRoleBinding(
 
 	err := r.Client.Get(ctx, client.ObjectKey{Name: rb.Name, Namespace: rb.Namespace}, &rb)
 	if err != nil {
-		if errors2.IsNotFound(err) {
-			if err := r.Client.Create(ctx, &rb); err != nil {
-				return err
-			}
-			r.Log.Info("rolebinding created", "loadBalancerMachineName", loadBalancerMachine.Name)
+		if !errors2.IsNotFound(err) {
+			return err
 		}
-		return err
+		if err := r.Client.Create(ctx, &rb); err != nil {
+			return err
+		}
+		r.Log.Info("rolebinding created", "loadBalancerMachineName", loadBalancerMachine.Name)
 	}
 
 	roleBindingNamespacedName := types.NamespacedName{Name: rb.Name, Namespace: rb.Namespace}.String()
