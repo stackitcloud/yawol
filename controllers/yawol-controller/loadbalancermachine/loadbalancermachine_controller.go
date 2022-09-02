@@ -266,13 +266,13 @@ func (r *LoadBalancerMachineReconciler) reconcileRole(
 	}
 	err := r.Client.Get(ctx, client.ObjectKey{Name: role.Name, Namespace: role.Namespace}, &role)
 	if err != nil {
-		if errors2.IsNotFound(err) {
-			if err := r.Client.Create(ctx, &role); err != nil {
-				return err
-			}
-			r.Log.Info("Role created", "loadBalancerMachineName", loadBalancerMachine.Name)
+		if !errors2.IsNotFound(err) {
+			return err
 		}
-		return err
+		if err := r.Client.Create(ctx, &role); err != nil {
+			return err
+		}
+		r.Log.Info("Role created", "loadBalancerMachineName", loadBalancerMachine.Name)
 	}
 
 	roleNamespacedName := types.NamespacedName{Name: role.Name, Namespace: role.Namespace}.String()
