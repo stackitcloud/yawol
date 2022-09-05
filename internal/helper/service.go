@@ -32,8 +32,7 @@ func PatchServiceStatus(
 // GetDebugSettings return loadbalancer debug settings for a service
 func GetDebugSettings(svc *coreV1.Service) yawolv1beta1.LoadBalancerDebugSettings {
 	debugSettings := yawolv1beta1.LoadBalancerDebugSettings{}
-	if svc.Annotations[yawolv1beta1.ServiceDebug] == "true" ||
-		svc.Annotations[yawolv1beta1.ServiceDebug] == "True" {
+	if val, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceDebug]); val {
 		debugSettings.Enabled = true
 		if svc.Annotations[yawolv1beta1.ServiceDebugSSHKey] != "" {
 			debugSettings.SshkeyName = svc.Annotations[yawolv1beta1.ServiceDebugSSHKey]

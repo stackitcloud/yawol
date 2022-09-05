@@ -144,6 +144,7 @@ type LoadBalancerInfrastructure struct {
 	// +optional
 	Image *OpenstackImageRef `json:"image,omitempty"`
 	// AvailabilityZone defines the openstack availability zone for the LoadBalancer.
+	// +optional
 	AvailabilityZone string `json:"availabilityZone"`
 	// AuthSecretRef defines a secretRef for the openstack secret.
 	AuthSecretRef corev1.SecretReference `json:"authSecretRef"`
