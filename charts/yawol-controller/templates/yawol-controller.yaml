@@ -41,9 +41,6 @@ spec:
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- end }}
-          {{- if .Values.yawolDebug }}
-          - -debug={{ .Values.yawolDebug }}
-          {{- end }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -72,9 +69,6 @@ spec:
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- end }}
-          {{- if .Values.yawolDebug }}
-          - -debug={{ .Values.yawolDebug }}
-          {{- end }}
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -102,9 +96,6 @@ spec:
           - -enable-loadbalancermachine-controller
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
-          {{- end }}
-          {{- if .Values.yawolDebug }}
-          - -debug={{ .Values.yawolDebug }}
           {{- end }}
         env:
           {{- if .Values.namespace }}
