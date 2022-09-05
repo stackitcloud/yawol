@@ -35,8 +35,7 @@ rules:
     verbs:
       - create
       - patch
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
     resources:
       - configmaps
     verbs:
@@ -47,8 +46,7 @@ rules:
       - update
       - patch
       - delete
-  - apiGroups:
-      - "coordination.k8s.io"
+  - apiGroups: ["coordination.k8s.io"]
     resources:
       - leases
     verbs:
@@ -59,8 +57,7 @@ rules:
       - update
       - patch
       - delete
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
     resources:
       - configmaps/status
     verbs:

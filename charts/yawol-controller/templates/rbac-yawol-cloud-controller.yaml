@@ -18,8 +18,7 @@ rules:
     - list
     - watch
     - patch
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
     resources:
       - configmaps
     verbs:
@@ -30,8 +29,7 @@ rules:
       - update
       - patch
       - delete
-  - apiGroups:
-      - "coordination.k8s.io"
+  - apiGroups: ["coordination.k8s.io"]
     resources:
       - leases
     verbs:
@@ -42,8 +40,7 @@ rules:
       - update
       - patch
       - delete
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
     resources:
       - configmaps/status
       - services/status
@@ -72,8 +69,16 @@ kind: ClusterRole
 metadata:
   name: yawol-cloud-controller
 rules:
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
+    resources:
+      - "events"
+    verbs:
+    - create
+    - get
+    - list
+    - watch
+    - patch
+  - apiGroups: [""]
     resources:
       - services
       - services/status
@@ -84,8 +89,7 @@ rules:
       - create
       - update
       - patch
-  - apiGroups:
-      - ""
+  - apiGroups: [""]
     resources:
       - nodes
       - nodes/status

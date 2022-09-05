@@ -190,7 +190,6 @@ spec:
                             type: string
                         required:
                         - authSecretRef
-                        - availabilityZone
                         - networkID
                         type: object
                       loadBalancerRef:
