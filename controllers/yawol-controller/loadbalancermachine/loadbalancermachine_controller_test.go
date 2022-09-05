@@ -308,7 +308,7 @@ func getMockLBM(lb *LB) *LBM {
 				Name:      lb.Name,
 				Namespace: lb.Namespace,
 			},
-			FloatingID: "floating-id",
+			PortID: "port-id",
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				FloatingNetID: pointer.String("floatingnet-id"),
 				NetworkID:     "network-id",

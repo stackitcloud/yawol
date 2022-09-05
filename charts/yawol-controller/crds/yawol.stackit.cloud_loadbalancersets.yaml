@@ -114,10 +114,6 @@ spec:
                   spec:
                     description: Spec is the spec for the LoadBalancerMachine.
                     properties:
-                      floatingID:
-                        description: FloatingID defines the  openstack ID from the
-                          FloatingIP.
-                        type: string
                       infrastructure:
                         description: Infrastructure defines parameters for the Infrastructure.
                         properties:
@@ -208,10 +204,14 @@ spec:
                         - name
                         - namespace
                         type: object
+                      portID:
+                        description: PortID defines the  openstack ID of the port
+                          attached to the FloatingIP.
+                        type: string
                     required:
-                    - floatingID
                     - infrastructure
                     - loadBalancerRef
+                    - portID
                     type: object
                 required:
                 - labels

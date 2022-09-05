@@ -38,7 +38,7 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Name:      "test-lbm",
 					Namespace: "testns"},
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
-					FloatingID:      "",
+					PortID:          "",
 					Infrastructure:  yawolv1beta1.LoadBalancerInfrastructure{},
 					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{},
 				},

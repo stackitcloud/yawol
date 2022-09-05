@@ -714,14 +714,14 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			return ctrl.Result{}, err
 		}
 
-		floatingID := ""
-		if lb.Status.FloatingID != nil {
-			floatingID = *lb.Status.FloatingID
+		portID := ""
+		if lb.Status.PortID != nil {
+			portID = *lb.Status.PortID
 		}
 
 		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
-			FloatingID:     floatingID,
+			PortID:         portID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Namespace: lb.Namespace,
 				Name:      lb.Name,

@@ -92,7 +92,7 @@ var _ = Describe("LB Status update", func() {
 
 		lbmSpec := yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
-			FloatingID:     *lbStatus.FloatingID,
+			PortID:         *lbStatus.PortID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Name:      lbNN.Name,
 				Namespace: lbNN.Namespace,
