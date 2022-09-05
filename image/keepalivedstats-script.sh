@@ -11,5 +11,4 @@ do
     chmod 644 /tmp/keepalived.stats
     sleep 0.5s
   done
-  exit
 done
