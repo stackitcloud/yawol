@@ -53,7 +53,7 @@ type Reconciler struct {
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("loadbalancer", req.NamespacedName)
 	if r.skipReconciles || (r.skipAllButNN != nil && r.skipAllButNN.Name != req.Name && r.skipAllButNN.Namespace != req.Namespace) {
-		r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
+		//r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
@@ -269,7 +269,7 @@ func (r *Reconciler) reconcileFIP(
 					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
 					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				default:
-					r.Log.Info("unexpected error occurred")
+					r.Log.Error(err, "retrieving FIP by IP failed")
 					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 				}
 			}

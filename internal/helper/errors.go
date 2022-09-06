@@ -28,6 +28,7 @@ var (
 	ErrSvcEventNotFound                      = errors.New("event on service not found")
 	ErrLBOnlyOneIPFamily                     = errors.New("LB only has one IP family type")
 	ErrNoExistingFIP                         = errors.New("no existingFloatingIP set")
+	ErrFIPNotFound                           = errors.New("FIP not found")
 	ErrInvalidClassname                      = errors.New("invalid classname LB created")
 	ErrInvalidProtocol                       = errors.New("invalid protocol LB created")
 	ErrLBNotCleanedUp                        = errors.New("load balancer didn't clean up")

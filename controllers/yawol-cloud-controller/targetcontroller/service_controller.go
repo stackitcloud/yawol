@@ -162,9 +162,9 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	err = helper.CheckExistingFloatingIPChanged(svc)
+	err = r.reconcileExistingFloatingIP(ctx, loadBalancer, svc)
 	if err != nil {
-		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, err, svc)
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -270,6 +270,45 @@ func (r *ServiceReconciler) reconcilePorts(
 		}
 		r.Recorder.Event(svc, coreV1.EventTypeNormal, "update", "LoadBalancer ports successfully synced with service ports")
 	}
+	return nil
+}
+
+func (r *ServiceReconciler) reconcileExistingFloatingIP(
+	ctx context.Context,
+	lb *yawolv1beta1.LoadBalancer,
+	svc *coreV1.Service,
+) error {
+	existingIP := helper.GetExistingFloatingIPFromAnnotation(svc)
+	if existingIP == nil {
+		// TODO check if customer deleted the annotation
+		// if true: YAWOL should get a new public IP and forget the old one
+		// which was managed by the customer
+		return nil
+	}
+
+	statusIP := helper.GetIPFromStatus(svc)
+
+	// No FIP assigned yet
+	if statusIP == nil {
+		return nil
+	}
+
+	// FIP in status & existing FIP are not equal, return error
+	if *existingIP != *statusIP {
+		err := fmt.Errorf("adding a different ExistingFloatingIP is not supported after LB creation")
+		return kubernetes.SendErrorAsEvent(r.Recorder, err, svc)
+	}
+
+	// FIP in status & existing FIP are the same
+	if lb.Spec.ExistingFloatingIP != nil && *lb.Spec.ExistingFloatingIP == *existingIP {
+		return nil
+	}
+
+	// update existingFloatingIP in lb.Spec
+	if err := r.patchExistingFloatingIP(ctx, lb, *existingIP); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -415,6 +454,16 @@ func (r *ServiceReconciler) patchLoadBalancerEndpoints(
 		return err
 	}
 	patch := []byte(`{"spec":{"endpoints":` + string(endpointsJSON) + `}}`)
+
+	return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+}
+
+func (r *ServiceReconciler) patchExistingFloatingIP(
+	ctx context.Context,
+	lb *yawolv1beta1.LoadBalancer,
+	ip string,
+) error {
+	patch := []byte(`{"spec":{"existingFloatingIP":"` + ip + `"}}`)
 
 	return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 }

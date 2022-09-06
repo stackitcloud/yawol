@@ -4,6 +4,7 @@ import (
 	"context"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
@@ -55,7 +56,7 @@ func GetFIPByName(
 		}
 	}
 
-	return nil, nil
+	return nil, helper.ErrFIPNotFound
 }
 
 // GetFIPByIP returns a FIP filtered By IP.
@@ -79,7 +80,7 @@ func GetFIPByIP(
 		}
 	}
 
-	return nil, nil
+	return nil, helper.ErrFIPNotFound
 }
 
 // GetFIPByID returns a FIP filtered by an openstack ID.
@@ -94,7 +95,7 @@ func GetFIPByID(
 	if err != nil {
 		return nil, err
 	}
-	return fip, err
+	return fip, nil
 }
 
 // BindFIPToPort binds a fip to a port
