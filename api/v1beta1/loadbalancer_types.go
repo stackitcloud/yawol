@@ -71,12 +71,6 @@ type LoadBalancerSpec struct {
 	// ExistingFloatingIP uses a existing Floating IP as FIP
 	// +optional
 	ExistingFloatingIP *string `json:"existingFloatingIP,omitempty"`
-	// DEPRECATED (moved to options) - InternalLB is a bool for internal LoadBalancer.
-	// If set to false a FloatingIP will be assigned to the LB. Defaults to false.
-	// TODO deprecated remove later
-	// +kubebuilder:default:=false
-	// +optional
-	InternalLB bool `json:"internalLB,omitempty"`
 	// Debug are settings for debugging an loadbalancer.
 	// +optional
 	DebugSettings LoadBalancerDebugSettings `json:"debugSettings,omitempty"`
@@ -84,10 +78,6 @@ type LoadBalancerSpec struct {
 	Endpoints []LoadBalancerEndpoint `json:"endpoints,omitempty"`
 	// Ports defines the Ports for the LoadBalancer (copy from service)
 	Ports []corev1.ServicePort `json:"ports,omitempty"`
-	// DEPRECATED (moved to options) - LoadBalancerSourceRanges restrict traffic to IP ranges for the LoadBalancer (copy from service)
-	// TODO deprecated remove later
-	// +optional
-	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// Infrastructure defines parameters for the Infrastructure
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
 	// Options for additional LoadBalancer settings

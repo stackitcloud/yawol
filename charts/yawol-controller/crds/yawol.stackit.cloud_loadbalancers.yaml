@@ -156,19 +156,6 @@ spec:
                 - authSecretRef
                 - networkID
                 type: object
-              internalLB:
-                default: false
-                description: DEPRECATED (moved to options) - InternalLB is a bool
-                  for internal LoadBalancer. If set to false a FloatingIP will be
-                  assigned to the LB. Defaults to false. TODO deprecated remove later
-                type: boolean
-              loadBalancerSourceRanges:
-                description: DEPRECATED (moved to options) - LoadBalancerSourceRanges
-                  restrict traffic to IP ranges for the LoadBalancer (copy from service)
-                  TODO deprecated remove later
-                items:
-                  type: string
-                type: array
               options:
                 description: Options for additional LoadBalancer settings
                 properties:

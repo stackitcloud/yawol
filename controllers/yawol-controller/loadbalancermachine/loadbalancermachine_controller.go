@@ -435,17 +435,19 @@ func (r *LoadBalancerMachineReconciler) reconcilePortAddressPair(
 		return "", helper.ErrLBMPortNotSet
 	}
 
-	if lb.Status.PortID == nil {
-		r.Log.Info(helper.ErrLBPortNotSet.Error(), "lb", lb.Name)
-		return "", helper.ErrLBPortNotSet
-	}
-
 	portLBM, err := openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.PortID)
 	if err != nil {
 		return "", kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
 	}
 
-	portLB, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
+	// TODO migration: remove unil next TODO after migration
+	portID := lbm.Spec.PortID
+	if portID == "" && lb.Status.PortID != nil {
+		portID = *lb.Status.PortID
+	}
+	portLB, err := openstackhelper.GetPortByID(ctx, portClient, portID)
+	// TODO migration: uncomment next line
+	// portLB, err := openstackhelper.GetPortByID(ctx, portClient, lbm.Spec.PortID)
 	if err != nil {
 		return "", kubernetes.SendErrorAsEvent(r.Recorder, err, lb)
 	}

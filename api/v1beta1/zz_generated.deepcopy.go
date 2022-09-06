@@ -490,11 +490,6 @@ func (in *LoadBalancerSpec) DeepCopyInto(out *LoadBalancerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.LoadBalancerSourceRanges != nil {
-		in, out := &in.LoadBalancerSourceRanges, &out.LoadBalancerSourceRanges
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	in.Infrastructure.DeepCopyInto(&out.Infrastructure)
 	in.Options.DeepCopyInto(&out.Options)
 }
