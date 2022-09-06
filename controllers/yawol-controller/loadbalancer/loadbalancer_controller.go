@@ -53,7 +53,7 @@ type Reconciler struct {
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("loadbalancer", req.NamespacedName)
 	if r.skipReconciles || (r.skipAllButNN != nil && r.skipAllButNN.Name != req.Name && r.skipAllButNN.Namespace != req.Namespace) {
-		//r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
+		r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
@@ -242,72 +242,15 @@ func (r *Reconciler) reconcileFIP(
 		requeue = true
 	}
 
-	var fip *floatingips.FloatingIP
-
-	// get floatingIP by name if ID is not set and patch ID in loadbalancer object
 	if lb.Status.FloatingID == nil {
-		fip, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-		if err != nil {
+		if err := r.assignOrCreateFIP(ctx, fipClient, lb); err != nil {
 			return false, err
 		}
-		if fip != nil {
-			r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
-			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID}); err != nil {
-				return false, err
-			}
-			requeue = true
-		}
-	}
-
-	if lb.Status.FloatingID == nil {
-		// Use existing Floating IP if specified
-		if lb.Spec.ExistingFloatingIP != nil {
-			r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
-			if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				default:
-					r.Log.Error(err, "retrieving FIP by IP failed")
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-			if fip.ID != "" {
-				if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-					FloatingID: &fip.ID,
-				}); err != nil {
-					return false, err
-				}
-			}
-		} else {
-			// create fip
-			r.Log.Info("Create FloatingIP", "lb", lb.Name)
-			if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault400:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				case gophercloud.ErrDefault409:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				default:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-			// double check so status won't be corrupted
-			if fip.ID == "" {
-				return false, helper.ErrFIPIDEmpty
-			}
-
-			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-				FloatingID: &fip.ID,
-			}); err != nil {
-				return false, err
-			}
-			requeue = true
-		}
+		requeue = true
 	}
 
 	// Get FIP
+	var fip *floatingips.FloatingIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
 		case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
@@ -335,6 +278,71 @@ func (r *Reconciler) reconcileFIP(
 	}
 
 	return requeue, nil
+}
+
+func (r *Reconciler) assignOrCreateFIP(
+	ctx context.Context,
+	fipClient openstack.FipClient,
+	lb *yawolv1beta1.LoadBalancer,
+) error {
+	var fip *floatingips.FloatingIP
+	var err error
+
+	// use existing floating ip
+	if lb.Spec.ExistingFloatingIP != nil {
+		r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
+		if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+				r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
+				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			default:
+				r.Log.Error(err, "retrieving FIP by IP failed")
+				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			}
+		}
+		if fip.ID != "" {
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+				FloatingID: &fip.ID,
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	// try to find FIP by name
+	// TODO do we need this? @dergeberl
+	fip, _ = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+	if fip != nil {
+		r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
+		if err := helper.PatchLBStatus(
+			ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
+		); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	// create fip
+	r.Log.Info("Create FloatingIP", "lb", lb.Name)
+	if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
+		return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+	}
+	// double check so status won't be corrupted
+	if fip.ID == "" {
+		return helper.ErrFIPIDEmpty
+	}
+
+	if err := helper.PatchLBStatus(
+		ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Reconciler) reconcilePort(
@@ -845,6 +853,14 @@ func (r *Reconciler) deleteFips(
 	if lb.Status.FloatingID != nil {
 		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
+			// if error is our custom not found error
+			if err == helper.ErrFIPNotFound {
+				r.Log.Info("fip not found, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
+				// requeue true to delete floatingName in the next run
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
+			}
+
+			// if error is openstack error
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
@@ -852,6 +868,8 @@ func (r *Reconciler) deleteFips(
 				if err != nil {
 					return false, err
 				}
+				// requeue true to delete floatingName in the next run
+				return true, nil
 			default:
 				r.Log.Info("an unexpected error occurred retrieving fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -870,15 +888,16 @@ func (r *Reconciler) deleteFips(
 				}
 			}
 		}
+
 		// requeue so next run will delete the status
 		requeue = true
 	}
 
-	if lb.Status.FloatingName != nil { //nolint:dupl // no dupl
+	if lb.Status.FloatingName != nil {
 		var fipByName *floatingips.FloatingIP
 
 		fipByName, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-		if err != nil {
+		if err != nil && err != helper.ErrFIPNotFound {
 			r.Log.Info("an error occurred extracting floating IPs", "lb", lb.Namespace+"/"+lb.Name)
 			return false, err
 		}
