@@ -2,8 +2,6 @@ package loadbalancer
 
 import (
 	"context"
-	"encoding/json"
-	"strconv"
 	"time"
 
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -69,11 +67,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// migrate deprecations TODO: remove later
-	if res, err := r.migrateDeprecations(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
-	}
-
 	// update metrics
 	helper.ParseLoadBalancerMetrics(
 		lb,
@@ -112,45 +105,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-}
-
-// migrateDeprecations moves the deprecated fields to the new object
-// TODO: remove in future
-func (r *Reconciler) migrateDeprecations(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
-	// internalLB
-	if lb.Spec.InternalLB {
-		// add to options
-		patch := []byte(`{"spec":{"options":{"internalLB":` + strconv.FormatBool(lb.Spec.InternalLB) + `}}}`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-		// remove old field
-		patch = []byte(`[{"op":"remove", "path":"/spec/internalLB"}]`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	// loadBalancerSourceRanges
-	if lb.Spec.LoadBalancerSourceRanges != nil && len(lb.Spec.LoadBalancerSourceRanges) > 0 {
-		// add to options
-		data, err := json.Marshal(lb.Spec.LoadBalancerSourceRanges)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		patch := []byte(`{"spec":{"options":{"loadBalancerSourceRanges":` + string(data) + `}}}`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-		// remove old field
-		patch = []byte(`[{"op":"remove", "path":"/spec/loadBalancerSourceRanges"}]`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	return ctrl.Result{}, nil
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -714,14 +668,13 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			return ctrl.Result{}, err
 		}
 
-		portID := ""
-		if lb.Status.PortID != nil {
-			portID = *lb.Status.PortID
+		if lb.Status.PortID == nil {
+			return ctrl.Result{}, helper.ErrLBPortNotSet
 		}
 
 		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
-			PortID:         portID,
+			PortID:         *lb.Status.PortID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Namespace: lb.Namespace,
 				Name:      lb.Name,
