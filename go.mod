@@ -14,6 +14,7 @@ require (
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/ini.v1 v1.62.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.22.7
 	k8s.io/apimachinery v0.22.7
 	k8s.io/client-go v0.22.7
@@ -85,7 +86,6 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiextensions-apiserver v0.21.4 // indirect
 	k8s.io/component-base v0.21.4 // indirect
@@ -99,6 +99,7 @@ replace (
 	// v1.1.11 is not compatible with go1.18
 	github.com/json-iterator/go => github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.13.0
+	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api => k8s.io/api v0.21.13
 	k8s.io/apimachinery => k8s.io/apimachinery v0.21.13
 	k8s.io/client-go => k8s.io/client-go v0.21.13

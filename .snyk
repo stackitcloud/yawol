@@ -14,4 +14,8 @@ ignore:
     - '*':
         reason: Permissions needed for K8s controller
         created: 2021-09-23T06:21:16.730Z
+  'snyk:lic:golang:github.com:hashicorp:golang-lru:MPL-2.0':
+    - '*':
+        reason: TODO check
+        created: 2022-09-07T12:51:20.590Z
 patch: {}
