@@ -205,12 +205,13 @@ spec:
                         - namespace
                         type: object
                       portID:
-                        description: 'TODO migration: remove the optional field PortID
-                          defines the openstack ID of the port attached to the FloatingIP.'
+                        description: PortID defines the openstack ID of the port attached
+                          to the FloatingIP.
                         type: string
                     required:
                     - infrastructure
                     - loadBalancerRef
+                    - portID
                     type: object
                 required:
                 - labels

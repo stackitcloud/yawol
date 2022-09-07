@@ -40,13 +40,13 @@ yawolCloudController:
       readOnly: true
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
-    tag: 0.7.2
+    tag: latest
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
-    tag: 0.7.2
+    tag: latest
 
 resources:
   yawolCloudController:
