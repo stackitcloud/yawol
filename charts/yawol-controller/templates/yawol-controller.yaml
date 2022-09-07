@@ -34,8 +34,7 @@ spec:
         ports:
         - containerPort: 8080
           name: metrics
-        command:
-          - /bin/yawol-controller
+        args:
           - -leader-elect
           - -enable-loadbalancer-controller
           {{- if .Values.openstackTimeout }}
@@ -62,8 +61,7 @@ spec:
         ports:
           - containerPort: 8081
             name: metrics
-        command:
-          - /bin/yawol-controller
+        args:
           - -leader-elect
           - -enable-loadbalancerset-controller
           {{- if .Values.openstackTimeout }}
@@ -90,8 +88,7 @@ spec:
         ports:
           - containerPort: 8082
             name: metrics
-        command:
-          - /bin/yawol-controller
+        args:
           - -leader-elect
           - -enable-loadbalancermachine-controller
           {{- if .Values.openstackTimeout }}

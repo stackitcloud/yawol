@@ -36,8 +36,7 @@ spec:
         ports:
         - containerPort: 8080
           name: metrics
-        command:
-        - /bin/yawol-cloud-controller
+        args:
 {{- if .Values.yawolCloudController.additionalArguments }}
 {{ toYaml .Values.yawolCloudController.additionalArguments | indent 8 }}
 {{- end }}
