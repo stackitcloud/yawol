@@ -55,9 +55,6 @@ spec:
           spec:
             description: LoadBalancerMachineSpec defines the desired state of LoadBalancerMachine
             properties:
-              floatingID:
-                description: FloatingID defines the  openstack ID from the FloatingIP.
-                type: string
               infrastructure:
                 description: Infrastructure defines parameters for the Infrastructure.
                 properties:
@@ -126,7 +123,6 @@ spec:
                     type: string
                 required:
                 - authSecretRef
-                - availabilityZone
                 - networkID
                 type: object
               loadBalancerRef:
@@ -145,8 +141,11 @@ spec:
                 - name
                 - namespace
                 type: object
+              portID:
+                description: 'TODO migration: remove the optional field PortID defines
+                  the openstack ID of the port attached to the FloatingIP.'
+                type: string
             required:
-            - floatingID
             - infrastructure
             - loadBalancerRef
             type: object

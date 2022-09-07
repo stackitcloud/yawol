@@ -266,13 +266,13 @@ func (r *LoadBalancerMachineReconciler) reconcileRole(
 	}
 	err := r.Client.Get(ctx, client.ObjectKey{Name: role.Name, Namespace: role.Namespace}, &role)
 	if err != nil {
-		if errors2.IsNotFound(err) {
-			if err := r.Client.Create(ctx, &role); err != nil {
-				return err
-			}
-			r.Log.Info("Role created", "loadBalancerMachineName", loadBalancerMachine.Name)
+		if !errors2.IsNotFound(err) {
+			return err
 		}
-		return err
+		if err := r.Client.Create(ctx, &role); err != nil {
+			return err
+		}
+		r.Log.Info("Role created", "loadBalancerMachineName", loadBalancerMachine.Name)
 	}
 
 	roleNamespacedName := types.NamespacedName{Name: role.Name, Namespace: role.Namespace}.String()
@@ -314,13 +314,13 @@ func (r *LoadBalancerMachineReconciler) reconcileRoleBinding(
 
 	err := r.Client.Get(ctx, client.ObjectKey{Name: rb.Name, Namespace: rb.Namespace}, &rb)
 	if err != nil {
-		if errors2.IsNotFound(err) {
-			if err := r.Client.Create(ctx, &rb); err != nil {
-				return err
-			}
-			r.Log.Info("rolebinding created", "loadBalancerMachineName", loadBalancerMachine.Name)
+		if !errors2.IsNotFound(err) {
+			return err
 		}
-		return err
+		if err := r.Client.Create(ctx, &rb); err != nil {
+			return err
+		}
+		r.Log.Info("rolebinding created", "loadBalancerMachineName", loadBalancerMachine.Name)
 	}
 
 	roleBindingNamespacedName := types.NamespacedName{Name: rb.Name, Namespace: rb.Namespace}.String()
@@ -435,17 +435,19 @@ func (r *LoadBalancerMachineReconciler) reconcilePortAddressPair(
 		return "", helper.ErrLBMPortNotSet
 	}
 
-	if lb.Status.PortID == nil {
-		r.Log.Info(helper.ErrLBPortNotSet.Error(), "lb", lb.Name)
-		return "", helper.ErrLBPortNotSet
-	}
-
 	portLBM, err := openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.PortID)
 	if err != nil {
 		return "", kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
 	}
 
-	portLB, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
+	// TODO migration: remove unil next TODO after migration
+	portID := lbm.Spec.PortID
+	if portID == "" && lb.Status.PortID != nil {
+		portID = *lb.Status.PortID
+	}
+	portLB, err := openstackhelper.GetPortByID(ctx, portClient, portID)
+	// TODO migration: uncomment next line
+	// portLB, err := openstackhelper.GetPortByID(ctx, portClient, lbm.Spec.PortID)
 	if err != nil {
 		return "", kubernetes.SendErrorAsEvent(r.Recorder, err, lb)
 	}

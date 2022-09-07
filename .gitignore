@@ -23,3 +23,7 @@ out
 *.swp
 *.swo
 *~
+.vscode
+
+# openstack related files
+.openrc

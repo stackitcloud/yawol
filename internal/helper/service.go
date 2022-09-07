@@ -32,8 +32,7 @@ func PatchServiceStatus(
 // GetDebugSettings return loadbalancer debug settings for a service
 func GetDebugSettings(svc *coreV1.Service) yawolv1beta1.LoadBalancerDebugSettings {
 	debugSettings := yawolv1beta1.LoadBalancerDebugSettings{}
-	if svc.Annotations[yawolv1beta1.ServiceDebug] == "true" ||
-		svc.Annotations[yawolv1beta1.ServiceDebug] == "True" {
+	if val, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceDebug]); val {
 		debugSettings.Enabled = true
 		if svc.Annotations[yawolv1beta1.ServiceDebugSSHKey] != "" {
 			debugSettings.SshkeyName = svc.Annotations[yawolv1beta1.ServiceDebugSSHKey]
@@ -96,28 +95,6 @@ func GetReplicasFromService(service *coreV1.Service) int {
 
 func GetLoadBalancerNameFromService(service *coreV1.Service) string {
 	return service.Namespace + "--" + service.Name
-}
-
-// CheckExistingFloatingIPChanged check for existing FIP is different from svc.status
-func CheckExistingFloatingIPChanged(svc *coreV1.Service) error {
-	existingIP := GetExistingFloatingIPFromAnnotation(svc)
-	if existingIP == nil {
-		return nil
-	}
-	statusIP := GetIPFromStatus(svc)
-
-	// No FIP assigned yet
-	if statusIP == nil {
-		return nil
-	}
-
-	// FIP in status & existing FIP are the same
-	if *existingIP == *statusIP {
-		return nil
-	}
-
-	// FIP in status & existing FIP are not equal, return error
-	return fmt.Errorf("add of an ExistingFloatingIP is not supported after LB creation")
 }
 
 // ValidateService checks if the service is valid

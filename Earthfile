@@ -76,7 +76,9 @@ generate:
     COPY +controller-gen/bin/controller-gen $BINPATH
     COPY --dir api/ .
     RUN controller-gen object paths="./..."
+    RUN controller-gen "crd:trivialVersions=true" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config="crds"
     SAVE ARTIFACT ./api/* AS LOCAL api/
+    SAVE ARTIFACT ./crds/* AS LOCAL charts/yawol-controller/crds/
 
 lint:
     ARG GOLANGCI_LINT_CACHE=/golangci-cache

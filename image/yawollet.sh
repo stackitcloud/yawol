@@ -8,9 +8,6 @@ supervisor="supervise-daemon"
 command="/usr/local/bin/yawollet"
 command_args="$YAWOLLET_ARGS"
 command_user="yawol"
-retry=10800
-respawn_delay=2
-respawn_max=50
 
 depend() {
 	after net 

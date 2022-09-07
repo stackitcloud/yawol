@@ -2,8 +2,6 @@ package loadbalancer
 
 import (
 	"context"
-	"encoding/json"
-	"strconv"
 	"time"
 
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -69,11 +67,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// migrate deprecations TODO: remove later
-	if res, err := r.migrateDeprecations(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
-	}
-
 	// update metrics
 	helper.ParseLoadBalancerMetrics(
 		lb,
@@ -111,46 +104,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return res, err
 	}
 
-	return ctrl.Result{}, nil
-}
-
-// migrateDeprecations moves the deprecated fields to the new object
-// TODO: remove in future
-func (r *Reconciler) migrateDeprecations(
-	ctx context.Context,
-	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
-	// internalLB
-	if lb.Spec.InternalLB {
-		// add to options
-		patch := []byte(`{"spec":{"options":{"internalLB":` + strconv.FormatBool(lb.Spec.InternalLB) + `}}}`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-		// remove old field
-		patch = []byte(`[{"op":"remove", "path":"/spec/internalLB"}]`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	// loadBalancerSourceRanges
-	if lb.Spec.LoadBalancerSourceRanges != nil && len(lb.Spec.LoadBalancerSourceRanges) > 0 {
-		// add to options
-		data, err := json.Marshal(lb.Spec.LoadBalancerSourceRanges)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		patch := []byte(`{"spec":{"options":{"loadBalancerSourceRanges":` + string(data) + `}}}`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-		// remove old field
-		patch = []byte(`[{"op":"remove", "path":"/spec/loadBalancerSourceRanges"}]`)
-		if err := r.Client.Patch(ctx, lb, client.RawPatch(types.JSONPatchType, patch)); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -182,6 +136,8 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 	if !helper.LoadBalancerOpenstackReconcileIsNeeded(lb) {
 		return ctrl.Result{}, nil
 	}
+
+	r.Log.Info("Reconcile Openstack", "lb", lb.Name)
 
 	var requeue, overallRequeue bool
 	var err error
@@ -263,6 +219,7 @@ func (r *Reconciler) reconcileFIP(
 	if lb.Spec.Options.InternalLB {
 		return r.deleteFips(ctx, osClient, lb)
 	}
+	r.Log.Info("Reconcile FloatingIP", "lb", lb.Name)
 
 	var err error
 
@@ -285,72 +242,18 @@ func (r *Reconciler) reconcileFIP(
 		requeue = true
 	}
 
-	var fip *floatingips.FloatingIP
-
-	// get floatingIP by name if ID is not set and patch ID in loadbalancer object
 	if lb.Status.FloatingID == nil {
-		fip, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-		if err != nil {
+		if err := r.assignOrCreateFIP(ctx, fipClient, lb); err != nil {
 			return false, err
 		}
-		if fip != nil {
-			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID}); err != nil {
-				return false, err
-			}
-			requeue = true
-		}
-	}
-
-	if lb.Status.FloatingID == nil {
-		// Use existing Floating IP if specified
-		if lb.Spec.ExistingFloatingIP != nil {
-			if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404:
-					r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				default:
-					r.Log.Info("unexpected error occurred")
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-			if fip.ID != "" {
-				if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-					FloatingID: &fip.ID,
-				}); err != nil {
-					return false, err
-				}
-			}
-		} else {
-			// create fip
-			if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault400:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				case gophercloud.ErrDefault409:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				default:
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-			// double check so status won't be corrupted
-			if fip.ID == "" {
-				return false, helper.ErrFIPIDEmpty
-			}
-
-			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-				FloatingID: &fip.ID,
-			}); err != nil {
-				return false, err
-			}
-			requeue = true
-		}
+		requeue = true
 	}
 
 	// Get FIP
+	var fip *floatingips.FloatingIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
-		case gophercloud.ErrDefault404:
+		case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
 			// fip not found by ID, remove it from status and trigger reconcile
 			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
@@ -365,6 +268,7 @@ func (r *Reconciler) reconcileFIP(
 
 	// patch floatingIP in status
 	if lb.Status.ExternalIP == nil || *lb.Status.ExternalIP != fip.FloatingIP {
+		r.Log.Info("Update ExternalIP", "lb", lb.Name)
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &fip.FloatingIP,
 		}); err != nil {
@@ -373,7 +277,86 @@ func (r *Reconciler) reconcileFIP(
 		requeue = true
 	}
 
+	// if FIP is managed by user but has FloatingName as its name
+	// we need to add "USER MANAGED" to its name
+	// otherwhise it might be picked up by our controller in the future
+	// and gets assigned to a certain service
+	// edge case: user claims FIP which was managed by YAWOL before
+	if lb.Spec.ExistingFloatingIP != nil &&
+		lb.Status.FloatingName != nil &&
+		fip.Description == *lb.Status.FloatingName {
+		name := fip.Description + " (user managed)"
+		_, err = fipClient.Update(ctx, fip.ID, floatingips.UpdateOpts{Description: &name})
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return requeue, nil
+}
+
+func (r *Reconciler) assignOrCreateFIP(
+	ctx context.Context,
+	fipClient openstack.FipClient,
+	lb *yawolv1beta1.LoadBalancer,
+) error {
+	var fip *floatingips.FloatingIP
+	var err error
+
+	// use existing floating ip
+	if lb.Spec.ExistingFloatingIP != nil {
+		r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
+		if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+				r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
+				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			default:
+				r.Log.Error(err, "retrieving FIP by IP failed")
+				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			}
+		}
+		if fip.ID != "" {
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+				FloatingID: &fip.ID,
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	// try to find FIP by name
+	fip, _ = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+	if fip != nil {
+		r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
+		if err := helper.PatchLBStatus(
+			ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
+		); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	// create fip
+	r.Log.Info("Create FloatingIP", "lb", lb.Name)
+	if fip, err = openstackhelper.CreateFIP(ctx, fipClient, lb); err != nil {
+		return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+	}
+	// double check so status won't be corrupted
+	if fip.ID == "" {
+		return helper.ErrFIPIDEmpty
+	}
+
+	if err := helper.PatchLBStatus(
+		ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Reconciler) reconcilePort(
@@ -382,6 +365,7 @@ func (r *Reconciler) reconcilePort(
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
 ) (bool, error) {
+	r.Log.Info("Reconcile Port", "lb", lb.Name)
 	var requeue bool
 	var portClient openstack.PortClient
 	var err error
@@ -420,6 +404,7 @@ func (r *Reconciler) reconcilePort(
 
 	// Create Port
 	if lb.Status.PortID == nil {
+		r.Log.Info("Create Port", "lb", lb.Name)
 		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
@@ -445,7 +430,7 @@ func (r *Reconciler) reconcilePort(
 	if lb.Status.PortID != nil {
 		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port not found in openstack", "portID", *lb.Status.PortID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID"); err != nil {
 					return false, err
@@ -507,6 +492,8 @@ func (r *Reconciler) reconcileSecGroup(
 	lb *yawolv1beta1.LoadBalancer,
 	osClient openstack.Client,
 ) (bool, error) {
+	r.Log.Info("Reconcile SecGroup", "lb", lb.Name)
+
 	var requeue bool
 	var err error
 
@@ -541,6 +528,7 @@ func (r *Reconciler) reconcileSecGroup(
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 		if secGroup != nil {
+			r.Log.Info("Found SecGroup by name", "lb", lb.Name)
 			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{SecurityGroupID: &secGroup.ID}); err != nil {
 				return false, err
 			}
@@ -550,6 +538,7 @@ func (r *Reconciler) reconcileSecGroup(
 
 	// Create SecGroup
 	if lb.Status.SecurityGroupID == nil {
+		r.Log.Info("Create SecGroup", "lb", lb.Name)
 		secGroup, err = openstackhelper.CreateSecGroup(ctx, groupClient, req.NamespacedName.String())
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a fip", "lb", req.NamespacedName)
@@ -572,7 +561,7 @@ func (r *Reconciler) reconcileSecGroup(
 	if lb.Status.SecurityGroupID != nil {
 		if secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("SecurityGroupID not found in openstack", "SecurityGroupID", *lb.Status.SecurityGroupID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id"); err != nil {
 					return false, err
@@ -590,6 +579,7 @@ func (r *Reconciler) reconcileSecGroup(
 		return false, helper.ErrSecGroupNil
 	}
 
+	r.Log.Info("Reconcile SecGroupRules", "lb", lb.Name)
 	desiredSecGroups := helper.GetDesiredSecGroupRulesForLoadBalancer(r.RecorderLB, lb, secGroup.ID)
 
 	err = openstackhelper.DeleteUnusedSecGroupRulesFromSecGroup(ctx, ruleClient, secGroup, desiredSecGroups)
@@ -615,6 +605,8 @@ func (r *Reconciler) reconcileFIPAssociate(
 		return false, nil
 	}
 
+	r.Log.Info("Reconcile FIPAssociate", "lb", lb.Name)
+
 	var err error
 
 	var fipClient openstack.FipClient
@@ -634,10 +626,12 @@ func (r *Reconciler) reconcileFIPAssociate(
 		return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 	}
 
-	// fip is already on coorect port
-	if fip.PortID == *lb.Status.PortID {
+	// fip is already on correct port and fip status is Active - skip binding
+	if fip.PortID == *lb.Status.PortID && fip.Status == "ACTIVE" {
 		return false, nil
 	}
+
+	r.Log.Info("Bind FloatingIP to Port", "lb", lb.Name)
 
 	if err := openstackhelper.BindFIPToPort(ctx, fipClient, *lb.Status.FloatingID, lb.Status.PortID); err != nil {
 		r.Log.WithName("reconcileFIPAssociate").
@@ -696,14 +690,13 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			return ctrl.Result{}, err
 		}
 
-		floatingID := ""
-		if lb.Status.FloatingID != nil {
-			floatingID = *lb.Status.FloatingID
+		if lb.Status.PortID == nil {
+			return ctrl.Result{}, helper.ErrLBPortNotSet
 		}
 
 		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
-			FloatingID:     floatingID,
+			PortID:         *lb.Status.PortID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Namespace: lb.Namespace,
 				Name:      lb.Name,
@@ -874,13 +867,23 @@ func (r *Reconciler) deleteFips(
 	if lb.Status.FloatingID != nil {
 		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
+			// if error is our custom not found error
+			if err == helper.ErrFIPNotFound {
+				r.Log.Info("fip not found, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
+				// requeue true to delete floatingName in the next run
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
+			}
+
+			// if error is openstack error
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
 				if err != nil {
 					return false, err
 				}
+				// requeue true to delete floatingName in the next run
+				return true, nil
 			default:
 				r.Log.Info("an unexpected error occurred retrieving fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -891,7 +894,7 @@ func (r *Reconciler) deleteFips(
 			err = openstackhelper.DeleteFIP(ctx, fipClient, fip.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
@@ -899,15 +902,16 @@ func (r *Reconciler) deleteFips(
 				}
 			}
 		}
+
 		// requeue so next run will delete the status
 		requeue = true
 	}
 
-	if lb.Status.FloatingName != nil { //nolint:dupl // no dupl
+	if lb.Status.FloatingName != nil {
 		var fipByName *floatingips.FloatingIP
 
 		fipByName, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-		if err != nil {
+		if err != nil && err != helper.ErrFIPNotFound {
 			r.Log.Info("an error occurred extracting floating IPs", "lb", lb.Namespace+"/"+lb.Name)
 			return false, err
 		}
@@ -924,7 +928,7 @@ func (r *Reconciler) deleteFips(
 			err = openstackhelper.DeleteFIP(ctx, fipClient, fipByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
@@ -964,7 +968,7 @@ func (r *Reconciler) deletePorts(
 		port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
 				if err != nil {
@@ -979,7 +983,7 @@ func (r *Reconciler) deletePorts(
 			err = openstackhelper.DeletePort(ctx, portClient, port.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
@@ -1011,7 +1015,7 @@ func (r *Reconciler) deletePorts(
 			err = openstackhelper.DeletePort(ctx, portClient, portByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting port, already deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
@@ -1061,7 +1065,7 @@ func (r *Reconciler) deleteSecGroups(
 		secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
 				if err != nil {
@@ -1076,7 +1080,7 @@ func (r *Reconciler) deleteSecGroups(
 			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
@@ -1109,7 +1113,7 @@ func (r *Reconciler) deleteSecGroups(
 			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroupByName.ID)
 			if err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 					r.Log.Info("error deleting secGroup, already deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
 				default:
 					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)

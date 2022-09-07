@@ -32,14 +32,14 @@ func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalance
 }
 
 func GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb *yawolv1beta1.LoadBalancer) (string, error) {
-	var floatingID string
-	if lb.Status.FloatingID != nil {
-		floatingID = *lb.Status.FloatingID
+	var portID string
+	if lb.Status.PortID != nil {
+		portID = *lb.Status.PortID
 	}
 
 	return HashData(yawolv1beta1.LoadBalancerMachineSpec{
 		Infrastructure: lb.Spec.Infrastructure,
-		FloatingID:     floatingID,
+		PortID:         portID,
 		LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 			Namespace: lb.Namespace,
 			Name:      lb.Name,

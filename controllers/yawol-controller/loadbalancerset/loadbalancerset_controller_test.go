@@ -37,7 +37,7 @@ var _ = Describe("LoadBalancerSet controller", func() {
 		FlavorID      = "osAyv1W3z2TU5D6h"
 		ImageID       = "64e0c0ba-794d-4487-9383-c4c98cb469ed"
 		SecretName    = "cloud-provider-config"
-		FloatingID    = "64e0c0ba-794d-4487-9383-c4c98cb469ed"
+		PortID        = "64e0c0ba-794d-4487-9383-c4c98cb469ed"
 
 		timeout  = time.Second * 30
 		interval = time.Millisecond * 250
@@ -71,7 +71,7 @@ var _ = Describe("LoadBalancerSet controller", func() {
 							Namespace: LoadBalancerSetNamespace,
 						},
 					},
-					FloatingID: FloatingID,
+					PortID: PortID,
 				},
 			},
 		},

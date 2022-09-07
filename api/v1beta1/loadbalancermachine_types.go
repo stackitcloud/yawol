@@ -35,8 +35,10 @@ type LoadBalancerMachineList struct {
 type LoadBalancerMachineSpec struct {
 	// Infrastructure defines parameters for the Infrastructure.
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
-	// FloatingID defines the  openstack ID from the FloatingIP.
-	FloatingID string `json:"floatingID"`
+	// TODO migration: remove the optional field
+	// PortID defines the openstack ID of the port attached to the FloatingIP.
+	// +optional
+	PortID string `json:"portID"`
 	// LoadBalancerRef defines a reference to the LoadBalancer Object.
 	LoadBalancerRef LoadBalancerRef `json:"loadBalancerRef"`
 }

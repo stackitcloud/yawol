@@ -183,7 +183,7 @@ var _ = Describe("loadbalancer controller", func() {
 				g.Expect(lbset.Spec.Replicas).Should(Equal(1))
 				g.Expect(lbset.Spec.Selector.MatchLabels).Should(ContainElement(act.Spec.Selector.MatchLabels["test-label"]))
 				g.Expect(lbset.Spec.Template.Labels).Should(ContainElement(act.Spec.Selector.MatchLabels["test-label"]))
-				g.Expect(lbset.Spec.Template.Spec.FloatingID).Should(Equal(*act.Status.FloatingID))
+				g.Expect(lbset.Spec.Template.Spec.PortID).Should(Equal(*act.Status.PortID))
 				g.Expect(lbset.Spec.Template.Spec.Infrastructure).Should(Equal(act.Spec.Infrastructure))
 				g.Expect(lbset.Spec.Template.Spec.LoadBalancerRef.Name).Should(Equal(act.Name))
 				g.Expect(lbset.Spec.Template.Spec.LoadBalancerRef.Namespace).Should(Equal(act.Namespace))
@@ -531,8 +531,9 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 				InternalLB:               false,
 				LoadBalancerSourceRanges: nil,
 			},
-			Endpoints: nil,
-			Ports:     nil,
+			Endpoints:          nil,
+			Ports:              nil,
+			ExistingFloatingIP: nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				FloatingNetID: pointer.String("floatingnet-id"),
 				NetworkID:     "network-id",

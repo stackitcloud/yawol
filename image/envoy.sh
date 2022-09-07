@@ -6,7 +6,6 @@ supervisor="supervise-daemon"
 command="/usr/local/bin/envoy"
 command_args="-c /etc/yawol/envoy.yaml --log-path /var/log/yawol/envoy.log"
 command_user="yawol"
-retry=10800
 
 depend() {
 	after net 
