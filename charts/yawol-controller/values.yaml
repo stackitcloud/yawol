@@ -113,7 +113,7 @@ yawolImageID: foobar
 # can be overridden by annotation. If not set, empty string is used.
 #
 # Placed in LoadBalancer.spec.infrastructure.availabilityZone
-yawolAvailabilityZone: foobar
+yawolAvailabilityZone: ""
 
 # URL/IP of the Kubernetes API server that contains the LoadBalancer resources
 yawolAPIHost: foobar
