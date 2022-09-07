@@ -128,8 +128,8 @@ snyk-go:
     RUN --secret SNYK_TOKEN snyk test
 
 snyk-helm:
-    FROM +deps
-    COPY +snyk/snyk $BINPATH
+    FROM alpine/helm:3.8.1
+    COPY +snyk-alpine/snyk $BINPATH
     COPY --dir +helm2kube/result .
     COPY .snyk .
     RUN --secret SNYK_TOKEN \
@@ -163,6 +163,12 @@ envoy:
     SAVE ARTIFACT /usr/local/bin/envoy
 
 snyk:
+    FROM snyk/snyk:linux
+    SAVE ARTIFACT /usr/local/bin/snyk
+
+# needed for +snyk-helm, as the target is based on alpine/helm,
+# and this is the only time we need a alpine-based snyk binary
+snyk-alpine:
     FROM snyk/snyk:alpine
     SAVE ARTIFACT /usr/local/bin/snyk
 
