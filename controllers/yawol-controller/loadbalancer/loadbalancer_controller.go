@@ -277,6 +277,21 @@ func (r *Reconciler) reconcileFIP(
 		requeue = true
 	}
 
+	// if FIP is managed by user but has FloatingName as its name
+	// we need to add "USER MANAGED" to its name
+	// otherwhise it might be picked up by our controller in the future
+	// and gets assigned to a certain service
+	// edge case: user claims FIP which was managed by YAWOL before
+	if lb.Spec.ExistingFloatingIP != nil &&
+		lb.Status.FloatingName != nil &&
+		fip.Description == *lb.Status.FloatingName {
+		name := fip.Description + " (user managed)"
+		_, err = fipClient.Update(ctx, fip.ID, floatingips.UpdateOpts{Description: &name})
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return requeue, nil
 }
 
@@ -313,7 +328,6 @@ func (r *Reconciler) assignOrCreateFIP(
 	}
 
 	// try to find FIP by name
-	// TODO do we need this? @dergeberl
 	fip, _ = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
 	if fip != nil {
 		r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)

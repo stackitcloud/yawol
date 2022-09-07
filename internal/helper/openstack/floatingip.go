@@ -26,7 +26,7 @@ func CreateFIP(
 	return fip, nil
 }
 
-// CreateFIP creates a FIP and returns it.
+// DeleteFIP deletes a FIP and returns the error.
 func DeleteFIP(
 	ctx context.Context,
 	fipClient openstack.FipClient,
