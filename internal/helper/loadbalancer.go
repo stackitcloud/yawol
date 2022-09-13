@@ -254,7 +254,7 @@ func getSecGroupRulesForPorts(r record.EventRecorder, lb *yawolv1beta1.LoadBalan
 				PortRangeMin:   portValue,
 				PortRangeMax:   portValue,
 				RemoteIPPrefix: cidr,
-				Protocol:       string(port.Protocol),
+				Protocol:       strings.ToLower(string(port.Protocol)),
 			}
 			portSecGroups = append(portSecGroups, rule)
 		}
