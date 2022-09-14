@@ -21,7 +21,7 @@ jobs:
     - name: Docker login
       run: docker login --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}"
     - name: Install earthly
-      uses: earthly/setup-earthly@v1
+      run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.23/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
     - name: Earthly version
       run: earthly --version
     - name: Run build
