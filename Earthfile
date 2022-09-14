@@ -143,8 +143,9 @@ snyk-helm:
 
 all:
     BUILD +generate
-    BUILD +snyk-go
-    BUILD +snyk-helm
+    # TODO use snyk token in github actions
+    #BUILD +snyk-go
+    #BUILD +snyk-helm
     BUILD +lint
     BUILD +coverage
     BUILD +test
