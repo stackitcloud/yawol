@@ -1,8 +1,9 @@
 name: Docker
 
-on: [push]
-  #push:
-    #branches: [main]
+on:
+  push:
+    branches: [main]
+    tags: ['*']
 
 jobs:
   build:
@@ -20,14 +21,9 @@ jobs:
           branch="${GITHUB_REF##*/}"
         fi
         git checkout -b "$branch" || true
-    #- name: Login to GitHub Container Registry
-      #uses: docker/login-action@v2
-      #with:
-        #registry: ghcr.io
-        #username: ${{ github.actor }}
-        #password: ${{ secrets.GITHUB_TOKEN }}
+    # the login action doesn't work with earthly
     - name: Docker login
-      run: docker login ghcr.io --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}"
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
     - name: Install earthly
       run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.23/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
     - name: Earthly version
