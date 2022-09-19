@@ -16,6 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 )
 
+//nolint:gocyclo // complicated test function
 //nolint:funlen // long test function
 func GetFakeClient() *MockClient {
 	client := MockClient{}
