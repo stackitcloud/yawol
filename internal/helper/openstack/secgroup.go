@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
@@ -117,6 +118,7 @@ func DeleteUnusedSecGroupRulesFromSecGroup(
 		if found {
 			continue
 		}
+
 		err := DeleteSecGroupRule(ctx, ruleClient, secGroup.Rules[i].ID)
 		if err != nil {
 			return err
@@ -145,6 +147,7 @@ func CreateNonExistingSecGroupRules(
 		if isApplied {
 			continue
 		}
+
 		err := CreateSecGroupRule(ctx, ruleClient, secGroup.ID, namespacedName, &desiredSecGroupRules[i])
 		if err != nil {
 			return err
@@ -155,11 +158,12 @@ func CreateNonExistingSecGroupRules(
 
 // SecGroupRuleIsEqual returns true if both SecGroupRules are equal.
 func SecGroupRuleIsEqual(first, second *rules.SecGroupRule) bool {
-	if first.RemoteIPPrefix == second.RemoteIPPrefix &&
-		first.EtherType == second.EtherType &&
+	if strings.EqualFold(first.EtherType, second.EtherType) &&
+		strings.EqualFold(first.Direction, second.Direction) &&
+		strings.EqualFold(first.Protocol, second.Protocol) &&
+		first.RemoteIPPrefix == second.RemoteIPPrefix &&
 		first.PortRangeMax == second.PortRangeMax &&
 		first.PortRangeMin == second.PortRangeMin &&
-		first.Protocol == second.Protocol &&
 		first.RemoteGroupID == second.RemoteGroupID {
 		return true
 	}
