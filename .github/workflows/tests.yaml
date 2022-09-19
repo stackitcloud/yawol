@@ -24,4 +24,9 @@ jobs:
       run: earthly --version
     - name: Run Tests
       run: earthly --ci +all
+    - name: Run Snyk
+      if: ${{ secrets.SNYK_TOKEN != '' }}
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: earthly --ci --secret SNYK_TOKEN +snyk
 
