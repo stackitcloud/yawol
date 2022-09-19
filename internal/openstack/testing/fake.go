@@ -85,6 +85,11 @@ func GetFakeClient() *MockClient {
 					continue
 				}
 
+				if opts.Description != "" && opts.Description != v.Description {
+					// filters by SecGroupDescription
+					continue
+				}
+
 				items = append(items, *v)
 			}
 
