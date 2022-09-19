@@ -6,6 +6,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      # is an empty string if it doesn't exists
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       FORCE_COLOR: 1
     steps:
     - uses: actions/checkout@v3
@@ -25,8 +27,6 @@ jobs:
     - name: Run Tests
       run: earthly --ci +all
     - name: Run Snyk
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       if: ${{ env.SNYK_TOKEN != '' }}
       run: earthly --ci --secret SNYK_TOKEN +snyk
 
