@@ -122,7 +122,7 @@ coverage-html:
 
 snyk-go:
     FROM +deps
-    COPY +snyk/snyk $BINPATH
+    COPY +snyk-linux/snyk $BINPATH
     COPY --dir controllers/ internal/ cmd/ charts/ api/ .
     COPY .snyk .
     RUN --secret SNYK_TOKEN snyk test
@@ -141,10 +141,13 @@ snyk-helm:
 # todo: semgrep
 # semgrep:
 
-all:
+snyk:
     BUILD +generate
     BUILD +snyk-go
     BUILD +snyk-helm
+
+all:
+    BUILD +generate
     BUILD +lint
     BUILD +coverage
     BUILD +test
@@ -162,7 +165,7 @@ envoy:
     FROM envoyproxy/envoy:v1.21.1
     SAVE ARTIFACT /usr/local/bin/envoy
 
-snyk:
+snyk-linux:
     FROM snyk/snyk:linux
     SAVE ARTIFACT /usr/local/bin/snyk
 
