@@ -843,7 +843,6 @@ func (r *Reconciler) deleteFips(
 		return false, err
 	}
 
-	var fip *floatingips.FloatingIP
 	var requeue = false
 
 	// Remove only from status if lb.Spec.ExistingFloatingIP is set
@@ -866,7 +865,7 @@ func (r *Reconciler) deleteFips(
 	}
 
 	if lb.Status.FloatingID != nil {
-		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
+		fip, err := openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
 			// if error is our custom not found error
 			if err == helper.ErrFIPNotFound {
@@ -953,11 +952,11 @@ func (r *Reconciler) deletePorts(
 		return false, err
 	}
 
-	var port *ports.Port
 	var requeue bool
 
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID != nil {
-		port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
+		port, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
@@ -980,7 +979,6 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
@@ -1044,9 +1042,9 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	var requeue bool
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupID != nil {
-		var secGroup *groups.SecGroup
-		secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
+		secGroup, err := openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
@@ -1070,7 +1068,6 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	// clean up orphan secgroups
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupName != nil {
 		secGroupName := *lb.Status.SecurityGroupName
 		var secGroupList []groups.SecGroup

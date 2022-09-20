@@ -643,8 +643,7 @@ func (r *LoadBalancerMachineReconciler) deleteServerAndWait(
 	lbm *yawolv1beta1.LoadBalancerMachine,
 	serverID string,
 ) error {
-	var err error
-	if err = openstackhelper.DeleteServer(ctx, serverClient, serverID); err != nil {
+	if err := openstackhelper.DeleteServer(ctx, serverClient, serverID); err != nil {
 		switch err.(type) {
 		case gophercloud.ErrDefault404:
 			r.Log.Info("error deleting server, already deleted", "lbm", lbm.Name)
@@ -653,15 +652,15 @@ func (r *LoadBalancerMachineReconciler) deleteServerAndWait(
 			return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
 		}
 	}
-	err = r.waitForServerStatus(
+
+	if err := r.waitForServerStatus(
 		ctx,
 		serverClient,
 		serverID,
 		[]string{openstackhelper.ServerStatusActive, openstackhelper.ServerStatusStopped, openstackhelper.ServerStatusError},
 		[]string{openstackhelper.ServerStatusDeleted},
 		600,
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
