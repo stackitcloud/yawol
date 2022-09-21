@@ -52,6 +52,7 @@ func LoadBalancerOpenstackReconcileIsNeeded(lb *yawolv1beta1.LoadBalancer) bool 
 	if err != nil {
 		return true
 	}
+
 	// OpenstackReconcileHash is nil or has changed
 	if lb.Status.OpenstackReconcileHash == nil || *lb.Status.OpenstackReconcileHash != openstackReconcileHash {
 		return true

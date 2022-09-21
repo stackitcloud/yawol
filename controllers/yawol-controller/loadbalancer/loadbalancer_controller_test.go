@@ -331,8 +331,8 @@ var _ = Describe("loadbalancer controller", func() {
 			By("updating ports")
 			updateLB(lbNN, func(act *LB) {
 				act.Spec.Ports = []v1.ServicePort{
-					{Protocol: v1.ProtocolTCP, Port: 8080},
-					{Protocol: v1.ProtocolTCP, Port: 8090},
+					{Protocol: v1.ProtocolTCP, Port: 8081},
+					{Protocol: v1.ProtocolTCP, Port: 8082},
 				}
 			})
 
@@ -355,8 +355,8 @@ var _ = Describe("loadbalancer controller", func() {
 			By("updating source ranges and udp")
 			updateLB(lbNN, func(act *LB) {
 				act.Spec.Ports = []v1.ServicePort{
-					{Protocol: v1.ProtocolTCP, Port: 8080},
-					{Protocol: v1.ProtocolUDP, Port: 8081},
+					{Protocol: v1.ProtocolTCP, Port: 8083},
+					{Protocol: v1.ProtocolUDP, Port: 8084},
 				}
 				act.Spec.Options.LoadBalancerSourceRanges = []string{
 					"192.168.1.1/24",
