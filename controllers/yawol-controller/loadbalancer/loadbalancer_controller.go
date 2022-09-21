@@ -843,7 +843,6 @@ func (r *Reconciler) deleteFips(
 		return false, err
 	}
 
-	var fip *floatingips.FloatingIP
 	var requeue = false
 
 	// Remove only from status if lb.Spec.ExistingFloatingIP is set
@@ -861,11 +860,12 @@ func (r *Reconciler) deleteFips(
 		if err != nil {
 			return false, err
 		}
+		// next run will return false because status is set to nil
 		return true, nil
 	}
 
 	if lb.Status.FloatingID != nil {
-		fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
+		fip, err := openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID)
 		if err != nil {
 			// if error is our custom not found error
 			if err == helper.ErrFIPNotFound {
@@ -878,12 +878,8 @@ func (r *Reconciler) deleteFips(
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
-				if err != nil {
-					return false, err
-				}
-				// requeue true to delete floatingName in the next run
-				return true, nil
+				// requeue true to delete fips by floatingName in the next run
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -891,15 +887,9 @@ func (r *Reconciler) deleteFips(
 		}
 
 		if fip != nil {
-			err = openstackhelper.DeleteFIP(ctx, fipClient, fip.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
+			if err := openstackhelper.DeleteFIP(ctx, fipClient, fip.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 
@@ -907,35 +897,36 @@ func (r *Reconciler) deleteFips(
 		requeue = true
 	}
 
+	// clean orphan fips
 	if lb.Status.FloatingName != nil {
-		var fipByName *floatingips.FloatingIP
-
-		fipByName, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
-		if err != nil && err != helper.ErrFIPNotFound {
-			r.Log.Info("an error occurred extracting floating IPs", "lb", lb.Namespace+"/"+lb.Name)
+		fipName := *lb.Status.FloatingName
+		var fipList []floatingips.FloatingIP
+		fipList, err = fipClient.List(ctx, floatingips.ListOpts{
+			Description: fipName,
+		})
+		if err != nil {
 			return false, err
 		}
 
-		if fipByName == nil {
-			r.Log.Info("no fips found, fip has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "fipName", *lb.Status.FloatingName)
-			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingName")
-			if err != nil {
-				return false, err
+		if len(fipList) == 0 {
+			r.Log.Info("no fips found by name, fips are already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipName", *lb.Status.FloatingName)
+			// everything is cleaned, no requeue
+			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingName")
+		}
+
+		for i := range fipList {
+			fip := &fipList[i]
+			// double check
+			if fip.ID == "" || fip.Description != fipName {
+				continue
+			}
+
+			if err := openstackhelper.DeleteFIP(ctx, fipClient, fip.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", fip.ID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 
-		if fipByName != nil {
-			err = openstackhelper.DeleteFIP(ctx, fipClient, fipByName.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("error deleting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting fip", "lb", lb.Namespace+"/"+lb.Name, "fipId", fipByName.ID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-		}
 		// requeue so next run will delete the status
 		requeue = true
 	}
@@ -961,68 +952,60 @@ func (r *Reconciler) deletePorts(
 		return false, err
 	}
 
-	var port *ports.Port
 	var requeue bool
 
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID != nil {
-		port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
+		port, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
-				if err != nil {
-					return false, err
-				}
+				// requeue true to clean orphan ports in the next run
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				return false, err
 			}
 		}
 		if port != nil {
-			err = openstackhelper.DeletePort(ctx, portClient, port.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
+			if err := openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
+		// requeue so next run will delete the status
 		requeue = true
 	}
 
-	if lb.Status.PortName != nil { //nolint:dupl // no dupl
-		var portByName *ports.Port
-
-		portByName, err = openstackhelper.GetPortByName(ctx, portClient, *lb.Status.PortName)
+	// clean up orphan ports
+	if lb.Status.PortName != nil {
+		portName := *lb.Status.PortName
+		var portList []ports.Port
+		portList, err = portClient.List(ctx, ports.ListOpts{Name: portName})
 		if err != nil {
-			r.Log.Info("an error occurred extracting ports", "lb", lb.Namespace+"/"+lb.Name)
 			return false, err
 		}
 
-		if portByName == nil {
-			r.Log.Info("no port found, port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portName", *lb.Status.PortName)
-			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portName")
-			if err != nil {
-				return false, err
+		if len(portList) == 0 {
+			r.Log.Info("no ports found by name, ports are already deleted", "lb", lb.Namespace+"/"+lb.Name, "portName", portName)
+			// everything is cleaned, no requeue
+			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portName")
+		}
+
+		for i := range portList {
+			port := &portList[i]
+			// double check
+			if port.ID == "" || port.Name != portName {
+				continue
+			}
+
+			if err := openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", port.ID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 
-		if portByName != nil {
-			err = openstackhelper.DeletePort(ctx, portClient, portByName.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("error deleting port, already deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting port", "lb", lb.Namespace+"/"+lb.Name, "portID", portByName.ID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
-			}
-		}
 		// requeue so next run will delete the status
 		requeue = true
 	}
@@ -1059,66 +1042,59 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	var requeue bool
-
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupID != nil {
-		var secGroup *groups.SecGroup
-		secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
+		secGroup, err := openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-				err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
-				if err != nil {
-					return false, err
-				}
+				// requeue to clean orphan secgroups
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				return false, err
 			}
 		}
 		if secGroup != nil {
-			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
+			if err := openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
+
+		// requeue to delete status in next run
 		requeue = true
 	}
 
-	if lb.Status.SecurityGroupName != nil { //nolint:dupl // no dupl
-		var secGroupByName *groups.SecGroup
-
-		secGroupByName, err = openstackhelper.GetSecGroupByName(ctx, groupClient, *lb.Status.SecurityGroupName)
+	// clean up orphan secgroups
+	if lb.Status.SecurityGroupName != nil {
+		secGroupName := *lb.Status.SecurityGroupName
+		var secGroupList []groups.SecGroup
+		secGroupList, err := groupClient.List(ctx, groups.ListOpts{Name: secGroupName})
 		if err != nil {
-			r.Log.Info("an error occurred extracting secgroup", "lb", lb.Namespace+"/"+lb.Name)
 			return false, err
 		}
 
-		if secGroupByName == nil {
-			r.Log.Info("no secGroup found, secGroup has already been deleted", "lb",
-				lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupName)
-			err = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_name")
-			if err != nil {
-				return false, err
-			}
+		if len(secGroupList) == 0 {
+			r.Log.Info(
+				"no secGroups found by name, secGroups are already deleted", "lb",
+				lb.Namespace+"/"+lb.Name, "secGroup", secGroupName,
+			)
+			// no requeue, everything is cleaned
+			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_name")
 		}
 
-		if secGroupByName != nil {
-			err = openstackhelper.DeleteSecGroup(ctx, groupClient, secGroupByName.ID)
-			if err != nil {
-				switch err.(type) {
-				case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
-					r.Log.Info("error deleting secGroup, already deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
-				default:
-					r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroupByName.ID)
-					return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
-				}
+		for i := range secGroupList {
+			secGroup := &secGroupList[i]
+			if secGroup.ID == "" || secGroup.Name != secGroupName {
+				// double check
+				continue
+			}
+
+			if err := openstackhelper.DeleteSecGroup(ctx, groupClient, secGroup.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", secGroup.ID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			}
 		}
 		// requeue so next run will delete the status
