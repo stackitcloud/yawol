@@ -28,5 +28,5 @@ jobs:
       if: ${{ env.SNYK_TOKEN }}
       run: earthly --ci --secret SNYK_TOKEN +snyk
     - name: Run Tests
-      run: earthly --ci +all
+      run: earthly --ci +all-except-snyk
 
