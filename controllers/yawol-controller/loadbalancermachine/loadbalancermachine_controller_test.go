@@ -247,6 +247,106 @@ var _ = Describe("load balancer machine", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	}) // ha features
+
+	Context("clean up openstack", func() {
+		When("there are additional ports", func() {
+			count := 5
+			BeforeEach(func() {
+				lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+				c, _ := client.PortClient(ctx)
+				for i := 0; i < count; i++ {
+					_, err := c.Create(ctx, ports.CreateOpts{Name: lbmNN.String()})
+					Expect(err).To(Not(HaveOccurred()))
+				}
+
+				ports, err := c.List(ctx, ports.ListOpts{Name: lbmNN.String()})
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(len(ports)).To(Equal(count))
+			})
+
+			It("should delete the additional ports", func() {
+				lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+				By("checking that portid is set")
+				Eventually(func(g Gomega) {
+					var actual yawolv1beta1.LoadBalancerMachine
+					g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
+					g.Expect(actual.Status.PortID).To(Not(BeNil()))
+				}, timeout, interval).Should(Succeed())
+
+				By("checking if one of the ports got used")
+				Eventually(func(g Gomega) {
+					c, _ := client.PortClient(ctx)
+
+					ports, err := c.List(ctx, ports.ListOpts{Name: lbmNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(ports)).To(Equal(count))
+				}, timeout, interval).Should(Succeed())
+
+				By("deleting everything")
+				cleanupLBM(lbm, timeout)
+				cleanupLB(lb, timeout)
+
+				By("checking that all ports are deleted")
+				Eventually(func(g Gomega) {
+					c, _ := client.PortClient(ctx)
+
+					ports, err := c.List(ctx, ports.ListOpts{Name: lbmNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(ports)).To(Equal(0))
+				}, timeout, interval).Should(Succeed())
+			})
+		})
+
+		When("there are additional servers", func() {
+			count := 5
+			BeforeEach(func() {
+				lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+				c, _ := client.ServerClient(ctx)
+				for i := 0; i < count; i++ {
+					_, err := c.Create(ctx, &servers.CreateOpts{Name: lbmNN.Name})
+					Expect(err).To(Not(HaveOccurred()))
+				}
+
+				servers, err := c.List(ctx, servers.ListOpts{Name: lbmNN.Name})
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(len(servers)).To(Equal(count))
+			})
+
+			It("should delete the additional servers", func() {
+				lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+				By("checking that serverid is set")
+				Eventually(func(g Gomega) {
+					var actual yawolv1beta1.LoadBalancerMachine
+					g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
+					g.Expect(actual.Status.ServerID).To(Not(BeNil()))
+				}, timeout, interval).Should(Succeed())
+
+				By("checking if one of the server got used")
+				Eventually(func(g Gomega) {
+					c, _ := client.ServerClient(ctx)
+
+					servers, err := c.List(ctx, servers.ListOpts{Name: lbmNN.Name})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(servers)).To(Equal(count))
+				}, timeout, interval).Should(Succeed())
+
+				By("deleting everything")
+				cleanupLBM(lbm, timeout)
+				cleanupLB(lb, timeout)
+
+				By("checking that all servers are deleted")
+				Eventually(func(g Gomega) {
+					c, _ := client.ServerClient(ctx)
+
+					servers, err := c.List(ctx, servers.ListOpts{Name: lbmNN.Name})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(servers)).To(Equal(0))
+				}, timeout, interval).Should(Succeed())
+			})
+		})
+	}) // clean up openstack context
 })
 
 func getPolicyRules(lb *LB, lbm *LBM) []rbac.PolicyRule {

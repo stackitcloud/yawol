@@ -16,6 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 )
 
+//nolint:gocyclo // complicated test function
 //nolint:funlen // long test function
 func GetFakeClient() *MockClient {
 	client := MockClient{}
@@ -82,6 +83,11 @@ func GetFakeClient() *MockClient {
 			for _, v := range rls {
 				if opts.SecGroupID != "" && opts.SecGroupID != v.SecGroupID {
 					// filters by SecGroupID
+					continue
+				}
+
+				if opts.Description != "" && opts.Description != v.Description {
+					// filters by SecGroupDescription
 					continue
 				}
 

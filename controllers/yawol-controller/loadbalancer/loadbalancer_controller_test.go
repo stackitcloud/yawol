@@ -465,6 +465,98 @@ var _ = Describe("loadbalancer controller", func() {
 		})
 	}) // openstack not working context
 
+	Context("clean up openstack", func() {
+		When("there are additional ports", func() {
+			count := 5
+			BeforeEach(func() {
+				c, _ := client.PortClient(ctx)
+				for i := 0; i < count; i++ {
+					_, err := c.Create(ctx, ports.CreateOpts{Name: lbNN.String()})
+					Expect(err).To(Not(HaveOccurred()))
+				}
+
+				ports, err := c.List(ctx, ports.ListOpts{Name: lbNN.String()})
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(len(ports)).To(Equal(count))
+			})
+
+			It("should delete the additional ports", func() {
+				By("checking that portname is set")
+				hopefully(lbNN, func(g Gomega, act LB) error {
+					g.Expect(act.Status.PortName).To(Not(BeNil()))
+					g.Expect(*act.Status.PortName == lbNN.String())
+					return nil
+				})
+
+				By("checking if one of the ports got used")
+				Eventually(func(g Gomega) {
+					c, _ := client.PortClient(ctx)
+
+					ports, err := c.List(ctx, ports.ListOpts{Name: lbNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(ports)).To(Equal(count))
+				}, timeout, interval).Should(Succeed())
+
+				By("deleting the LB")
+				cleanupLB(lbNN, timeout)
+
+				By("checking that all ports are deleted")
+				Eventually(func(g Gomega) {
+					c, _ := client.PortClient(ctx)
+
+					ports, err := c.List(ctx, ports.ListOpts{Name: lbNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(ports)).To(Equal(0))
+				}, timeout, interval).Should(Succeed())
+			})
+		})
+
+		When("there are additional secgroups", func() {
+			count := 5
+			BeforeEach(func() {
+				c, _ := client.GroupClient(ctx)
+				for i := 0; i < count; i++ {
+					_, err := c.Create(ctx, groups.CreateOpts{Name: lbNN.String()})
+					Expect(err).To(Not(HaveOccurred()))
+				}
+
+				secGroups, err := c.List(ctx, groups.ListOpts{Name: lbNN.String()})
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(len(secGroups)).To(Equal(count))
+			})
+
+			It("should delete the additional secgroups", func() {
+				By("checking that secgroupname is set")
+				hopefully(lbNN, func(g Gomega, act LB) error {
+					g.Expect(act.Status.SecurityGroupName).To(Not(BeNil()))
+					g.Expect(*act.Status.SecurityGroupName == lbNN.String())
+					return nil
+				})
+
+				By("checking if one of the secgroups got used")
+				Eventually(func(g Gomega) {
+					c, _ := client.GroupClient(ctx)
+
+					secGroups, err := c.List(ctx, groups.ListOpts{Name: lbNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(secGroups)).To(Equal(count))
+				}, timeout, interval).Should(Succeed())
+
+				By("deleting the LB")
+				cleanupLB(lbNN, timeout)
+
+				By("checking that all secgroups are deleted")
+				Eventually(func(g Gomega) {
+					c, _ := client.GroupClient(ctx)
+
+					secGroups, err := c.List(ctx, groups.ListOpts{Name: lbNN.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(secGroups)).To(Equal(0))
+				}, timeout, interval).Should(Succeed())
+			})
+		})
+	}) // clean up openstack context
+
 }) // load balancer describe
 
 func cleanupLB(lbNN types.NamespacedName, timeout time.Duration) {

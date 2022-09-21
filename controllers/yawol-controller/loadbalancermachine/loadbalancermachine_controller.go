@@ -96,7 +96,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		if err := r.deleteServer(ctx, osClient, loadBalancerMachine); err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := r.deletePort(ctx, osClient, loadBalancerMachine); err != nil {
+		if err := r.deletePort(ctx, osClient, req, loadBalancerMachine); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -355,13 +355,24 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 		return err
 	}
 
-	// create port
+	portName := req.NamespacedName.String()
 	var port *ports.Port
+
+	// find or create port
 	if lbm.Status.PortID == nil {
-		port, err = openstackhelper.CreatePort(ctx, portClient, req.NamespacedName.String(), lbm.Spec.Infrastructure.NetworkID)
+		// try to find port by name
+		port, err = openstackhelper.GetPortByName(ctx, portClient, portName)
 		if err != nil {
-			r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
-			return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			return err
+		}
+
+		// create port
+		if port == nil {
+			port, err = openstackhelper.CreatePort(ctx, portClient, portName, lbm.Spec.Infrastructure.NetworkID)
+			if err != nil {
+				r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
+				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			}
 		}
 
 		// double check so status won't be corrupted
@@ -626,6 +637,36 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	return server, err
 }
 
+func (r *LoadBalancerMachineReconciler) deleteServerAndWait(
+	ctx context.Context,
+	serverClient os.ServerClient,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	serverID string,
+) error {
+	if err := openstackhelper.DeleteServer(ctx, serverClient, serverID); err != nil {
+		switch err.(type) {
+		case gophercloud.ErrDefault404:
+			r.Log.Info("error deleting server, already deleted", "lbm", lbm.Name)
+		default:
+			r.Log.Info("an unexpected error occurred deleting server", "lbm", lbm.Name)
+			return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+		}
+	}
+
+	if err := r.waitForServerStatus(
+		ctx,
+		serverClient,
+		serverID,
+		[]string{openstackhelper.ServerStatusActive, openstackhelper.ServerStatusStopped, openstackhelper.ServerStatusError},
+		[]string{openstackhelper.ServerStatusDeleted},
+		600,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *LoadBalancerMachineReconciler) deleteServer(
 	ctx context.Context,
 	osClient os.Client,
@@ -633,88 +674,52 @@ func (r *LoadBalancerMachineReconciler) deleteServer(
 ) error {
 	var err error
 
-	var srvClient os.ServerClient
-	srvClient, err = osClient.ServerClient(ctx)
+	var serverClient os.ServerClient
+	serverClient, err = osClient.ServerClient(ctx)
 	if err != nil {
 		return err
 	}
 
-	var server *servers.Server
-	server, err = openstackhelper.GetServerByName(ctx, srvClient, lbm.Name)
-	if err != nil {
-		switch err.(type) {
-		case gophercloud.ErrDefault404:
-			r.Log.Info("error getting server, already deleted", "lbm", lbm.Name)
-		default:
-			r.Log.Info("an unexpected error occurred retrieving server", "lbm", lbm.Name)
-			return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
-		}
-		return err
-	}
-
-	if server != nil && server.ID != "" {
-		if err = openstackhelper.DeleteServer(ctx, srvClient, server.ID); err != nil {
-			switch err.(type) {
-			case gophercloud.ErrDefault404:
-				r.Log.Info("error deleting server, already deleted", "lbm", lbm.Name)
-			default:
-				r.Log.Info("an unexpected error occurred deleting server", "lbm", lbm.Name)
-				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
-			}
-		}
-		err = r.waitForServerStatus(
-			ctx,
-			srvClient,
-			server.ID,
-			[]string{openstackhelper.ServerStatusActive, openstackhelper.ServerStatusStopped, openstackhelper.ServerStatusError},
-			[]string{openstackhelper.ServerStatusDeleted},
-			600,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
+	// delete server
 	if lbm.Status.ServerID != nil {
-		if err = openstackhelper.DeleteServer(ctx, srvClient, *lbm.Status.ServerID); err != nil {
-			switch err.(type) {
-			case gophercloud.ErrDefault404:
-				r.Log.Info("error deleting server, already deleted", "lbm", lbm.Name)
-			default:
-				r.Log.Info("an unexpected error occurred deleting server", "lbm", lbm.Name)
-				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
-			}
-		}
-		err = r.waitForServerStatus(
-			ctx,
-			srvClient,
-			*lbm.Status.ServerID,
-			[]string{openstackhelper.ServerStatusActive, openstackhelper.ServerStatusStopped, openstackhelper.ServerStatusError},
-			[]string{openstackhelper.ServerStatusDeleted},
-			600,
-		)
-		if err != nil {
+		if err := r.deleteServerAndWait(ctx, serverClient, lbm, *lbm.Status.ServerID); err != nil {
 			return err
 		}
 	}
 
-	err = helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serverID")
+	// clean orphan servers
+	serverName := lbm.Name
+	var serverList []servers.Server
+	serverList, err = serverClient.List(ctx, servers.ListOpts{Name: serverName})
 	if err != nil {
 		return err
 	}
+
+	for i := range serverList {
+		server := &serverList[i]
+		// double check
+		if server.ID == "" || server.Name != serverName {
+			continue
+		}
+
+		if err := r.deleteServerAndWait(ctx, serverClient, lbm, server.ID); err != nil {
+			return err
+		}
+	}
+
+	if err := helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serverID"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (r *LoadBalancerMachineReconciler) deletePort(
 	ctx context.Context,
 	osClient os.Client,
+	req ctrl.Request,
 	lbm *yawolv1beta1.LoadBalancerMachine,
 ) error {
-	if lbm.Status.PortID == nil {
-		r.Log.Info("no port associated with this machine, already deleted")
-		return nil
-	}
-
 	var err error
 	var portClient os.PortClient
 	portClient, err = osClient.PortClient(ctx)
@@ -722,13 +727,41 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 		return err
 	}
 
-	if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.PortID); err != nil {
-		switch err.(type) {
-		case gophercloud.ErrDefault404:
-			r.Log.Info("error deleting port, already deleted", "lbm", lbm.Name)
-		default:
-			r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
-			return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+	if lbm.Status.PortID != nil {
+		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.PortID); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404:
+				r.Log.Info("error deleting port, already deleted", "lbm", lbm.Name)
+			default:
+				r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
+				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			}
+		}
+	}
+
+	// delete orphan ports
+	portName := req.NamespacedName.String()
+	var portList []ports.Port
+	portList, err = portClient.List(ctx, ports.ListOpts{Name: portName})
+	if err != nil {
+		return err
+	}
+
+	for i := range portList {
+		port := &portList[i]
+		// double check
+		if port.ID == "" || port.Name != portName {
+			continue
+		}
+
+		if err = openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404:
+				r.Log.Info("error deleting port, already deleted", "lbm", lbm.Name)
+			default:
+				r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
+				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			}
 		}
 	}
 

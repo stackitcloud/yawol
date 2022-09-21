@@ -146,12 +146,16 @@ snyk:
     BUILD +snyk-go
     BUILD +snyk-helm
 
-all:
+all-except-snyk:
     BUILD +generate
     BUILD +lint
     BUILD +coverage
     BUILD +test
     BUILD +ci
+
+all:
+    BUILD +snyk
+    BUILD +all-except-snyk
 
 ###########
 # helper
