@@ -336,6 +336,8 @@ var _ = Describe("loadbalancer controller", func() {
 				}
 			})
 
+			var hashBefore string
+
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
@@ -349,23 +351,38 @@ var _ = Describe("loadbalancer controller", func() {
 					return fmt.Errorf("wrong amount of secgroup rules were applied %v", len(rls))
 				}
 
+				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
+				hashBefore = *act.Status.OpenstackReconcileHash
+
 				return nil
 			})
 
 			By("updating source ranges and udp")
-			updateLB(lbNN, func(act *LB) {
-				act.Spec.Ports = []v1.ServicePort{
-					{Protocol: v1.ProtocolTCP, Port: 8083},
-					{Protocol: v1.ProtocolUDP, Port: 8084},
-				}
-				act.Spec.Options.LoadBalancerSourceRanges = []string{
-					"192.168.1.1/24",
-					"192.168.2.1/24",
-					"192.168.3.1/24",
-				}
+			ports := []v1.ServicePort{
+				{Protocol: v1.ProtocolTCP, Port: 8083},
+				{Protocol: v1.ProtocolUDP, Port: 8084},
+			}
+			ranges := []string{
+				"192.168.1.1/24",
+				"192.168.2.1/24",
+				"192.168.3.1/24",
+			}
+			hopefully(lbNN, func(g Gomega, act LB) error {
+				updateLB(lbNN, func(a *LB) {
+					a.Spec.Ports = ports
+					a.Spec.Options.LoadBalancerSourceRanges = ranges
+				})
+
+				g.Expect(act.Spec.Ports).To(Equal(ports))
+				g.Expect(act.Spec.Options.LoadBalancerSourceRanges).To(Equal(ranges))
+
+				return nil
 			})
 
 			hopefully(lbNN, func(g Gomega, act LB) error {
+				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
+				g.Expect(*act.Status.OpenstackReconcileHash).ToNot(Equal(hashBefore))
+
 				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
