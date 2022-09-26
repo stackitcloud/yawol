@@ -9,11 +9,11 @@ require (
 	github.com/gophercloud/gophercloud v0.15.1-0.20210202035223-633d73521055
 	github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.16.0
+	github.com/onsi/gomega v1.20.2
 	github.com/prometheus/client_golang v1.13.0
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.28.1
-	gopkg.in/ini.v1 v1.62.0
+	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.22.7
 	k8s.io/apimachinery v0.22.7
@@ -84,9 +84,9 @@ require (
 	go.uber.org/zap v1.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -97,7 +97,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.21.4 // indirect
 	k8s.io/component-base v0.21.4 // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect
