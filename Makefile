@@ -5,7 +5,7 @@ PWD = $(shell pwd)
 GOLANGCI_VERSION = 1.48.0
 CONTAINER_REGISTRY = ghcr.io/stackitcloud/yawol/
 CONTAINER_TAG = dev
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd"
 KUBERNETES_VERSION = 1.21.x
 ENVOY_VERSION = 1.21.1
 
