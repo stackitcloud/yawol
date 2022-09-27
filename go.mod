@@ -26,6 +26,7 @@ require (
 
 replace (
 	github.com/envoyproxy/go-control-plane => github.com/envoyproxy/go-control-plane v0.9.9
+	github.com/go-logr/logr => github.com/go-logr/logr v0.4.0
 	// v1.1.11 is not compatible with go1.18
 	github.com/json-iterator/go => github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.13.0
