@@ -2,21 +2,29 @@
 package hostmetrics
 
 import (
-	"os"
+	"fmt"
 	"runtime"
-	"strings"
+	"strconv"
+
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/mem"
 )
 
+func formatFloat(f float64) string {
+	return strconv.FormatFloat(f, 'f', 2, 64)
+}
+
+func formatUint(u uint64) string {
+	return strconv.FormatUint(u, 10)
+}
+
 func GetLoad() (load1, load5, load15 string, err error) {
-	loadFile, err := os.ReadFile("/proc/loadavg")
+	avg, err := load.Avg()
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to fetch load information from host: %w", err)
 	}
-	load := strings.Split(string(loadFile), " ")
-	if len(load) != 5 {
-		return "", "", "", err
-	}
-	return load[0], load[1], load[2], nil
+	return formatFloat(avg.Load1), formatFloat(avg.Load5), formatFloat(avg.Load15), nil
 }
 
 // GetCPUNum returns number of CPUs for node
@@ -26,33 +34,15 @@ func GetCPUNum() int {
 
 // GetCPUStealTime returns aggregated cpu steal time of all cpus for node
 func GetCPUStealTime() (string, error) {
-	statFile, err := os.ReadFile("/proc/stat")
+	const perCPU bool = false
+	stats, err := cpu.Times(perCPU)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to return steal time")
 	}
-
-	var stealTime string
-	statFileLines := strings.Split(string(statFile), "\n")
-	for _, info := range statFileLines {
-		// search for line:
-		// cpu  7484550 1016 873590 23819469 35883 0 131941 0 0 0
-		if !strings.HasPrefix(info, "cpu ") {
-			continue
-		}
-
-		infoLine := strings.TrimPrefix(info, "cpu")
-		infoLine = strings.TrimSpace(infoLine)
-		infoLineNumbers := strings.Split(infoLine, " ")
-		if len(infoLineNumbers) < 8 {
-			stealTime = "0"
-		} else {
-			stealTime = infoLineNumbers[7]
-		}
-
-		break
+	if len(stats) != 1 {
+		return "", fmt.Errorf("expected exactly one CPU stats element, got %d", len(stats))
 	}
-
-	return stealTime, nil
+	return formatFloat(stats[0].Steal), nil
 }
 
 func GetMem() (
@@ -61,35 +51,9 @@ func GetMem() (
 	availableMemory string,
 	err error,
 ) {
-	memFile, err := os.ReadFile("/proc/meminfo")
+	stats, err := mem.VirtualMemory()
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to get virtual memory stats: %w", err)
 	}
-
-	var memTotal, memFree, memAvailable string
-	memInfos := strings.Split(string(memFile), "\n")
-	for _, info := range memInfos {
-		if strings.HasPrefix(info, "MemTotal") {
-			memTotal = strings.TrimPrefix(info, "MemTotal:")
-			memTotal = strings.TrimSuffix(memTotal, "kB")
-			memTotal = strings.TrimSpace(memTotal)
-			continue
-		}
-
-		if strings.HasPrefix(info, "MemFree") {
-			memFree = strings.TrimPrefix(info, "MemFree:")
-			memFree = strings.TrimSuffix(memFree, "kB")
-			memFree = strings.TrimSpace(memFree)
-			continue
-		}
-
-		if strings.HasPrefix(info, "MemAvailable") {
-			memAvailable = strings.TrimPrefix(info, "MemAvailable:")
-			memAvailable = strings.TrimSuffix(memAvailable, "kB")
-			memAvailable = strings.TrimSpace(memAvailable)
-			continue
-		}
-	}
-
-	return memTotal, memFree, memAvailable, nil
+	return formatUint(stats.Total), formatUint(stats.Free), formatUint(stats.Available), nil
 }
