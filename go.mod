@@ -9,7 +9,7 @@ require (
 	github.com/gophercloud/gophercloud v0.15.1-0.20210202035223-633d73521055
 	github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.21.1
+	github.com/onsi/gomega v1.22.1
 	github.com/prometheus/client_golang v1.13.0
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.28.1
