@@ -58,6 +58,10 @@ export YAWOLLET_VERSION=1 # provided by your CI
 export BUILD_TYPE=release # one of {release|feature}
 ```
 
+To create the necessary environment to build the image, you can use the terraform code located within `hack/packer-infrastructure`.
+Run `terraform init && terraform apply` within that directory. The output should contain all openstack specific IDs required
+to build the image. After you are done, you can remove the build infrastructure via running `terraform destroy` 
+
 Then validate and build the image:
 
 ```shell

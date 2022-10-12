@@ -27,3 +27,4 @@ out
 
 # openstack related files
 .openrc
+clouds.yaml
