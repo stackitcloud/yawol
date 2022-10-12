@@ -36,7 +36,7 @@ container-yawol-cloud-controller: ## Builds docker image
 container-yawol-controller: ## Builds docker image
 	docker build --target yawol-controller -t $(CONTAINER_REGISTRY)/yawol-controller:$(CONTAINER_TAG) .
 
-validate-image-yawollet:
+validate-image-yawollet: get-packer
 	$(PACKER) fmt -check -diff image/alpine-yawol.pkr.hcl
 	$(PACKER) validate -syntax-only \
 		-var 'os_project_id=UNSET' \
