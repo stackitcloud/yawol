@@ -78,7 +78,7 @@ const (
 	MetricStealTime                        LoadbalancerMetric = "stealTime"
 	MetricKeepalivedIsMaster               LoadbalancerMetric = "keepalivedIsMaster"
 	MetricKeepalivedBecameMaster           LoadbalancerMetric = "keepalivedBecameMaster"
-	MetricKeepalivedReleasedMaster         LoadbalancerMetric = "keepalivedReleasedMaster "
+	MetricKeepalivedReleasedMaster         LoadbalancerMetric = "keepalivedReleasedMaster"
 	MetricKeepalivedAdvertisementsSent     LoadbalancerMetric = "keepalivedAdvertisementsSent"
 	MetricKeepalivedAdvertisementsReceived LoadbalancerMetric = "keepalivedAdvertisementsReceived"
 )
