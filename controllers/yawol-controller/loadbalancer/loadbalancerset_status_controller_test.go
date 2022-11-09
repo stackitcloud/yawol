@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"

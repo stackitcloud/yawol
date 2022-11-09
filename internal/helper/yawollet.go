@@ -104,7 +104,7 @@ var rxDNSName = regexp.MustCompile(dnsName)
 // CreateEnvoyConfig create a new envoy snapshot and checks if the new snapshot has changes
 func CreateEnvoyConfig(
 	r record.EventRecorder,
-	oldSnapshot *envoycache.Snapshot,
+	oldSnapshot envoycache.ResourceSnapshot,
 	lb *yawolv1beta1.LoadBalancer,
 	listen string,
 ) (bool, envoycache.Snapshot, error) {
@@ -136,23 +136,27 @@ func CreateEnvoyConfig(
 		versionInt = 0
 	}
 	newVersion := fmt.Sprintf("%v", versionInt+1)
-	newSnapshot := envoycache.NewSnapshot(
-		newVersion,
-		nil, // endpoints
-		createEnvoyCluster(lb),
-		nil,
-		createEnvoyListener(r, lb, listen),
-		nil, // runtimes
-		nil, // secrets
-	)
+
+	newSnapshot, err := envoycache.NewSnapshot(newVersion, map[resource.Type][]envoytypes.Resource{
+		resource.EndpointType: {},
+		resource.ClusterType:  createEnvoyCluster(lb),
+		resource.RouteType:    nil,
+		resource.ListenerType: createEnvoyListener(r, lb, listen),
+		resource.RuntimeType:  nil,
+		resource.SecretType:   nil,
+	})
+	if err != nil {
+		return false, envoycache.Snapshot{}, err
+	}
 
 	if fmt.Sprint(newSnapshot.GetResources(resource.ClusterType)) == fmt.Sprint(oldSnapshot.GetResources(resource.ClusterType)) &&
 		fmt.Sprint(newSnapshot.GetResources(resource.ListenerType)) == fmt.Sprint(oldSnapshot.GetResources(resource.ListenerType)) {
 		// nothing to change
 		return false, envoycache.Snapshot{}, nil
 	}
+
 	// return new snapshot
-	return true, newSnapshot, nil
+	return true, *newSnapshot, nil
 }
 
 func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
@@ -184,7 +188,7 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 					},
 				}); err == nil {
 					transportSocket = &envoycore.TransportSocket{
-						// TODO constant is not in envoy.wellknown
+						// TODO: constant is not in envoy.wellknown
 						Name: "envoy.transport_sockets.upstream_proxy_protocol",
 						ConfigType: &envoycore.TransportSocket_TypedConfig{
 							TypedConfig: config,
@@ -291,7 +295,7 @@ func createEnvoyTCPListener(
 		panic(err)
 	}
 
-	filters := []*envoylistener.Filter{}
+	var filters []*envoylistener.Filter
 
 	// ip whitelisting via RBAC according to loadBalancerSourceRanges
 	if lb.Spec.Options.LoadBalancerSourceRanges != nil && len(lb.Spec.Options.LoadBalancerSourceRanges) > 0 {
@@ -329,7 +333,7 @@ func createEnvoyTCPListener(
 			}),
 		}},
 		Freebind:                      &wrappers.BoolValue{Value: true},
-		ReusePort:                     true,
+		EnableReusePort:               &wrappers.BoolValue{Value: true},
 		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
 	}
 }
@@ -372,7 +376,7 @@ func createEnvoyUDPListener(
 			},
 		},
 		Freebind:                      &wrappers.BoolValue{Value: true},
-		ReusePort:                     true,
+		EnableReusePort:               &wrappers.BoolValue{Value: true},
 		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
 	}
 }
@@ -650,7 +654,7 @@ func CheckEnvoyVersion(
 	ctx context.Context,
 	c client.StatusWriter,
 	lbm *yawolv1beta1.LoadBalancerMachine,
-	snapshot envoycache.Snapshot,
+	snapshot envoycache.ResourceSnapshot,
 ) error {
 	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
 

@@ -1,5 +1,5 @@
 VERSION 0.6
-FROM golang:1.18
+FROM golang:1.19
 ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
@@ -91,7 +91,7 @@ lint:
 
 test:
     FROM +deps
-    ARG KUBERNETES_VERSION=1.23.x
+    ARG KUBERNETES_VERSION=1.24.x
     COPY +gotools/bin/setup-envtest $BINPATH
     COPY +envoy/envoy $BINPATH
     # install envtest in its own layer

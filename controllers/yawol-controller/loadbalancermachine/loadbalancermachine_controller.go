@@ -381,6 +381,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 			return helper.ErrPortIDEmpty
 		}
 
+		// TODO: LBM objects should not be dependant on lb objects
 		if lb.Status.SecurityGroupID == nil {
 			return helper.ErrSecGroupIDEmpty
 		}
