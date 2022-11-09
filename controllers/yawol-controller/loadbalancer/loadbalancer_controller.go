@@ -67,12 +67,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// update metrics
-	helper.ParseLoadBalancerMetrics(
-		lb,
-		r.Metrics,
-	)
-
 	// get OpenStack Client for LoadBalancer
 	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
 	if err != nil {
@@ -88,6 +82,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		return ctrl.Result{}, nil
 	}
+
+	// update metrics
+	helper.ParseLoadBalancerMetrics(
+		lb,
+		r.Metrics,
+	)
 
 	// adds finalizer if not set
 	if err := kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &lb, ServiceFinalizer); err != nil {
@@ -812,14 +812,14 @@ func (r *Reconciler) deletionRoutine(
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
-	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	helper.RemoveLoadBalancerMetrics(
 		*lb,
 		r.Metrics,
 	)
+
+	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }

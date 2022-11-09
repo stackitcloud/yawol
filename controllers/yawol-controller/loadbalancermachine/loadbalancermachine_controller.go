@@ -74,8 +74,6 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	helper.ParseLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
-
 	var err error
 	var osClient os.Client
 
@@ -111,18 +109,20 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, err
 		}
 
+		// remove metrics before finalizer to dont get old metrics
+		helper.RemoveLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
+
 		// remove our finalizer from the list and update it.
 		r.Log.Info("Remove finalizer", "loadBalancerMachineName", loadBalancerMachine.Name)
-
 		if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, loadBalancerMachine, ServiceFinalizer); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		helper.RemoveLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
-
 		// Stop reconciliation as the item is being deleted
 		return ctrl.Result{}, nil
 	}
+
+	helper.ParseLoadBalancerMachineMetrics(loadBalancerMachine, r.Metrics)
 
 	if err := kubernetes.AddFinalizerIfNeeded(ctx, r.Client, loadBalancerMachine, ServiceFinalizer); err != nil {
 		return ctrl.Result{}, err

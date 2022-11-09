@@ -124,13 +124,15 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	// remove finalizer
-	kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, set, FINALIZER)
-
 	helper.RemoveLoadBalancerSetMetrics(
 		*set,
 		r.Metrics,
 	)
+
+	// remove finalizer
+	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, set, FINALIZER); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// stop reconciliation as item is being deleted
 	return ctrl.Result{}, nil
