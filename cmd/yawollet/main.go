@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"log"
 	"net"
 	"os"
+
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.

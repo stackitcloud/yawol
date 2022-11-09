@@ -3,12 +3,13 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"log"
 	"net"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
 	discoverygrpcv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
