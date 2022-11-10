@@ -227,8 +227,7 @@ runcmd:
 }
 
 func generateKeepalivedConfig(vip string) string {
-	return `
-! Configuration File for keepalived
+	return `! Configuration File for keepalived
 
 global_defs {
 	router_id envoy
@@ -245,7 +244,7 @@ vrrp_instance ` + VRRPInstanceName + ` {
 	interface eth0
 	virtual_router_id 100
 	priority 100
-	advert_int 1
+	advert_int 0.5
 
 	authentication {
 		auth_type PASS
@@ -259,6 +258,5 @@ vrrp_instance ` + VRRPInstanceName + ` {
 	track_process {
 		envoy
 	}
-}
-	`
+}`
 }
