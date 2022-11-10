@@ -58,6 +58,12 @@ func GetOptions(svc *coreV1.Service) yawolv1beta1.LoadBalancerOptions {
 			svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocolPortsFilter],
 		)
 	}
+	if val, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceLogForward]); val {
+		options.LogForward.Enabled = true
+		if svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL] != "" {
+			options.LogForward.LokiURL = svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL]
+		}
+	}
 	return options
 }
 

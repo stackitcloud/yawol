@@ -313,6 +313,5 @@ scrape_configs:
           lbm: ` + loadBalancerMachine.Name + `
           lb: ` + loadBalancer.Name + `
           application: messages
-          lbm: lala
           __path__: /var/log/messages`
 }

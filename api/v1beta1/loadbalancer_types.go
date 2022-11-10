@@ -29,6 +29,10 @@ const (
 	ServiceTCPProxyProtocolPortsFilter = "yawol.stackit.cloud/tcpProxyProtocolPortsFilter"
 	// ServiceExistingFloatingIP enables usage of existing Floating IP
 	ServiceExistingFloatingIP = "yawol.stackit.cloud/existingFloatingIP"
+	// ServiceLogForward enables log forward for LoadBalancer
+	ServiceLogForward = "yawol.stackit.cloud/logForward"
+	// ServiceLogForwardLokiURL set loki url into LoadBalancer
+	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
 )
 
 // +kubebuilder:object:root=true
