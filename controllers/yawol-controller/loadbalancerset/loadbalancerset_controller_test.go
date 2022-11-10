@@ -2,6 +2,7 @@ package loadbalancerset
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -274,7 +275,7 @@ func TestIsMachineReady(t *testing.T) {
 		want := true
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
@@ -290,7 +291,7 @@ func TestIsMachineReady(t *testing.T) {
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
@@ -305,7 +306,7 @@ func TestIsMachineReady(t *testing.T) {
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
@@ -321,7 +322,7 @@ func TestIsMachineReady(t *testing.T) {
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
@@ -336,7 +337,7 @@ func TestIsMachineReady(t *testing.T) {
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 }
@@ -349,11 +350,11 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				Conditions: nil,
 			},
 		}
-		got := shouldMachineBeDeleted(machine)
+		got, _ := shouldMachineBeDeleted(machine)
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
@@ -373,26 +374,31 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				},
 			},
 		}
-		got := shouldMachineBeDeleted(machine)
+		got, _ := shouldMachineBeDeleted(machine)
 		want := false
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
 		}
 	})
 
-	t.Run("Delete if creation is before 5 minutes and no conditions", func(t *testing.T) {
+	t.Run("Delete if creation is before 10 minutes and no conditions", func(t *testing.T) {
 		machine := yawolv1beta1.LoadBalancerMachine{
 			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: time.Now().Add(-11 * time.Minute)}},
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: nil,
 			},
 		}
-		got := shouldMachineBeDeleted(machine)
+		got, gotErr := shouldMachineBeDeleted(machine)
 		want := true
+		wantErr := helper.ErrNotAllConditionsSet
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
+		}
+
+		if !errors.Is(gotErr, wantErr) {
+			t.Errorf("Expected %v got %v", wantErr, gotErr)
 		}
 	})
 
@@ -411,11 +417,16 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				},
 			},
 		}
-		got := shouldMachineBeDeleted(machine)
+		got, gotErr := shouldMachineBeDeleted(machine)
 		want := true
+		wantErr := helper.ErrConditionsLastHeartbeatTimeToOld
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
+		}
+
+		if !errors.Is(gotErr, wantErr) {
+			t.Errorf("Expected %v got %v", wantErr, gotErr)
 		}
 	})
 
@@ -435,11 +446,16 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				},
 			},
 		}
-		got := shouldMachineBeDeleted(machine)
+		got, gotErr := shouldMachineBeDeleted(machine)
 		want := true
+		wantErr := helper.ErrConditionsNotInCorrectState
 
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expceted %v got %v", want, got)
+			t.Errorf("Expected %v got %v", want, got)
+		}
+
+		if !errors.Is(gotErr, wantErr) {
+			t.Errorf("Expected %v got %v", wantErr, gotErr)
 		}
 	})
 }

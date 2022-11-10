@@ -41,6 +41,8 @@ var (
 	ErrEndpointsFound                        = errors.New("endpoints found")
 	ErrNoEndpointFound                       = errors.New("no endpoint in LB found")
 	ErrNotAllConditionsSet                   = errors.New("no or not all conditions are set")
+	ErrConditionsLastHeartbeatTimeToOld      = errors.New("lastHeartbeatTime in condition to old")
+	ErrConditionsNotInCorrectState           = errors.New("condition is in wrong state")
 	ErrConfigNotReady                        = errors.New("config not ready")
 	ErrEnvoyNotReady                         = errors.New("envoy not ready")
 	ErrEnvoyNotUpToDate                      = errors.New("envoy not upToDate")
