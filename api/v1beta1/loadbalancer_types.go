@@ -100,6 +100,19 @@ type LoadBalancerOptions struct {
 	// If empty it is enabled for all ports. Only has an affect if TCPProxyProtocol is enabled.
 	// +optional
 	TCPProxyProtocolPortsFilter []int32 `json:"tcpProxyProtocolPortFilter,omitempty"`
+	// LogForward enables log forward to a loki instance
+	// +optional
+	LogForward LoadBalancerLogForward `json:"logForward,omitempty"`
+}
+
+// LoadBalancerLogForward enables log forward to a loki instance.
+type LoadBalancerLogForward struct {
+	// Enabled defines if log forward is enabled
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+	// LokiUrl defines the loki push url (Example: http://example.com:3100/loki/api/v1/push).
+	// +optional
+	LokiUrl string `json:"lokiUrl,omitempty"`
 }
 
 // LoadBalancerDebugSettings defines debug settings for the LoadBalancer
