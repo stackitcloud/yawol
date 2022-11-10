@@ -76,11 +76,13 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	for i := range childMachines.Items {
 		if childMachines.Items[i].DeletionTimestamp != nil {
 			deletedMachines = append(deletedMachines, childMachines.Items[i])
-		} else if isMachineReady(childMachines.Items[i]) {
-			readyMachines = append(readyMachines, childMachines.Items[i])
-		} else {
-			notReadyMachines = append(notReadyMachines, childMachines.Items[i])
+			continue
 		}
+		if isMachineReady(childMachines.Items[i]) {
+			readyMachines = append(readyMachines, childMachines.Items[i])
+			continue
+		}
+		notReadyMachines = append(notReadyMachines, childMachines.Items[i])
 	}
 
 	if res, err := r.reconcileStatus(ctx, &set, readyMachines); err != nil || res.Requeue || res.RequeueAfter != 0 {
@@ -223,7 +225,7 @@ func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(
 // True if created before 10 minutes and no condition added yet
 // True if LastHeartbeatTime is > 5 minutes
 // True if a condition is not good for 5 minutes
-func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) bool {
+func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, error) {
 	before5Minutes := v1.Time{Time: time.Now().Add(-5 * time.Minute)}
 	before10Minutes := v1.Time{Time: time.Now().Add(-10 * time.Minute)}
 
@@ -231,25 +233,33 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) bool {
 	if machine.CreationTimestamp.Before(&before10Minutes) &&
 		(machine.Status.Conditions == nil ||
 			len(*machine.Status.Conditions) == 0) {
-		return true
+		return true, fmt.Errorf("no condition after 10 min: %w",
+			helper.ErrNotAllConditionsSet,
+		)
 	}
 
 	// As soon as a conditions are set
 	if machine.Status.Conditions != nil {
 		for _, condition := range *machine.Status.Conditions {
 			if condition.LastHeartbeatTime.Before(&before5Minutes) {
-				return true
+				return true, fmt.Errorf(
+					"no condition heartbeat in the last 5 min: %w",
+					helper.ErrConditionsLastHeartbeatTimeToOld,
+				)
 			}
 
 			if condition.LastTransitionTime.Before(&before5Minutes) {
 				if helper.LoadBalancerSetConditionIsFalse(condition) {
-					return true
+					return true, fmt.Errorf(
+						"condition: %v, reason: %v, status: %v, message: %v - %w",
+						condition.Type, condition.Reason, condition.Status, condition.Message, helper.ErrConditionsNotInCorrectState,
+					)
 				}
 			}
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // Decides whether the machine is ready or not
