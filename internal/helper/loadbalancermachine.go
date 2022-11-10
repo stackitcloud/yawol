@@ -172,24 +172,31 @@ func GenerateUserData(
 	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
 ) string {
+	const (
+		openRCDel   = "del"
+		openRCAdd   = "add"
+		openRCStart = "start"
+		openRCStop  = "stop"
+	)
+
 	kubeconfigBase64 := base64.StdEncoding.EncodeToString([]byte(kubeconfig))
 	keepalivedConfigBase64 := base64.StdEncoding.EncodeToString([]byte(generateKeepalivedConfig(vip)))
 
 	var promtailConfig string
-	promtailOpenRC := "del"
-	promtailOpenRCState := "stop"
+	promtailOpenRC := openRCDel
+	promtailOpenRCState := openRCStop
 	if loadbalancer.Spec.Options.LogForward.Enabled {
 		promtailConfig = generatePromtailConfig(loadbalancer, loadbalancerMachine)
-		promtailOpenRC = "add"
-		promtailOpenRCState = "start"
+		promtailOpenRC = openRCAdd
+		promtailOpenRCState = openRCStart
 	}
 	promtailConfigBase64 := base64.StdEncoding.EncodeToString([]byte(promtailConfig))
 
-	sshOpenRC := "del"
-	sshOpenRCState := "stop"
+	sshOpenRC := openRCDel
+	sshOpenRCState := openRCStop
 	if loadbalancer.Spec.DebugSettings.Enabled {
-		sshOpenRC = "add"
-		sshOpenRCState = "start"
+		sshOpenRC = openRCAdd
+		sshOpenRCState = openRCStart
 	}
 
 	return `
@@ -274,7 +281,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: '` + loadBalancer.Spec.Options.LogForward.LokiUrl + `'
+  - url: '` + loadBalancer.Spec.Options.LogForward.LokiURL + `'
 
 scrape_configs:
   - job_name: envoy
