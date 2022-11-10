@@ -78,7 +78,7 @@
         url: https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r0/glibc-2.35-r0.apk
 
     - name: Install glibc apk
-      command: apk add /tmp/glibc.apk
+      command: apk add /tmp/glibc.apk --force-overwrite
 
     - name: Delete tmp glibc apk
       file:
