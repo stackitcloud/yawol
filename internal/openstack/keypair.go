@@ -33,7 +33,7 @@ func (r *OSKeypairClient) Configure(
 	return r
 }
 
-// Invokes keypairs.List() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
+// List Invokes keypairs.List() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) List(ctx context.Context) ([]keypairs.KeyPair, error) {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -43,14 +43,14 @@ func (r *OSKeypairClient) List(ctx context.Context) ([]keypairs.KeyPair, error) 
 		r.computeV2.Context = nil
 	}()
 
-	page, err := keypairs.List(r.computeV2).AllPages()
+	page, err := keypairs.List(r.computeV2, keypairs.ListOpts{}).AllPages()
 	if err != nil {
 		return nil, err
 	}
 	return keypairs.ExtractKeyPairs(page)
 }
 
-// Invokes keypairs.Create() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
+// Create Invokes keypairs.Create() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Create(ctx context.Context, opts keypairs.CreateOptsBuilder) (*keypairs.KeyPair, error) {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -64,7 +64,7 @@ func (r *OSKeypairClient) Create(ctx context.Context, opts keypairs.CreateOptsBu
 	return kp, err
 }
 
-// Invokes keypairs.Get() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
+// Get Invokes keypairs.Get() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Get(ctx context.Context, name string) (*keypairs.KeyPair, error) {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -74,11 +74,11 @@ func (r *OSKeypairClient) Get(ctx context.Context, name string) (*keypairs.KeyPa
 		r.computeV2.Context = nil
 	}()
 
-	kp, err := keypairs.Get(r.computeV2, name).Extract()
+	kp, err := keypairs.Get(r.computeV2, name, keypairs.GetOpts{}).Extract()
 	return kp, err
 }
 
-// Invokes keypairs.Delete() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
+// Delete Invokes keypairs.Delete() in gophercloud's keypairs package. Uses the computeV2 client provided in Configure().
 func (r *OSKeypairClient) Delete(ctx context.Context, name string) error {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectKeyPair, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -88,6 +88,6 @@ func (r *OSKeypairClient) Delete(ctx context.Context, name string) error {
 		r.computeV2.Context = nil
 	}()
 
-	err := keypairs.Delete(r.computeV2, name).ExtractErr()
+	err := keypairs.Delete(r.computeV2, name, keypairs.DeleteOpts{}).ExtractErr()
 	return err
 }

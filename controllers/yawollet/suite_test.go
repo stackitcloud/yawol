@@ -9,12 +9,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+
 	discoverygrpcv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -22,7 +24,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -45,12 +46,12 @@ var (
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
+	RunSpecs(t,
 		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	)
 }
 
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.Background())
@@ -84,19 +85,20 @@ var _ = BeforeSuite(func(done Done) {
 	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, nil)
 
 	// create init snapshot
-	snapshot := cachev3.NewSnapshot(
-		"1",
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-	)
+	snapshot, err := cachev3.NewSnapshot("1", map[resource.Type][]types.Resource{
+		resource.EndpointType: {},
+		resource.ClusterType:  {},
+		resource.RouteType:    {},
+		resource.ListenerType: {},
+		resource.RuntimeType:  {},
+		resource.SecretType:   {},
+	})
+	Expect(err).ToNot(HaveOccurred())
+
 	err = snapshot.Consistent()
 	Expect(err).ToNot(HaveOccurred())
 
-	err = cache.SetSnapshot("lb-id", snapshot)
+	err = cache.SetSnapshot(ctx, "lb-id", snapshot)
 	Expect(err).ToNot(HaveOccurred())
 
 	// envoy server startup
@@ -143,8 +145,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
-	close(done)
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	cancel()

@@ -33,7 +33,7 @@ func (r *OSGroupClient) Configure(
 	return r
 }
 
-// Invokes groups.List() in gophercloud's groups package and extracts all security groups.
+// List Invokes groups.List() in gophercloud's groups package and extracts all security groups.
 // Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) List(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationList)
@@ -51,7 +51,7 @@ func (r *OSGroupClient) List(ctx context.Context, opts groups.ListOpts) ([]group
 	return groups.ExtractGroups(pages)
 }
 
-// Invokes groups.Create() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
+// Create Invokes groups.Create() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Create(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -66,7 +66,7 @@ func (r *OSGroupClient) Create(ctx context.Context, opts groups.CreateOptsBuilde
 	return group, err
 }
 
-// Invokes groups.Update() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
+// Update Invokes groups.Update() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Update(ctx context.Context, id string, opts groups.UpdateOptsBuilder) (*groups.SecGroup, error) {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -80,7 +80,7 @@ func (r *OSGroupClient) Update(ctx context.Context, id string, opts groups.Updat
 	return group, err
 }
 
-// Invokes groups.Get() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
+// Get Invokes groups.Get() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Get(ctx context.Context, id string) (*groups.SecGroup, error) {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -94,7 +94,7 @@ func (r *OSGroupClient) Get(ctx context.Context, id string) (*groups.SecGroup, e
 	return group, err
 }
 
-// Invokes groups.Delete() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
+// Delete Invokes groups.Delete() in gophercloud's groups package. Uses the networkV2 client provided in Configure().
 func (r *OSGroupClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)

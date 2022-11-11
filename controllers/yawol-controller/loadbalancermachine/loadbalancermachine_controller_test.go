@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -66,10 +66,11 @@ var _ = Describe("load balancer machine", func() {
 
 		client = testing.GetFakeClient()
 		// create the port used for the lb fip
-		client.PortClientObj.Create(ctx, ports.CreateOpts{
+		_, err := client.PortClientObj.Create(ctx, ports.CreateOpts{
 			Name:      "port-id",
 			NetworkID: "network-id",
 		})
+		Expect(err).ToNot(HaveOccurred())
 
 		loadBalancerMachineReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
 			return client, nil
@@ -79,10 +80,10 @@ var _ = Describe("load balancer machine", func() {
 	JustBeforeEach(func() {
 		createSA(lbm)
 
-		Expect(k8sClient.Create(ctx, lb)).To(Succeed())
+		Expect(k8sClient.Create(ctx, lb.DeepCopy())).To(Succeed())
 		patchLBStatus(lb, lb.Status)
 
-		Expect(k8sClient.Create(ctx, lbm)).To(Succeed())
+		Expect(k8sClient.Create(ctx, lbm.DeepCopy())).To(Succeed())
 		patchLBMStatus(lbm, lbm.Status)
 	})
 

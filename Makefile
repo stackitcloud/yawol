@@ -6,7 +6,7 @@ GOLANGCI_VERSION = 1.48.0
 CONTAINER_REGISTRY = ghcr.io/stackitcloud/yawol/
 CONTAINER_TAG = dev
 CRD_OPTIONS ?= "crd"
-KUBERNETES_VERSION = 1.21.x
+KUBERNETES_VERSION = 1.24.x
 ENVOY_VERSION = 1.21.1
 
 # variables for packer build
@@ -83,11 +83,15 @@ $(GOLANGCI_LINT):
 	@mv bin/golangci-lint "$(@)"
 
 OS = linux
+ARCH = amd64
+ifeq ($(shell uname -m), arm64)
+	ARCH = arm64
+endif
 ifeq ($(shell uname -s),Darwin)
 	OS = darwin
 endif
 ENVOY = bin/envoy-$(ENVOY_VERSION)
-ENVOY_PATH=envoy-v$(ENVOY_VERSION)-$(OS)-amd64
+ENVOY_PATH=envoy-v$(ENVOY_VERSION)-$(OS)-$(ARCH)
 $(ENVOY): ## Download envoy binary for linux
 	mkdir -p bin
 	wget -qO- https://github.com/tetratelabs/archive-envoy/releases/download/v$(ENVOY_VERSION)/$(ENVOY_PATH).tar.xz | tar xfvJ - -C bin

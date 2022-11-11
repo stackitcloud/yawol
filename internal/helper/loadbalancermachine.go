@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// LoadBalancerOpenstackReconcileIsNeeded returns true if an openstack reconcile is needed.
+// LoadBalancerMachineOpenstackReconcileIsNeeded returns true if an openstack reconcile is needed.
 func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalancerMachine) bool {
 	// LastOpenstackReconcile is nil, first run
 	if lbm.Status.LastOpenstackReconcile == nil {

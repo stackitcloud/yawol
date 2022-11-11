@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
@@ -84,6 +86,8 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	ctx := context.Background()
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// ensure required flags
@@ -133,28 +137,31 @@ func main() {
 	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, nil)
 
 	// create init snapshot
-	snapshot := cachev3.NewSnapshot(
-		"1",
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-		[]types.Resource{},
-	)
+	snapshot, err := cachev3.NewSnapshot("1", map[resource.Type][]types.Resource{
+		resource.EndpointType: {},
+		resource.ClusterType:  {},
+		resource.RouteType:    {},
+		resource.ListenerType: {},
+		resource.RuntimeType:  {},
+		resource.SecretType:   {},
+	})
+	if err != nil {
+		setupLog.Error(err, "error creating new snapshot")
+		os.Exit(1)
+	}
+
 	if err := snapshot.Consistent(); err != nil {
 		setupLog.Error(err, "snapshot inconsistency: ", "snapshot", snapshot)
 		os.Exit(1)
 	}
 	setupLog.Info("will serve snapshot", "snapshot", snapshot)
 
-	if err := cache.SetSnapshot("lb-id", snapshot); err != nil {
+	if err := cache.SetSnapshot(ctx, "lb-id", snapshot); err != nil {
 		setupLog.Error(err, "snapshot error", "snapshot", snapshot)
 		os.Exit(1)
 	}
 
 	// envoy server startup
-	ctx := context.Background()
 	cb := &testv3.Callbacks{Debug: true}
 	srv := serverv3.NewServer(ctx, cache, cb)
 
