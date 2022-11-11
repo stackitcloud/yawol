@@ -198,6 +198,10 @@ metadata:
     yawol.stackit.cloud/tcpProxyProtocol: "false"
     # defines proxy protocol ports (comma separated list)
     yawol.stackit.cloud/tcpProxyProtocolPortsFilter: "80,443"
+    # enables log forwarding
+    yawol.stackit.cloud/logForward: "true"
+    # defines loki URL for the log forwarding
+    yawol.stackit.cloud/logForwardLokiURL: "http://example.com:3100/loki/api/v1/push"
 ```
 
 See [our example service](example-setup/yawol-cloud-controller/service.yaml)

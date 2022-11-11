@@ -78,7 +78,7 @@
         url: https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk
 
     - name: Install glibc apk
-      command: apk add /tmp/glibc.apk
+      command: apk add /tmp/glibc.apk --force-overwrite
 
     - name: Delete tmp glibc apk
       file:
@@ -113,6 +113,44 @@
       copy:
         src: ./keepalivedstats.sh
         dest: /etc/init.d/keepalivedstats
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Creating promtail user
+      user:
+        name: "promtail"
+        shell: /bin/bash
+        groups: wheel
+        append: true
+
+    - name: install unzip
+      command: "apk add unzip"
+
+    - name : get promtail binary
+      ansible.builtin.unarchive:
+        src: https://github.com/grafana/loki/releases/download/v2.6.1/promtail-linux-amd64.zip
+        dest: /tmp
+        remote_src: yes
+
+    - name: copy promtail binary
+      copy:
+        src: /tmp/promtail-linux-amd64
+        dest: /usr/local/bin/promtail
+        owner: root
+        group: root
+        mode: 0755
+        remote_src: yes
+
+    - name: Delete tmp promtail binary
+      file:
+        path: /tmp/promtail-linux-amd64
+        state: absent
+
+    - name: add openrc promtail
+      copy:
+        src: ./promtail.sh
+        dest: /etc/init.d/promtail
         owner: root
         group: root
         mode: 0755

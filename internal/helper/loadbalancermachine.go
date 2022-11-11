@@ -168,67 +168,75 @@ func PatchLBMStatus(
 
 func GenerateUserData(
 	kubeconfig string,
-	loadBalancerName string,
-	loadBalancerMachineName string,
-	namespace string,
-	debug bool,
+	loadbalancer *yawolv1beta1.LoadBalancer,
+	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
 ) string {
-	bk := base64.StdEncoding.EncodeToString([]byte(kubeconfig))
-	keepalivedConfig := base64.StdEncoding.EncodeToString(
-		[]byte(generateKeepalivedConfig(vip)),
+	const (
+		openRCDel   = "del"
+		openRCAdd   = "add"
+		openRCStart = "start"
+		openRCStop  = "stop"
 	)
 
-	var systemctlSshd, openrcSshd, openrcState string
-	if debug {
-		systemctlSshd = "enable"
-		openrcSshd = "add"
-		openrcState = "start"
-	} else {
-		systemctlSshd = "disable"
-		openrcSshd = "del"
-		openrcState = "stop"
+	kubeconfigBase64 := base64.StdEncoding.EncodeToString([]byte(kubeconfig))
+	keepalivedConfigBase64 := base64.StdEncoding.EncodeToString([]byte(generateKeepalivedConfig(vip)))
+
+	var promtailConfig string
+	promtailOpenRC := openRCDel
+	promtailOpenRCState := openRCStop
+	if loadbalancer.Spec.Options.LogForward.Enabled {
+		promtailConfig = generatePromtailConfig(loadbalancer, loadbalancerMachine)
+		promtailOpenRC = openRCAdd
+		promtailOpenRCState = openRCStart
+	}
+	promtailConfigBase64 := base64.StdEncoding.EncodeToString([]byte(promtailConfig))
+
+	sshOpenRC := openRCDel
+	sshOpenRCState := openRCStop
+	if loadbalancer.Spec.DebugSettings.Enabled {
+		sshOpenRC = openRCAdd
+		sshOpenRCState = openRCStart
 	}
 
-	tpl := `
+	return `
 #cloud-config
 write_files:
 - encoding: b64
-  content: ` + bk + `
+  content: ` + kubeconfigBase64 + `
   owner: yawol:yawol
   path: /etc/yawol/kubeconfig
   permissions: '0600'
 - encoding: b64
-  content: ` + keepalivedConfig + `
+  content: ` + keepalivedConfigBase64 + `
   owner: root:root
   path: /etc/keepalived/keepalived.conf
   permissions: '0644'
+- encoding: b64
+  content: ` + promtailConfigBase64 + `
+  owner: promtail:promtail
+  path: /etc/promtail/promtail.yaml
+  permissions: '0644'
 - content: >
-    YAWOLLET_ARGS="-namespace=` + namespace + `
-    -loadbalancer-name=` + loadBalancerName + `
-    -loadbalancer-machine-name=` + loadBalancerMachineName + `
+    YAWOLLET_ARGS="-namespace=` + loadbalancerMachine.Namespace + `
+    -loadbalancer-name=` + loadbalancer.Name + `
+    -loadbalancer-machine-name=` + loadbalancerMachine.Name + `
     -listen-address=` + vip + `
     -kubeconfig /etc/yawol/kubeconfig"
   path: /etc/yawol/env.conf
 runcmd:
-  - [ /sbin/rc-service, sshd, ` + openrcState + ` ]
-  - [ /sbin/rc-update, ` + openrcSshd + `, sshd, default ]
-  - [ systemctl, ` + systemctlSshd + `, ssh.service, --now ]
-  - [ systemctl, ` + systemctlSshd + `, sshd.service, --now ]
-  - [ systemctl, daemon-reload ]
-  - [ systemctl, restart, keepalived.service ]
-  - [ systemctl, restart, yawollet.service ]
-  - [ systemctl, restart, envoy.service ]
+  - [ /sbin/rc-service, promtail, ` + promtailOpenRCState + ` ]
+  - [ /sbin/rc-update, ` + promtailOpenRC + `, promtail, default ]
+  - [ /sbin/rc-service, sshd, ` + sshOpenRCState + ` ]
+  - [ /sbin/rc-update, ` + sshOpenRC + `, sshd, default ]
   - [ /sbin/rc-service, keepalived, restart ]
   - [ /sbin/rc-service, envoy, restart ]
   - [ /sbin/rc-service, yawollet, restart ]
 `
-	return tpl
 }
 
 func generateKeepalivedConfig(vip string) string {
-	return `
-! Configuration File for keepalived
+	return `! Configuration File for keepalived
 
 global_defs {
 	router_id envoy
@@ -259,6 +267,51 @@ vrrp_instance ` + VRRPInstanceName + ` {
 	track_process {
 		envoy
 	}
+}`
 }
-	`
+
+func generatePromtailConfig(
+	loadBalancer *yawolv1beta1.LoadBalancer,
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+) string {
+	return `server:
+  disable: true
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: '` + loadBalancer.Spec.Options.LogForward.LokiURL + `'
+
+scrape_configs:
+  - job_name: envoy
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: yawol-logs
+          application: envoy
+          lbm: ` + loadBalancerMachine.Name + `
+          lb: ` + loadBalancer.Name + `
+          __path__: /var/log/yawol/envoy.log
+  - job_name: yawollet
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: yawol-logs
+          application: yawollet
+          lbm: ` + loadBalancerMachine.Name + `
+          lb: ` + loadBalancer.Name + `
+          __path__: /var/log/yawol/yawollet.log
+  - job_name: messages
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: yawol-logs
+          lbm: ` + loadBalancerMachine.Name + `
+          lb: ` + loadBalancer.Name + `
+          application: messages
+          __path__: /var/log/messages`
 }

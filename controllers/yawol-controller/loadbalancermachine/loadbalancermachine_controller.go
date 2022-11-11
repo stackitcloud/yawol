@@ -525,10 +525,8 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 	// Generate user-data for yawollet VM
 	userData := helper.GenerateUserData(
 		kubeconfig,
-		loadbalancer.Name,
-		loadBalancerMachine.Name,
-		loadBalancerMachine.Namespace,
-		loadbalancer.Spec.DebugSettings.Enabled,
+		loadbalancer,
+		loadBalancerMachine,
 		vip,
 	)
 
