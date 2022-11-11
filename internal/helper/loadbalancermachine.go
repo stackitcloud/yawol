@@ -182,7 +182,7 @@ func GenerateUserData(
 	kubeconfigBase64 := base64.StdEncoding.EncodeToString([]byte(kubeconfig))
 	keepalivedConfigBase64 := base64.StdEncoding.EncodeToString([]byte(generateKeepalivedConfig(vip)))
 
-	var promtailConfig string
+	promtailConfig := "disabled"
 	promtailOpenRC := openRCDel
 	promtailOpenRCState := openRCStop
 	if loadbalancer.Spec.Options.LogForward.Enabled {

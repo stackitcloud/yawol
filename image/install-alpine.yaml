@@ -3,13 +3,11 @@
   hosts: default
   become: true
   tasks:
-
+    # alpine updates
     - name: update alpine
       command: "apk upgrade --update-cache --available"
 
-    - name: update alpine
-      command: "apk upgrade --update-cache --available"
-
+    # keepalived
     - name: install keepalived
       command: "apk add keepalived"
 
@@ -18,14 +16,23 @@
         state: absent
         path: /etc/keepalived/keepalived.conf
 
-    - name: Copy envoy in place
+    - name: upload keepalivedstats-script.sh
       copy:
-        src: ../bin/envoy
-        dest: /usr/local/bin/envoy
+        src: ./keepalivedstats-script.sh
+        dest: /usr/local/bin/keepalivedstats-script.sh
         owner: root
         group: root
         mode: 0755
 
+    - name: add openrc keepalivedstats
+      copy:
+        src: ./keepalivedstats.sh
+        dest: /etc/init.d/keepalivedstats
+        owner: root
+        group: root
+        mode: 0755
+
+    # yawol user
     - name: Creating yawol user
       user:
         name: "yawol"
@@ -37,11 +44,34 @@
         state: directory
         mode: '0755'
 
-    - name: Delete folder with wrong permissions
+    # envoy
+    - name: Copy envoy in place
+      copy:
+        src: ../out/envoy/envoy
+        dest: /usr/local/bin/envoy
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Copy envoy libs in place
+      copy:
+        src: ../out/envoy/lib/
+        dest: /lib/
+        owner: root
+        group: root
+        mode: preserve
+
+    - name: Create a lib64 directory
       file:
-        path: /dev/shm/envoy_shared_memory_0
-        state: absent
+        path: /lib64
+        state: directory
         mode: '0755'
+
+    - name: Create a symbolic link for ld-linux-x86-64.so.2
+      file:
+        src: /lib/ld-linux-x86-64.so.2
+        dest: /lib64/ld-linux-x86-64.so.2
+        state: hard
 
     - name: add envoy config
       copy:
@@ -65,29 +95,19 @@
         capability: cap_net_bind_service=ep
         state: present
 
-    # wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
-    # wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk
-    - name : Add apk key for alpine
-      get_url:
-        dest: /etc/apk/keys/sgerrand.rsa.pub
-        url: https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+    - name: test envoy
+      command: "/usr/local/bin/envoy --help"
 
-    - name : Get glibc apk
-      get_url:
-        dest: /tmp/glibc.apk
-        url: https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk
-
-    - name: Install glibc apk
-      command: apk add /tmp/glibc.apk --force-overwrite
-
-    - name: Delete tmp glibc apk
+    - name: Delete folder with wrong permissions
       file:
-        path: /tmp/glibc.apk
+        path: /dev/shm/envoy_shared_memory_0
         state: absent
+        mode: '0755'
 
+    # yawollet
     - name: upload yawollet
       copy:
-        src: ../out/bin/yawollet
+        src: ../out/yawollet
         dest: /usr/local/bin/yawollet
         owner: root
         group: root
@@ -101,18 +121,11 @@
         group: root
         mode: 0755
 
-    - name: upload keepalivedstats-script.sh
+    # promtail
+    - name: upload promtail
       copy:
-        src: ./keepalivedstats-script.sh
-        dest: /usr/local/bin/keepalivedstats-script.sh
-        owner: root
-        group: root
-        mode: 0755
-
-    - name: add openrc keepalivedstats
-      copy:
-        src: ./keepalivedstats.sh
-        dest: /etc/init.d/keepalivedstats
+        src: ../out/promtail
+        dest: /usr/local/bin/promtail
         owner: root
         group: root
         mode: 0755
@@ -124,28 +137,11 @@
         groups: wheel
         append: true
 
-    - name: install unzip
-      command: "apk add unzip"
-
-    - name : get promtail binary
-      ansible.builtin.unarchive:
-        src: https://github.com/grafana/loki/releases/download/v2.6.1/promtail-linux-amd64.zip
-        dest: /tmp
-        remote_src: yes
-
-    - name: copy promtail binary
-      copy:
-        src: /tmp/promtail-linux-amd64
-        dest: /usr/local/bin/promtail
-        owner: root
-        group: root
-        mode: 0755
-        remote_src: yes
-
-    - name: Delete tmp promtail binary
+    - name: Create a directory for promtail
       file:
-        path: /tmp/promtail-linux-amd64
-        state: absent
+        path: /etc/promtail
+        state: directory
+        mode: '0755'
 
     - name: add openrc promtail
       copy:
@@ -155,6 +151,7 @@
         group: root
         mode: 0755
 
+    # reload openrc
     - name: Reload openrc
       command: "rc-update -u"
 
@@ -219,7 +216,8 @@
     - name: disable ssh service
       command: "rc-update del sshd"
 
-    - name: Cleanup zeuchs
+    - name: cleanup
       command: "rm -rf /var/cache/apk/*"
-    - name: Cleanup mehr zeuchs
+
+    - name: more cleanup
       command: "cloud-init clean -l -s"
