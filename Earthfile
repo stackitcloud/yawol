@@ -3,6 +3,8 @@ FROM golang:1.19
 ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
+ARG ENVOY_VERSION=v1.24.0
+ARG PROMTAIL_VERSION=2.7.0
 
 local-setup:
     LOCALLY
@@ -43,6 +45,81 @@ build-test:
     COPY --dir controllers/ internal/ cmd/ api/ .
     RUN --mount=type=cache,target=$GOCACHE \
         go build -ldflags="-w -s" -o /dev/null ./...
+
+get-envoy-local:
+    FROM +envoy
+    COPY COPY +get-envoy/envoy /envoy
+    SAVE ARTIFACT /envoy AS LOCAL out/envoy
+
+get-envoy:
+    FROM +envoy
+    SAVE ARTIFACT /usr/local/bin/envoy
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/ld-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libm-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libm.* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/librt-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/librt.* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libdl-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libdl.* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libpthread-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libpthread.* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libc-* /envoylibs/
+    SAVE ARTIFACT /lib/x86_64-linux-gnu/libc.* /envoylibs/
+
+validate-yawollet-image:
+    BUILD +local --CONTROLLER=yawollet
+    FROM +packer
+    COPY image image
+	RUN packer fmt -check -diff image/alpine-yawol.pkr.hcl
+	RUN packer validate -syntax-only \
+		-var 'os_project_id=UNSET' \
+		-var 'source_image=UNSET' \
+		-var 'image_tags=[]' \
+		-var 'image_version=UNSET' \
+		-var 'network_id=UNSET' \
+		-var 'floating_network_id=UNSET' \
+		-var 'security_group_id=UNSET' \
+		-var 'image_visibility=private' \
+		image/alpine-yawol.pkr.hcl
+
+build-yawollet-image:
+    FROM +packer
+
+    ARG USEROS
+    ARG USERARCH
+
+    ARG --required IMAGE_VISIBILITY
+    ARG --required OS_SOURCE_IMAGE
+    ARG --required OS_NETWORK_ID
+    ARG --required OS_FLOATING_NETWORK_ID
+    ARG --required OS_SECURITY_GROUP_ID
+
+    ARG --required OS_AUTH_URL
+    ARG --required OS_PROJECT_ID
+    ARG --required OS_PROJECT_NAME
+    ARG --required OS_USER_DOMAIN_NAME
+    ARG --required OS_PASSWORD
+    ARG --required OS_USERNAME
+    ARG --required OS_REGION_NAME
+
+    COPY +promtail/promtail out/promtail
+    COPY +get-envoy/envoy out/envoy/envoy
+    COPY +get-envoy/envoylibs out/envoy/lib
+    COPY (+build/controller --CONTROLLER=yawollet --GOOS=$USEROS --GOARCH=$USERARCH) out/yawollet
+    COPY +set-version/VERSION .
+
+    COPY image image
+
+	RUN packer build \
+        -var "source_image=$OS_SOURCE_IMAGE" \
+        -var "image_version=$(cat VERSION)" \
+        -var "image_tags=[\"$(cat VERSION)\"]" \
+        -var "os_project_id=$OS_PROJECT_ID" \
+        -var "network_id=$OS_NETWORK_ID" \
+        -var "floating_network_id=$OS_FLOATING_NETWORK_ID" \
+        -var "security_group_id=$OS_SECURITY_GROUP_ID" \
+        -var "image_visibility=$IMAGE_VISIBILITY" \
+        image/alpine-yawol.pkr.hcl
 
 set-version:
     FROM alpine/git
@@ -165,9 +242,18 @@ golangci-lint:
     FROM golangci/golangci-lint:v1.48.0
     SAVE ARTIFACT /usr/bin/golangci-lint
 
+packer:
+    FROM hashicorp/packer:1.8
+    RUN apk add ansible
+    RUN apk add openssh-client
+
 envoy:
-    FROM envoyproxy/envoy:v1.21.1
+    FROM envoyproxy/envoy:$ENVOY_VERSION
     SAVE ARTIFACT /usr/local/bin/envoy
+
+promtail:
+    FROM grafana/promtail:$PROMTAIL_VERSION
+    SAVE ARTIFACT /usr/bin/promtail
 
 snyk-linux:
     FROM snyk/snyk:linux

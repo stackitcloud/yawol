@@ -44,32 +44,42 @@ get yawol going, however, you need a yawol OpenStack VM image first.
 We use an openstack alpine base image which can be created with this
 [packer file](https://github.com/stackitcloud/alpine-openstack-image).
 
-Before running our `Makefile` targets, set the needed environment variables:
+To create the necessary environment to build the image, you can use the terraform code located within `hack/packer-infrastructure`.
+Run `terraform init && terraform apply` within that directory. The output should contain all openstack specific IDs required
+to build the image. After you are done, you can remove the build infrastructure via running `terraform destroy`
+
+Before running our `Earthly` targets, set the needed environment variables:
 
 ```shell
-export OS_PROJECT_ID=<from your openstack environment>
-export OS_SOURCE_IMAGE=<from your openstack environment>
 export OS_NETWORK_ID=<from your openstack environment>
 export OS_FLOATING_NETWORK_ID=<from your openstack environment>
 export OS_SECURITY_GROUP_ID=<from your openstack environment>
-export SOURCE_VERSION=1 # provided by your CI
-export BUILD_NUMBER=1 # provided by your CI
-export YAWOLLET_VERSION=1 # provided by your CI
-export BUILD_TYPE=release # one of {release|feature}
+export OS_SOURCE_IMAGE=<from your openstack environment>
+export IMAGE_VISIBILITY=<private or public> 
 ```
 
-To create the necessary environment to build the image, you can use the terraform code located within `hack/packer-infrastructure`.
-Run `terraform init && terraform apply` within that directory. The output should contain all openstack specific IDs required
-to build the image. After you are done, you can remove the build infrastructure via running `terraform destroy` 
+To be able to login to OpenStack make sure you source your OpenStack Credentials. The following OpenSTack ENV variables are needed to build the image: `OS_AUTH_URL` `OS_PROJECT_ID` `OS_PROJECT_NAME` `OS_USER_DOMAIN_NAME` `OS_PASSWORD` `OS_USERNAME` `OS_REGION_NAME`
 
 Then validate and build the image:
 
 ```shell
-make validate-image-yawollet
+earthly +validate-yawollet-image
 ```
 
 ```shell
-make build-image-yawollet
+earthly +build-yawollet-image \
+   --OS_NETWORK_ID="$OS_NETWORK_ID" \
+   --OS_FLOATING_NETWORK_ID="$OS_FLOATING_NETWORK_ID" \
+   --OS_SECURITY_GROUP_ID="$OS_SECURITY_GROUP_ID" \
+   --OS_SOURCE_IMAGE="$OS_SOURCE_IMAGE" \
+   --IMAGE_VISIBILITY="$IMAGE_VISIBILITY" \
+   --OS_AUTH_URL="$OS_AUTH_URL" \
+   --OS_PROJECT_ID="$OS_PROJECT_ID" \
+   --OS_PROJECT_NAME="$OS_PROJECT_NAME" \
+   --OS_USER_DOMAIN_NAME="$OS_USER_DOMAIN_NAME" \
+   --OS_PASSWORD="$OS_PASSWORD" \
+   --OS_USERNAME="$OS_USERNAME" \
+   --OS_REGION_NAME="$OS_REGION_NAME"
 ```
 
 ### Cluster Installation

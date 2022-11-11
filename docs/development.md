@@ -1,9 +1,19 @@
 # Development
 
-## Run tests
+## Earthly
 
+We use [Earthly](https://github.com/earthly/earthly) instead of a `Makefile`
+
+## Run tests ans lint
+
+### go tests
 ```bash
-make test
+earthly +test
+```
+
+### lint
+```bash
+earthly +lint
 ```
 
 ## Dev-Setup (controllers running locally)
@@ -31,7 +41,8 @@ If you want to develop end-to-end (`yawol-cloud-controller` and
 1. Generate and install yawol CRDs
 
    ```bash
-   make install
+   earthly +generate
+   kubectl apply -f charts/yawol-controller/crds/
    ```
 2. Edit environment variables in `run-ycc.sh`
 
@@ -114,14 +125,15 @@ The controllers are using the default kubeconfig ($KUBECONFIG, InCluster or
 ### Requirements
 
 * Any kind of Kubernetes cluster (remote or local with `kind`)
-* Envoy locally installed `make get-envoy` (downloaded from https://github.com/tetratelabs/archive-envoy/releases)
+* Envoy locally installed `earthly +get-envoy-local` (downloaded from envoy docker image)
 
 ### Preparation
 
 1. Generate and install yawol CRDs:
 
    ```bash
-   make install
+   earthly +generate
+   kubectl apply -f charts/yawol-controller/crds/
    ```
 
 2. Create `LoadBalancer` and `LoadBalancerMachine` object (use examples in
