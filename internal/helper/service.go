@@ -123,11 +123,11 @@ func getTCPProxyProtocolPortsFilter(tcpProxyProtocolPortsFilter string) []int32 
 	}
 	var portFilter []int32
 	for _, port := range strings.Split(tcpProxyProtocolPortsFilter, ",") {
-		intPort, err := strconv.Atoi(port) //nolint:gosec // ints are always under int16
+		intPort, err := strconv.Atoi(port)
 		if err != nil {
 			return nil
 		}
-		portFilter = append(portFilter, int32(intPort))
+		portFilter = append(portFilter, int32(intPort)) //nolint:gosec // ints are always under int16
 	}
 	return portFilter
 }

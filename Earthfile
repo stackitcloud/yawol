@@ -3,8 +3,12 @@ FROM golang:1.19
 ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
+
 ARG ENVOY_VERSION=v1.24.0
 ARG PROMTAIL_VERSION=2.7.0
+ARG HELM_VERSION=3.8.1
+ARG GOLANGCI_LINT_VERSION=v1.50.1
+ARG PACKER_VERSION=1.8
 
 local-setup:
     LOCALLY
@@ -205,7 +209,7 @@ snyk-go:
     RUN --secret SNYK_TOKEN snyk test
 
 snyk-helm:
-    FROM alpine/helm:3.8.1
+    FROM alpine/helm:$HELM_VERSION
     COPY +snyk-alpine/snyk $BINPATH
     COPY --dir +helm2kube/result .
     COPY .snyk .
@@ -239,11 +243,11 @@ all:
 ###########
 
 golangci-lint:
-    FROM golangci/golangci-lint:v1.48.0
+    FROM golangci/golangci-lint:$GOLANGCI_LINT_VERSION
     SAVE ARTIFACT /usr/bin/golangci-lint
 
 packer:
-    FROM hashicorp/packer:1.8
+    FROM hashicorp/packer:$PACKER_VERSION
     RUN apk add ansible
     RUN apk add openssh-client
 
@@ -266,7 +270,7 @@ snyk-alpine:
     SAVE ARTIFACT /usr/local/bin/snyk
 
 helm:
-    FROM alpine/helm:3.8.1
+    FROM alpine/helm:$HELM_VERSION
     SAVE ARTIFACT /usr/bin/helm
 
 bash:
