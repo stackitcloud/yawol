@@ -71,16 +71,16 @@ validate-yawollet-image:
     FROM +packer
     COPY image image
 	RUN packer fmt -check -diff image/alpine-yawol.pkr.hcl
-	RUN packer validate -syntax-only \
-		-var 'os_project_id=UNSET' \
-		-var 'source_image=UNSET' \
-		-var 'image_tags=[]' \
-		-var 'image_version=UNSET' \
-		-var 'network_id=UNSET' \
-		-var 'floating_network_id=UNSET' \
-		-var 'security_group_id=UNSET' \
-		-var 'image_visibility=private' \
-		image/alpine-yawol.pkr.hcl
+    RUN packer validate -syntax-only \
+      -var 'os_project_id=UNSET' \
+      -var 'source_image=UNSET' \
+      -var 'image_tags=[]' \
+      -var 'image_version=UNSET' \
+      -var 'network_id=UNSET' \
+      -var 'floating_network_id=UNSET' \
+      -var 'security_group_id=UNSET' \
+      -var 'image_visibility=private' \
+      image/alpine-yawol.pkr.hcl
 
 build-yawollet-image:
     FROM +packer
@@ -110,16 +110,16 @@ build-yawollet-image:
 
     COPY image image
 
-	RUN packer build \
-        -var "source_image=$OS_SOURCE_IMAGE" \
-        -var "image_version=$(cat VERSION)" \
-        -var "image_tags=[\"$(cat VERSION)\"]" \
-        -var "os_project_id=$OS_PROJECT_ID" \
-        -var "network_id=$OS_NETWORK_ID" \
-        -var "floating_network_id=$OS_FLOATING_NETWORK_ID" \
-        -var "security_group_id=$OS_SECURITY_GROUP_ID" \
-        -var "image_visibility=$IMAGE_VISIBILITY" \
-        image/alpine-yawol.pkr.hcl
+    RUN packer build \
+      -var "source_image=$OS_SOURCE_IMAGE" \
+      -var "image_version=$(cat VERSION)" \
+      -var "image_tags=[\"$(cat VERSION)\", \"yawol\"]" \
+      -var "os_project_id=$OS_PROJECT_ID" \
+      -var "network_id=$OS_NETWORK_ID" \
+      -var "floating_network_id=$OS_FLOATING_NETWORK_ID" \
+      -var "security_group_id=$OS_SECURITY_GROUP_ID" \
+      -var "image_visibility=$IMAGE_VISIBILITY" \
+      image/alpine-yawol.pkr.hcl
 
 set-version:
     FROM alpine/git
