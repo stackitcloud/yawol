@@ -26,8 +26,9 @@ import (
 	"github.com/stackitcloud/yawol/internal/hostmetrics"
 	"github.com/stackitcloud/yawol/internal/keepalived"
 
-	envoyxds "github.com/cncf/xds/go/xds/core/v3"
-	envoymatcher "github.com/cncf/xds/go/xds/type/matcher/v3"
+	xdscore "github.com/cncf/xds/go/xds/core/v3"
+	xdsmatcher "github.com/cncf/xds/go/xds/type/matcher/v3"
+
 	envoycluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoyendpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -363,10 +364,10 @@ func createEnvoyUDPListener(
 	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
 		StatPrefix: "envoyudp",
 		RouteSpecifier: &envoyudp.UdpProxyConfig_Matcher{
-			Matcher: &envoymatcher.Matcher{
-				OnNoMatch: &envoymatcher.Matcher_OnMatch{
-					OnMatch: &envoymatcher.Matcher_OnMatch_Action{
-						Action: &envoyxds.TypedExtensionConfig{
+			Matcher: &xdsmatcher.Matcher{
+				OnNoMatch: &xdsmatcher.Matcher_OnMatch{
+					OnMatch: &xdsmatcher.Matcher_OnMatch_Action{
+						Action: &xdscore.TypedExtensionConfig{
 							Name:        "route",
 							TypedConfig: routeConfig,
 						},
