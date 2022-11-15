@@ -26,6 +26,8 @@ import (
 	"github.com/stackitcloud/yawol/internal/hostmetrics"
 	"github.com/stackitcloud/yawol/internal/keepalived"
 
+	envoyxds "github.com/cncf/xds/go/xds/core/v3"
+	envoymatcher "github.com/cncf/xds/go/xds/type/matcher/v3"
 	envoycluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoyendpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -35,6 +37,7 @@ import (
 	envoytcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	envoyudp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/udp/udp_proxy/v3"
 	envoyproxyprotocol "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/proxy_protocol/v3"
+	envoyrawbuffer "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/raw_buffer/v3"
 	envoytypev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	envoytypes "github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -181,24 +184,32 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 			}}
 
 			if proxyProtocolEnabled(lb.Spec.Options, port) {
-				if config, err := anypb.New(&envoyproxyprotocol.ProxyProtocolUpstreamTransport{
-					Config: &envoycore.ProxyProtocolConfig{Version: 2},
-					TransportSocket: &envoycore.TransportSocket{
-						Name: envoywellknown.TransportSocketRawBuffer,
-					},
-				}); err == nil {
-					transportSocket = &envoycore.TransportSocket{
-						// TODO: constant is not in envoy.wellknown
-						Name: "envoy.transport_sockets.upstream_proxy_protocol",
-						ConfigType: &envoycore.TransportSocket_TypedConfig{
-							TypedConfig: config,
+				// NOTE: the nested ifs are not optimal but panicing doesn't seem optimal either
+				// TODO: use logging on error
+				if rawConfig, err := anypb.New(&envoyrawbuffer.RawBuffer{}); err == nil {
+					if proxyConfig, err := anypb.New(&envoyproxyprotocol.ProxyProtocolUpstreamTransport{
+						Config: &envoycore.ProxyProtocolConfig{Version: 2},
+						TransportSocket: &envoycore.TransportSocket{
+							Name: envoywellknown.TransportSocketRawBuffer,
+							ConfigType: &envoycore.TransportSocket_TypedConfig{
+								TypedConfig: rawConfig,
+							},
 						},
+					}); err == nil {
+						transportSocket = &envoycore.TransportSocket{
+							// TODO: constant is not in envoy.wellknown
+							Name: "envoy.transport_sockets.upstream_proxy_protocol",
+							ConfigType: &envoycore.TransportSocket_TypedConfig{
+								TypedConfig: proxyConfig,
+							},
+						}
 					}
 				}
 			}
 		} else if string(port.Protocol) == protocolUDP {
 			protocol = envoycore.SocketAddress_UDP
 			// health checks are only implemented for TCP
+			// proxy protocol only works for TCP
 		}
 
 		endpoints := make([]*envoyendpoint.LocalityLbEndpoints, len(lb.Spec.Endpoints))
@@ -342,9 +353,27 @@ func createEnvoyUDPListener(
 	listenAddress string,
 	port corev1.ServicePort,
 ) *envoylistener.Listener {
+	routeConfig, err := anypb.New(&envoyudp.Route{
+		Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
-		StatPrefix:     "envoyudp",
-		RouteSpecifier: &envoyudp.UdpProxyConfig_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
+		StatPrefix: "envoyudp",
+		RouteSpecifier: &envoyudp.UdpProxyConfig_Matcher{
+			Matcher: &envoymatcher.Matcher{
+				OnNoMatch: &envoymatcher.Matcher_OnMatch{
+					OnMatch: &envoymatcher.Matcher_OnMatch_Action{
+						Action: &envoyxds.TypedExtensionConfig{
+							Name:        "route",
+							TypedConfig: routeConfig,
+						},
+					},
+				},
+			},
+		},
 	})
 	if err != nil {
 		panic(err)

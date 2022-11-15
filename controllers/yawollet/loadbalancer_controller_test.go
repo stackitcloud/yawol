@@ -534,6 +534,16 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
+		It("tests that proxy protocol works", func() {
+			By("enable proxy protocol")
+			lb.Spec.Options.TCPProxyProtocol = true
+			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
+
+			By("check if config is successful")
+			Eventually(func() error {
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
+			}, time.Second*15, time.Second*1).Should(Succeed())
+		})
 		It("test envoy not up to date", func() {
 			By("kill envoy process")
 			err := envoyCmd.Process.Kill()

@@ -1,5 +1,7 @@
+# NOTE: config taken from:
+# https://www.envoyproxy.io/docs/envoy/latest/start/quick-start/configuration-dynamic-control-plane
+
 admin:
-  access_log_path: /dev/null
   address:
     socket_address:
       address: 127.0.0.1
@@ -16,19 +18,24 @@ dynamic_resources:
   lds_config:
     resource_api_version: V3
     ads: {}
-  cds_config: 
+  cds_config:
     resource_api_version: V3
     ads: {}
 
 node:
   cluster: cluster-name
   id: lb-id
+
 static_resources:
   clusters:
   - connect_timeout: 1s
-    http2_protocol_options: {}
     name: xds_cluster
     type: STATIC
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config:
+          http2_protocol_options: {}
     load_assignment:
       cluster_name: xds_cluster
       endpoints:

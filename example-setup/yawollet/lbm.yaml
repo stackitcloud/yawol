@@ -5,7 +5,7 @@ metadata:
   name: loadbalancermachine-sample
   namespace: yawol-test
 spec:
-  floatingID: none # is not used by yawollet can be set to anything
+  portID: none # is not used by yawollet can be set to anything
   infrastructure: # is not used by yawollet can be set to anything
     authSecretRef:
       name: none
