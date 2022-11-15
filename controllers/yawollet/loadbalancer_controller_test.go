@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,35 +21,39 @@ import (
 
 const StatusConditions int = 3
 
-var _ = Describe("Check loadbalancer reconcile", func() {
-	Context("run tests", func() {
+var _ = Describe("check loadbalancer reconcile", func() {
+
+	It("should create the namespace", func() {
+		ns := v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: NAMESPACE}}
+		Expect(k8sClient.Create(ctx, &ns)).Should(Succeed())
+		Eventually(func() {
+			Expect(k8sClient.Get(ctx, kclient.ObjectKeyFromObject(&ns), &ns)).Should(Succeed())
+		})
+	})
+
+	Context("namespace is created", func() {
 		ctx := context.Background()
 		var lb yawolv1beta1.LoadBalancer
 		var lbm yawolv1beta1.LoadBalancerMachine
 
-		It("Create initial loadbalancer and loadbalancermachine", func() {
-			By("create testns namespace")
-			ns := v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "testns"}}
-			Expect(k8sClient.Create(ctx, &ns)).Should(Succeed())
-
-			By("create test-lbm loadbalancermachine")
+		BeforeEach(func() {
 			lbm = yawolv1beta1.LoadBalancerMachine{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-lbm",
-					Namespace: "testns"},
+					Name:      LBM_NAME,
+					Namespace: NAMESPACE,
+				},
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					PortID:          "",
 					Infrastructure:  yawolv1beta1.LoadBalancerInfrastructure{},
 					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{},
 				},
 			}
-			Expect(k8sClient.Create(ctx, &lbm)).Should(Succeed())
 
-			By("create test-lb loadbalancer")
 			lb = yawolv1beta1.LoadBalancer{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-lb",
-					Namespace: "testns"},
+					Name:      LB_NAME,
+					Namespace: NAMESPACE,
+				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector: metav1.LabelSelector{},
 					Replicas: 1,
@@ -72,537 +75,470 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{},
 				},
 			}
-			Expect(k8sClient.Create(ctx, &lb)).Should(Succeed())
 		})
-		It("test initial snapshot creation with condition", func() {
+
+		JustBeforeEach(func() {
+			Expect(k8sClient.Create(ctx, &lbm)).Should(Succeed())
+			Expect(k8sClient.Create(ctx, &lb)).Should(Succeed())
+
+			Eventually(func() {
+				Expect(k8sClient.Get(
+					ctx, kclient.ObjectKeyFromObject(&lb), &yawolv1beta1.LoadBalancer{},
+				)).To(Succeed())
+
+				Expect(k8sClient.Get(
+					ctx, kclient.ObjectKeyFromObject(&lbm), &yawolv1beta1.LoadBalancerMachine{},
+				)).To(Succeed())
+			})
+		})
+
+		AfterEach(func() {
+			Expect(k8sClient.Delete(ctx, &lbm)).Should(Succeed())
+			Expect(k8sClient.Delete(ctx, &lb)).Should(Succeed())
+
+			Eventually(func() {
+				var err error
+				err = k8sClient.Get(
+					ctx, kclient.ObjectKeyFromObject(&lb), &yawolv1beta1.LoadBalancer{},
+				)
+				Expect(kclient.IgnoreNotFound(err)).To(Succeed())
+				// we expect a not found error
+				Expect(err).To(Not(BeNil()))
+
+				err = k8sClient.Get(
+					ctx, kclient.ObjectKeyFromObject(&lbm), &yawolv1beta1.LoadBalancerMachine{},
+				)
+				Expect(kclient.IgnoreNotFound(err)).To(Succeed())
+				// we expect a not found error
+				Expect(err).To(Not(BeNil()))
+			})
+		})
+
+		It("should create the initial snapshot", func() {
 			By("check conditions")
 			Eventually(func() error {
 				return checkConditions(
 					ctx,
-					"test-lbm",
-					"testns",
 					helper.ConditionTrue,
 					helper.ConditionTrue,
 					helper.ConditionTrue,
 					"TCP-8081::127.0.0.1:8081",
 				)
-			}, time.Second*15, time.Second*1).Should(Succeed())
+			}).Should(Succeed())
 		})
-		It("add port to loadbalancer check if new port is set", func() {
-			By("add new port")
-			// add second port
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port2",
-				Protocol:   "TCP",
-				Port:       8082,
-				TargetPort: intstr.IntOrString{IntVal: 8082},
-				NodePort:   12457,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
-			By("check if new port is present")
-			Eventually(func() error {
-				return checkConditions(
-					ctx,
-					"test-lbm",
-					"testns",
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					"TCP-8082::127.0.0.1:8082",
-				)
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add source ranges and check if ports are ready", func() {
-			By("add source ranges")
-			lb.Spec.Options.LoadBalancerSourceRanges = []string{
-				"127.0.0.1/24",
-				"2002::1234:abcd:ffff:c0a8:101/64",
-			}
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if ports are present")
-			Eventually(func() error {
-				return checkConditions(
-					ctx,
-					"test-lbm",
-					"testns",
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					"TCP-8081::127.0.0.1:8081",
-				)
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(
-					ctx,
-					"test-lbm",
-					"testns",
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					"TCP-8082::127.0.0.1:8082",
-				)
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("remove source ranges")
-			lb.Spec.Options.LoadBalancerSourceRanges = nil
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-		})
-		It("set envoy to fail and check envoyReady conditions", func() {
-			By("set envoy ready status to fail")
-			_, err := http.Post("http://127.0.0.1:9000/healthcheck/fail", "", nil)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("check if envoyReady condition is False")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, helper.ConditionFalse, helper.ConditionTrue, "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("set envoy ready back to ok")
-			_, err = http.Post("http://127.0.0.1:9000/healthcheck/ok", "", nil)
-			Expect(err).Should(Succeed())
-
-			By("check if envoyReady condition is True")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", "", helper.ConditionTrue, "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add port with bad protocol", func() {
-			By("add new port")
-			// add second port
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "BLA",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 8083},
-				NodePort:   12458,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete bad protocol port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add port with udp protocol", func() {
-			By("add new port")
-			// add second port
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "UDP",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 8083},
-				NodePort:   12458,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete correct protocol port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add port with correct protocol", func() {
-			By("add new port")
-			// add second port
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 8083},
-				NodePort:   12458,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete correct protocol port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add new Port with Port out of range ", func() {
-			By("add too high port")
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       65536,
-				TargetPort: intstr.IntOrString{IntVal: 65536},
-				NodePort:   12458,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete too high port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("add too low port")
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       0, // if port is not set, port will automatically be 0
-				TargetPort: intstr.IntOrString{IntVal: 0},
-				NodePort:   12444,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete too low port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add new Port with Port in valid range", func() {
-			By("add valid new port")
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       32666,
-				TargetPort: intstr.IntOrString{IntVal: 65536},
-				NodePort:   12458,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete correct port")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add new Port with NodePort out of range", func() {
-			By("add too high NodePort")
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 0},
-				NodePort:   65536,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete too high NodePort")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("add too low NodePort")
-			oldPorts = lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 0},
-				NodePort:   0,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("Check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete too low NodePort")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add new Port with NodePort in valid range", func() {
-			By("add valid new NodePort")
-			oldPorts := lb.Spec.Ports
-			lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
-				Name:       "port3",
-				Protocol:   "TCP",
-				Port:       8083,
-				TargetPort: intstr.IntOrString{IntVal: 0},
-				NodePort:   32356,
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete valid NodePort")
-			lb.Spec.Ports = oldPorts
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with wrong IPv4 Address", func() {
-			By("add wrong IPv4 Address in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"124.34.3"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with wrong IPv4 Address")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with valid IPv4 Address", func() {
-			By("add correct IPv4 Address in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"124.34.3.5"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with correct IP Address")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with wrong IPv6 Address", func() {
-			By("add wrong IPv6 Address in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"2001:0db8:53a1:7734"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionFalse, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with wrong IPv6 Address")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with valid IPv6 Address", func() {
-			By("add valid IPv6 Address in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with valid IPv6 Address")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with wrong domain name", func() {
-			By("add wrong domain name in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"abc..de"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config fails")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with wrong DNS name")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("add Endpoint with valid domain name", func() {
-			By("add valid domain name in Endpoint")
-			oldEndpoints := lb.Spec.Endpoints
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"abc.de"},
-			})
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-
-			By("delete Endpoint with correct DNS name")
-			lb.Spec.Endpoints = oldEndpoints
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-
-			By("check if config is successful")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
-		})
-		It("tests that proxy protocol works", func() {
-			By("enable proxy protocol")
-			lb.Spec.Options.TCPProxyProtocol = true
-			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
-		})
-		It("test envoy not up to date", func() {
-			By("kill envoy process")
-			err := envoyCmd.Process.Kill()
-			Expect(err).ToNot(HaveOccurred())
-
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint3",
-				Addresses: []string{"127.0.0.1"},
+		When("adding a new port", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port2",
+					Protocol:   "TCP",
+					Port:       8082,
+					TargetPort: intstr.IntOrString{IntVal: 8082},
+					NodePort:   12457,
+				})
 			})
 
-			By("check if EnvoyUpToDate is False")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", "", "", helper.ConditionFalse, "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
+			It("should create the corresponding listener", func() {
+				Eventually(func() error {
+					return checkConditions(
+						ctx,
+						helper.ConditionTrue,
+						helper.ConditionTrue,
+						helper.ConditionTrue,
+						"TCP-8082::127.0.0.1:8082",
+					)
+				}).Should(Succeed())
+			})
+		})
 
-			By("start envoy process")
-			envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
-			err = envoyCmd.Start()
-			Expect(err).ToNot(HaveOccurred())
-
-			lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
-				Name:      "Endpoint4",
-				Addresses: []string{"127.42.0.69"},
+		When("adding source ranges", func() {
+			BeforeEach(func() {
+				lb.Spec.Options.LoadBalancerSourceRanges = []string{
+					"127.0.0.1/24",
+					"2002::1234:abcd:ffff:c0a8:101/64",
+				}
 			})
 
-			By("check if EnvoyUpToDate is True")
-			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", "", "", helper.ConditionTrue, "")
-			}, time.Second*15, time.Second*1).Should(Succeed())
+			It("should create the corresponding listener", func() {
+				Eventually(func() error {
+					return checkConditions(
+						ctx,
+						helper.ConditionTrue,
+						helper.ConditionTrue,
+						helper.ConditionTrue,
+						"TCP-8081::127.0.0.1:8081",
+					)
+				}).Should(Succeed())
+			})
 		})
+
+		When("setting envoy healthcheck to fail", func() {
+			BeforeEach(func() {
+				_, err := http.Post("http://127.0.0.1:9000/healthcheck/fail", "", nil)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				_, err := http.Post("http://127.0.0.1:9000/healthcheck/ok", "", nil)
+				Expect(err).Should(Succeed())
+			})
+
+			It("should have false ready condition", func() {
+				Eventually(func() error {
+					return checkConditions(
+						ctx,
+						helper.ConditionTrue,
+						helper.ConditionFalse,
+						helper.ConditionTrue,
+						"TCP-8081::127.0.0.1:8081",
+					)
+				}).Should(Succeed())
+			})
+		})
+
+		When("setting a bad protocol in the port", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "BLA",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 8083},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have false condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port with udp protocol", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "UDP",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 8083},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port with tcp protocol", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 8083},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port that is out of range (too high)", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       65536,
+					TargetPort: intstr.IntOrString{IntVal: 65536},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port that is out of range (too low)", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       0,
+					TargetPort: intstr.IntOrString{IntVal: 0},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port in the valid range", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       32666,
+					TargetPort: intstr.IntOrString{IntVal: 65536},
+					NodePort:   12458,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a nodeport that is out of range (too high)", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 0},
+					NodePort:   65536,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a nodeport that is out of range (too low)", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 0},
+					NodePort:   0,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a nodeport that is in valid range", func() {
+			BeforeEach(func() {
+				lb.Spec.Ports = append(lb.Spec.Ports, v1.ServicePort{
+					Name:       "port3",
+					Protocol:   "TCP",
+					Port:       8083,
+					TargetPort: intstr.IntOrString{IntVal: 0},
+					NodePort:   32356,
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding an endpoint with wrong ipv4 address", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"124.34.3"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding a port with a valid ipv4 address", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"124.34.3.5"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding an endpoint with a wrong ipv6 address", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"2001:0db8:53a1:7734"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding an endpoint with a valid ipv6 address", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding an endpoint with a wrong domain name", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"abc..de"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		When("adding an endpoint with a valid domain name", func() {
+			BeforeEach(func() {
+				lb.Spec.Endpoints = append(lb.Spec.Endpoints, yawolv1beta1.LoadBalancerEndpoint{
+					Name:      "Endpoint3",
+					Addresses: []string{"abc.de"},
+				})
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
+				}).Should(Succeed())
+			})
+		})
+
+		// TODO fix
+		XWhen("enabling proxy protocol", func() {
+			BeforeEach(func() {
+				lb.Spec.Options.TCPProxyProtocol = true
+			})
+
+			It("should have the correct condition", func() {
+				Eventually(func() error {
+					return checkConditions(
+						ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+					)
+				}).Should(Succeed())
+			})
+		})
+
+		// TODO fix
+		XWhen("envoy gets killed and restarted", func() {
+			It("should set the correct conditions", func() {
+				By("killing the envoy process")
+				err := envoyCmd.Process.Kill()
+				Expect(err).ToNot(HaveOccurred())
+
+				By("checking if EnvoyUpToDate is False")
+				Eventually(func() error {
+					return checkConditions(ctx, "", "", helper.ConditionFalse, "")
+				}).Should(Succeed())
+
+				By("start envoy process")
+				envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
+				Expect(envoyCmd.Start()).To(Succeed())
+
+				By("check if EnvoyUpToDate is True")
+				Eventually(func() error {
+					return checkConditions(ctx, "", "", helper.ConditionTrue, "")
+				}).Should(Succeed())
+			})
+		})
+
 	})
 })
 
+func checkCondition(
+	conditionType helper.LoadbalancerCondition,
+	condition helper.LoadbalancerConditionStatus,
+	conditions []v1.NodeCondition,
+) bool {
+	for _, c := range conditions {
+		if string(c.Type) != string(conditionType) {
+			continue
+		}
+
+		return string(c.Status) == string(condition)
+	}
+	return false
+}
+
 func checkConditions(
 	ctx context.Context,
-	name, namespace string,
 	configReady, envoyReady, envoyUpToDate helper.LoadbalancerConditionStatus,
 	listener string,
 ) error {
+	name := LBM_NAME
+	namespace := NAMESPACE
 	var curLbm yawolv1beta1.LoadBalancerMachine
 	err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &curLbm)
 	if err != nil {
 		return err
 	}
-	if curLbm.Status.Conditions == nil || len(*curLbm.Status.Conditions) < StatusConditions {
+
+	if curLbm.Status.Conditions == nil {
 		return helper.ErrNotAllConditionsSet
 	}
-	for _, condition := range *curLbm.Status.Conditions {
-		switch string(condition.Type) {
-		case string(helper.ConfigReady):
-			if configReady != "" && string(condition.Status) != string(configReady) {
-				return helper.ErrConfigNotReady
-			}
-		case string(helper.EnvoyReady):
-			if envoyReady != "" && string(condition.Status) != string(envoyReady) {
-				return helper.ErrEnvoyNotReady
-			}
-		case string(helper.EnvoyUpToDate):
-			if envoyUpToDate != "" && string(condition.Status) != string(envoyUpToDate) {
-				return helper.ErrEnvoyNotUpToDate
-			}
+
+	if configReady != "" {
+		if !checkCondition(helper.ConfigReady, configReady, *curLbm.Status.Conditions) {
+			return helper.ErrConfigNotReady
 		}
 	}
+
+	if envoyReady != "" {
+		if !checkCondition(helper.EnvoyReady, envoyReady, *curLbm.Status.Conditions) {
+			return helper.ErrEnvoyNotReady
+		}
+	}
+
+	if envoyUpToDate != "" {
+		if !checkCondition(helper.EnvoyUpToDate, envoyUpToDate, *curLbm.Status.Conditions) {
+			return helper.ErrEnvoyNotUpToDate
+		}
+	}
+
 	if listener != "" {
 		var resp *http.Response
 		resp, err = http.Get("http://127.0.0.1:9000/listeners")

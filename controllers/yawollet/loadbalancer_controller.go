@@ -66,7 +66,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		_ = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
 			helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant create successful")
-		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
+		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to create new snapshot", err), lbm)
 	}
 
 	// update envoy snapshot if changed
@@ -81,7 +81,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if err != nil {
 			_ = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
 				helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant set to envoy envoycache")
-			return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: nable to set new snapshot", err), lbm)
+			return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to set new snapshot", err), lbm)
 		}
 		err = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
 			helper.ConfigReady, helper.ConditionTrue, "EnvoyConfigurationUpToDate", "envoy config is successfully updated")
