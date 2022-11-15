@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -539,9 +540,26 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			lb.Spec.Options.TCPProxyProtocol = true
 			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
 
+			By("remove conditions")
+			Expect(k8sClient.Status().Patch(ctx, &lbm, kclient.RawPatch(
+				types.JSONPatchType, []byte(`[{"op":"remove", "path":"/status/conditions"}]`),
+			))).Should(Succeed())
+
 			By("check if config is successful")
 			Eventually(func() error {
-				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, "", "", "")
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "")
+			}, time.Second*15, time.Second*1).Should(Succeed())
+
+			lb.Spec.Options.TCPProxyProtocol = false
+			Expect(k8sClient.Update(ctx, &lb)).Should(Succeed())
+			By("remove conditions")
+			Expect(k8sClient.Status().Patch(ctx, &lbm, kclient.RawPatch(
+				types.JSONPatchType, []byte(`[{"op":"remove", "path":"/status/conditions"}]`),
+			))).Should(Succeed())
+
+			By("check if config is successful")
+			Eventually(func() error {
+				return checkConditions(ctx, "test-lbm", "testns", helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "")
 			}, time.Second*15, time.Second*1).Should(Succeed())
 		})
 		It("test envoy not up to date", func() {
