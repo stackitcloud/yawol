@@ -288,26 +288,6 @@ clients:
   - url: '` + loadBalancer.Spec.Options.LogForward.LokiURL + `'
 
 scrape_configs:
-  - job_name: envoy
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: yawol-logs
-          application: envoy
-          lbm: ` + loadBalancerMachine.Name + `
-          lb: ` + loadBalancer.Name + `
-          __path__: /var/log/yawol/envoy.log
-  - job_name: yawollet
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: yawol-logs
-          application: yawollet
-          lbm: ` + loadBalancerMachine.Name + `
-          lb: ` + loadBalancer.Name + `
-          __path__: /var/log/yawol/yawollet.log
   - job_name: messages
     static_configs:
       - targets:
