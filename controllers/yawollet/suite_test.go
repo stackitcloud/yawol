@@ -34,6 +34,13 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
+const (
+	Namespace  = "testns"
+	nameLB     = "test-lb"
+	nameLBM    = "test-lbm"
+	SnapshotID = "lb-id"
+)
+
 var (
 	cfg       *rest.Config
 	k8sClient client.Client
@@ -46,9 +53,7 @@ var (
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t,
-		"Controller Suite",
-	)
+	RunSpecs(t, "Controller Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -77,7 +82,7 @@ var _ = BeforeSuite(func() {
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:    scheme.Scheme,
-		Namespace: "testns",
+		Namespace: Namespace,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -98,7 +103,7 @@ var _ = BeforeSuite(func() {
 	err = snapshot.Consistent()
 	Expect(err).ToNot(HaveOccurred())
 
-	err = cache.SetSnapshot(ctx, "lb-id", snapshot)
+	err = cache.SetSnapshot(ctx, SnapshotID, snapshot)
 	Expect(err).ToNot(HaveOccurred())
 
 	// envoy server startup
@@ -121,16 +126,15 @@ var _ = BeforeSuite(func() {
 
 	// start envoy
 	envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
-	err = envoyCmd.Start()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(envoyCmd.Start()).To(Succeed())
 
 	err = (&LoadBalancerReconciler{
 		Client:                  k8sManager.GetClient(),
 		Log:                     ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
 		Scheme:                  k8sManager.GetScheme(),
 		Recorder:                k8sManager.GetEventRecorderFor("Loadbalancer"),
-		LoadbalancerName:        "test-lb",
-		LoadbalancerMachineName: "test-lbm",
+		LoadbalancerName:        nameLB,
+		LoadbalancerMachineName: nameLBM,
 		EnvoyCache:              cache,
 		ListenAddress:           "127.0.0.1",
 		RequeueTime:             1,
@@ -150,8 +154,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
-	err = envoyCmd.Process.Kill()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(testEnv.Stop()).To(Succeed())
+	Expect(envoyCmd.Process.Kill()).To(Succeed())
 })
