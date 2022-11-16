@@ -2,12 +2,13 @@
 
 name=$RC_SVCNAME
 description="envoy"
-supervisor="supervise-daemon"
 command="/usr/local/bin/envoy"
 command_args="-c /etc/yawol/envoy.yaml"
 command_user="yawol"
-output_log="/var/log/yawol/envoy.log"
-error_log="/var/log/yawol/envoy.log"
+command_background="yes"
+output_logger="logger -t envoy"
+error_logger="logger -t envoy"
+pidfile="/run/$RC_SVCNAME.pid"
 
 depend() {
 	after net
