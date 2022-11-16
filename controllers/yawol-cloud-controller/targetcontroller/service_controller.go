@@ -371,6 +371,7 @@ func (r *ServiceReconciler) reconcileOptions(
 			return err
 		}
 	}
+
 	if !reflect.DeepEqual(newOptions.TCPProxyProtocolPortsFilter, lb.Spec.Options.TCPProxyProtocolPortsFilter) {
 		data, err := json.Marshal(newOptions.TCPProxyProtocolPortsFilter)
 		if err != nil {
@@ -379,6 +380,16 @@ func (r *ServiceReconciler) reconcileOptions(
 		patch := []byte(`{"spec":{"options":{"tcpProxyProtocolPortFilter":` + string(data) + `}}}`)
 		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 	}
+
+	if !reflect.DeepEqual(newOptions.LogForward, lb.Spec.Options.LogForward) {
+		data, err := json.Marshal(newOptions.LogForward)
+		if err != nil {
+			return err
+		}
+		patch := []byte(`{"spec":{"options":{"logForward":` + string(data) + `}}}`)
+		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+	}
+
 	return nil
 }
 
