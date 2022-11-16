@@ -29,7 +29,7 @@ const (
 var _ = Describe("check loadbalancer reconcile", func() {
 
 	It("should create the namespace", func() {
-		ns := v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: NAMESPACE}}
+		ns := v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: Namespace}}
 		Expect(k8sClient.Create(ctx, &ns)).Should(Succeed())
 		Eventually(func() {
 			Expect(k8sClient.Get(ctx, kclient.ObjectKeyFromObject(&ns), &ns)).Should(Succeed())
@@ -44,8 +44,8 @@ var _ = Describe("check loadbalancer reconcile", func() {
 		BeforeEach(func() {
 			lbm = yawolv1beta1.LoadBalancerMachine{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      LBM_NAME,
-					Namespace: NAMESPACE,
+					Name:      nameLBM,
+					Namespace: Namespace,
 				},
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					PortID:          "",
@@ -56,8 +56,8 @@ var _ = Describe("check loadbalancer reconcile", func() {
 
 			lb = yawolv1beta1.LoadBalancer{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      LB_NAME,
-					Namespace: NAMESPACE,
+					Name:      nameLB,
+					Namespace: Namespace,
 				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector: metav1.LabelSelector{},
@@ -497,8 +497,8 @@ func checkConditions(
 	configReady, envoyReady, envoyUpToDate helper.LoadbalancerConditionStatus,
 	listener string,
 ) error {
-	name := LBM_NAME
-	namespace := NAMESPACE
+	name := nameLBM
+	namespace := Namespace
 	var curLbm yawolv1beta1.LoadBalancerMachine
 	err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &curLbm)
 	if err != nil {

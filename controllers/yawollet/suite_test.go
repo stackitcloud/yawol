@@ -35,10 +35,10 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	NAMESPACE   = "testns"
-	LB_NAME     = "test-lb"
-	LBM_NAME    = "test-lbm"
-	SNAPSHOT_ID = "lb-id"
+	Namespace  = "testns"
+	nameLB     = "test-lb"
+	nameLBM    = "test-lbm"
+	SnapshotID = "lb-id"
 )
 
 var (
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:    scheme.Scheme,
-		Namespace: NAMESPACE,
+		Namespace: Namespace,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -103,7 +103,7 @@ var _ = BeforeSuite(func() {
 	err = snapshot.Consistent()
 	Expect(err).ToNot(HaveOccurred())
 
-	err = cache.SetSnapshot(ctx, SNAPSHOT_ID, snapshot)
+	err = cache.SetSnapshot(ctx, SnapshotID, snapshot)
 	Expect(err).ToNot(HaveOccurred())
 
 	// envoy server startup
@@ -133,8 +133,8 @@ var _ = BeforeSuite(func() {
 		Log:                     ctrl.Log.WithName("controllers").WithName("LoadBalancer"),
 		Scheme:                  k8sManager.GetScheme(),
 		Recorder:                k8sManager.GetEventRecorderFor("Loadbalancer"),
-		LoadbalancerName:        LB_NAME,
-		LoadbalancerMachineName: LBM_NAME,
+		LoadbalancerName:        nameLB,
+		LoadbalancerMachineName: nameLBM,
 		EnvoyCache:              cache,
 		ListenAddress:           "127.0.0.1",
 		RequeueTime:             1,
