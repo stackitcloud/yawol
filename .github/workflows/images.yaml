@@ -2,8 +2,11 @@ name: Container Images
 
 on:
   push:
-    branches: [main, 'feature/*']
-    tags: ['*']
+    branches:
+    - main
+    - feature/*
+    tags:
+    - v*
 
 jobs:
   build:
