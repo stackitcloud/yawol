@@ -52,7 +52,7 @@ build-test:
 
 get-envoy-local:
     FROM +envoy
-    COPY COPY +get-envoy/envoy /envoy
+    COPY +get-envoy/envoy /envoy
     SAVE ARTIFACT /envoy AS LOCAL out/envoy
 
 get-envoy:
