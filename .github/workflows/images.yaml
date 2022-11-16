@@ -2,7 +2,7 @@ name: Container Images
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/*']
     tags: ['*']
 
 jobs:
