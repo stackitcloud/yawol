@@ -36,7 +36,7 @@
     - name: Creating yawol user
       user:
         name: "yawol"
-        shell: /bin/bash
+        shell: /bin/ash
 
     - name: Create a directory for yawol
       file:
@@ -133,7 +133,7 @@
     - name: Creating promtail user
       user:
         name: "promtail"
-        shell: /bin/bash
+        shell: /bin/ash
         groups: wheel
         append: true
 

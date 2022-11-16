@@ -4,13 +4,14 @@
 
 name=$RC_SVCNAME
 description="yawollet"
-supervisor="supervise-daemon"
 command="/usr/local/bin/yawollet"
 command_args="$YAWOLLET_ARGS"
+command_background="yes"
 command_user="yawol"
-output_log="/var/log/yawol/yawollet.log"
-error_log="/var/log/yawol/yawollet.log"
+output_logger="logger -t yawollet"
+error_logger="logger -t yawollet"
+pidfile="/run/$RC_SVCNAME.pid"
 
 depend() {
-	after net
+        after net
 }
