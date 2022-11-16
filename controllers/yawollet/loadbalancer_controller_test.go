@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,6 +21,10 @@ import (
 )
 
 const StatusConditions int = 3
+const (
+	TIMEOUT  = 10 * time.Second
+	INTERVAL = 500 * time.Millisecond
+)
 
 var _ = Describe("check loadbalancer reconcile", func() {
 
@@ -115,16 +120,13 @@ var _ = Describe("check loadbalancer reconcile", func() {
 		})
 
 		It("should create the initial snapshot", func() {
-			By("check conditions")
-			Eventually(func() error {
-				return checkConditions(
-					ctx,
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					helper.ConditionTrue,
-					"TCP-8081::127.0.0.1:8081",
-				)
-			}).Should(Succeed())
+			eventuallyCheckConditions(
+				ctx,
+				helper.ConditionTrue,
+				helper.ConditionTrue,
+				helper.ConditionTrue,
+				"TCP-8081::127.0.0.1:8081",
+			)
 		})
 
 		When("adding a new port", func() {
@@ -139,15 +141,13 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should create the corresponding listener", func() {
-				Eventually(func() error {
-					return checkConditions(
-						ctx,
-						helper.ConditionTrue,
-						helper.ConditionTrue,
-						helper.ConditionTrue,
-						"TCP-8082::127.0.0.1:8082",
-					)
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					"TCP-8082::127.0.0.1:8082",
+				)
 			})
 		})
 
@@ -160,15 +160,13 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should create the corresponding listener", func() {
-				Eventually(func() error {
-					return checkConditions(
-						ctx,
-						helper.ConditionTrue,
-						helper.ConditionTrue,
-						helper.ConditionTrue,
-						"TCP-8081::127.0.0.1:8081",
-					)
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					helper.ConditionTrue,
+					"TCP-8081::127.0.0.1:8081",
+				)
 			})
 		})
 
@@ -184,15 +182,13 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have false ready condition", func() {
-				Eventually(func() error {
-					return checkConditions(
-						ctx,
-						helper.ConditionTrue,
-						helper.ConditionFalse,
-						helper.ConditionTrue,
-						"TCP-8081::127.0.0.1:8081",
-					)
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx,
+					helper.ConditionTrue,
+					helper.ConditionFalse,
+					helper.ConditionTrue,
+					"TCP-8081::127.0.0.1:8081",
+				)
 			})
 		})
 
@@ -208,9 +204,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have false condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionFalse, "", "", "",
+				)
 			})
 		})
 
@@ -226,9 +222,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -244,9 +240,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -262,9 +258,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -280,9 +274,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -298,9 +290,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -316,9 +308,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -334,9 +324,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -352,9 +340,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -367,9 +355,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -382,9 +368,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -397,9 +383,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -412,9 +396,9 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
@@ -427,9 +411,7 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionFalse, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, helper.ConditionFalse, "", "", "")
 			})
 		})
 
@@ -442,52 +424,58 @@ var _ = Describe("check loadbalancer reconcile", func() {
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(ctx, helper.ConditionTrue, "", "", "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, "", "", "",
+				)
 			})
 		})
 
-		// TODO fix
-		XWhen("enabling proxy protocol", func() {
+		When("enabling proxy protocol", func() {
 			BeforeEach(func() {
 				lb.Spec.Options.TCPProxyProtocol = true
 			})
 
 			It("should have the correct condition", func() {
-				Eventually(func() error {
-					return checkConditions(
-						ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
-					)
-				}).Should(Succeed())
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
-		// TODO fix
-		XWhen("envoy gets killed and restarted", func() {
+		When("envoy gets killed and restarted", func() {
 			It("should set the correct conditions", func() {
 				By("killing the envoy process")
 				err := envoyCmd.Process.Kill()
 				Expect(err).ToNot(HaveOccurred())
 
 				By("checking if EnvoyUpToDate is False")
-				Eventually(func() error {
-					return checkConditions(ctx, "", "", helper.ConditionFalse, "")
-				}).Should(Succeed())
+				eventuallyCheckConditions(ctx, "", "", helper.ConditionFalse, "")
 
-				By("start envoy process")
+				By("starting the envoy process")
 				envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
 				Expect(envoyCmd.Start()).To(Succeed())
 
-				By("check if EnvoyUpToDate is True")
-				Eventually(func() error {
-					return checkConditions(ctx, "", "", helper.ConditionTrue, "")
-				}).Should(Succeed())
+				By("checking if EnvoyUpToDate is True")
+				eventuallyCheckConditions(
+					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
+				)
 			})
 		})
 
 	})
 })
+
+func eventuallyCheckConditions(
+	ctx context.Context,
+	configReady, envoyReady, envoyUpToDate helper.LoadbalancerConditionStatus,
+	listener string,
+) {
+	Eventually(func() error {
+		return checkConditions(
+			ctx, configReady, envoyReady, envoyUpToDate, listener,
+		)
+	}, TIMEOUT, INTERVAL).Should(Succeed())
+}
 
 func checkCondition(
 	conditionType helper.LoadbalancerCondition,
