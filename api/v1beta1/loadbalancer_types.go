@@ -113,10 +113,10 @@ type LoadBalancerOptions struct {
 type LoadBalancerLogForward struct {
 	// Enabled defines if log forward is enabled
 	// +optional
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled bool `json:"enabled"`
 	// LokiUrl defines the loki push url (Example: http://example.com:3100/loki/api/v1/push).
 	// +optional
-	LokiURL string `json:"lokiUrl,omitempty"`
+	LokiURL string `json:"lokiUrl"`
 }
 
 // LoadBalancerDebugSettings defines debug settings for the LoadBalancer
