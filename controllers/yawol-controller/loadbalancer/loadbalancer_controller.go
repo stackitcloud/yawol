@@ -666,7 +666,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 
 	// Get Hash for current LoadBalancerMachineSpec
 	var hash string
-	hash, err = helper.GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb)
+	hash, err = helper.GetHashForLoadBalancerMachineSet(lb)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

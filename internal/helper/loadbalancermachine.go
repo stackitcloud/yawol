@@ -31,19 +31,23 @@ func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalance
 	return false
 }
 
-func GetHashForLoadBalancerMachineSpecFromLoadBalancer(lb *yawolv1beta1.LoadBalancer) (string, error) {
+func GetHashForLoadBalancerMachineSet(lb *yawolv1beta1.LoadBalancer) (string, error) {
 	var portID string
 	if lb.Status.PortID != nil {
 		portID = *lb.Status.PortID
 	}
 
-	return HashData(yawolv1beta1.LoadBalancerMachineSpec{
-		Infrastructure: lb.Spec.Infrastructure,
-		PortID:         portID,
-		LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
-			Namespace: lb.Namespace,
-			Name:      lb.Name,
+	return HashData(map[string]interface{}{
+		"loadBalancerMachineSpec": yawolv1beta1.LoadBalancerMachineSpec{
+			Infrastructure: lb.Spec.Infrastructure,
+			PortID:         portID,
+			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
+				Namespace: lb.Namespace,
+				Name:      lb.Name,
+			},
 		},
+		"logForward":    lb.Spec.Options.LogForward,
+		"debugSettings": lb.Spec.DebugSettings,
 	})
 }
 
