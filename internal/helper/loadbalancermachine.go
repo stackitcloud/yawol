@@ -253,11 +253,12 @@ vrrp_track_process envoy {
 }
 
 vrrp_instance ` + VRRPInstanceName + ` {
-	state MASTER
+	state BACKUP
 	interface eth0
+	nopreempt
 	virtual_router_id 100
-	priority 100
-	advert_int 1
+	priority 50
+	advert_int 4
 
 	authentication {
 		auth_type PASS
