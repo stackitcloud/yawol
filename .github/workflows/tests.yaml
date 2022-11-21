@@ -1,10 +1,13 @@
 name: Tests
 
-on: [pull_request]
+on:
+- pull_request
 
 jobs:
   test:
     runs-on: self-hosted
+    permissions:
+      contents: read
     env:
       # is an empty string if it doesn't exists
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
