@@ -301,6 +301,7 @@ func createEnvoyTCPListener(
 	listenPort, err := anypb.New(&envoytcp.TcpProxy{
 		StatPrefix:       "envoytcp",
 		ClusterSpecifier: &envoytcp.TcpProxy_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
+		IdleTimeout:      &duration.Duration{Seconds: 300}, // default is one hour, prevent idle connection in cases of openstack server migration
 	})
 
 	if err != nil {
