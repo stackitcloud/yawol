@@ -69,7 +69,7 @@ func (c *Config) GetCurrentSnapshotVersion() (
 
 // GetCurrentStats returns a view stats for envoy
 func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, error) {
-	resp, err := http.Get("http://" + c.AdminAddress + "/stats?filter=cluster")
+	resp, err := http.Get("http://" + c.AdminAddress + "/stats?filter=cluster|tcp")
 	if err != nil {
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
@@ -85,20 +85,40 @@ func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, er
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
 
+	return parseEnvoyMetricsToLoadBalancerMachineMetrics(string(body))
+}
+
+// parseEnvoyMetricsToLoadBalancerMachineMetrics returns a LoadBalancerMachineMetric for Envoy
+func parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics string) ([]yawolv1beta1.LoadBalancerMachineMetric, error) {
 	var metrics []yawolv1beta1.LoadBalancerMachineMetric
-	for _, stats := range strings.Split(string(body), "\n") {
-		if strings.Contains(stats, "upstream_cx_active") ||
-			strings.Contains(stats, "upstream_cx_total") ||
-			strings.Contains(stats, "upstream_cx_connect_fail") ||
-			strings.Contains(stats, "upstream_cx_tx_bytes_total") ||
-			strings.Contains(stats, "upstream_cx_rx_bytes_total") {
-			stat := strings.Split(stats, ".")
-			if len(stat) != 3 {
-				continue
+	for _, stats := range strings.Split(envoyMetrics, "\n") {
+		if strings.HasPrefix(stats, "cluster") {
+			if strings.Contains(stats, "upstream_cx_active") ||
+				strings.Contains(stats, "upstream_cx_total") ||
+				strings.Contains(stats, "upstream_cx_connect_fail") ||
+				strings.Contains(stats, "upstream_cx_tx_bytes_total") ||
+				strings.Contains(stats, "upstream_cx_rx_bytes_total") {
+				stat := strings.Split(stats, ".")
+				if len(stat) != 3 {
+					continue
+				}
+				if strings.Contains(stat[1], "TCP") || strings.Contains(stat[1], "UDP") {
+					metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
+						Type:  stat[1] + "-" + strings.Split(stat[2], ":")[0],
+						Value: strings.TrimPrefix(stat[2], strings.Split(stat[2], ":")[0]+": "),
+						Time:  v1.Now(),
+					})
+				}
 			}
-			if strings.Contains(stat[1], "TCP") || strings.Contains(stat[1], "UDP") {
+		}
+		if strings.HasPrefix(stats, "tcp") {
+			if strings.Contains(stats, "idle_timeout") {
+				stat := strings.Split(stats, ".")
+				if len(stat) != 3 {
+					continue
+				}
 				metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
-					Type:  stat[1] + "-" + strings.Split(stat[2], ":")[0],
+					Type:  stat[1] + "-idle_timeout",
 					Value: strings.TrimPrefix(stat[2], strings.Split(stat[2], ":")[0]+": "),
 					Time:  v1.Now(),
 				})
@@ -106,5 +126,5 @@ func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, er
 		}
 	}
 
-	return metrics, err
+	return metrics, nil
 }
