@@ -2,11 +2,13 @@ package envoystatus
 
 import (
 	"fmt"
+	"testing"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	"github.com/stackitcloud/yawol/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 var wanted = []v1beta1.LoadBalancerMachineMetric{
