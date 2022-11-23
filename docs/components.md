@@ -138,3 +138,8 @@ List of metrics:
 | keepalivedReleasedMaster         | keepalived counter released master                 |
 | keepalivedAdvertisementsSent     | keepalived counter of sent advertisements          |
 | keepalivedAdvertisementsReceived | keepalived counter of received advertisements      |
+| *-upstream_cx_active             | currently active connections per port              |
+| *-upstream_cx_total              | total connections since start per port             |
+| *-upstream_cx_rx_bytes_total     | bytes sent since start per port (lb -> client)     |
+| *-upstream_cx_tx_bytes_total     | bytes sent since start per port (client -> lb)     |
+| envoytcp-idle_timeout            | total idle tcp connections since start             |

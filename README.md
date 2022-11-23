@@ -212,6 +212,10 @@ metadata:
     yawol.stackit.cloud/logForward: "true"
     # defines loki URL for the log forwarding
     yawol.stackit.cloud/logForwardLokiURL: "http://example.com:3100/loki/api/v1/push"
+    # defines the TCP idle Timeout in seconds, default is 3600
+    yawol.stackit.cloud/tcpIdleTimeout: "300"
+    # defines the UDP idle Timeout in seconds, default is 60
+    yawol.stackit.cloud/udpIdleTimeout: "300"
 ```
 
 See [our example service](example-setup/yawol-cloud-controller/service.yaml)

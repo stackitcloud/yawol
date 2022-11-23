@@ -1520,5 +1520,217 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				return fmt.Errorf("finalizer is not existing %s/%s:%v", svc.Namespace, svc.Name, svc.Finalizers)
 			}, time.Second*20, time.Millisecond*500).Should(Succeed())
 		})
+
+		It("should create a service and check TCPIdleTimeout options", func() {
+			By("creating a service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test21",
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceTCPIdleTimeout: "300",
+					}},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30021,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check TCPIdleTimeout in LB")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test21", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.TCPIdleTimeout != nil && *lb.Spec.Options.TCPIdleTimeout == 300 {
+					return nil
+				}
+				return fmt.Errorf("wrong options TCPIdleTimeout %v", lb.Spec.Options.TCPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the TCPIdleTimeout field", func() {
+			By("creating a service without TCPIdleTimeout")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test22",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31022,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that TCPIdleTimeout is set to nil")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test22", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.TCPIdleTimeout == nil {
+					return nil
+				}
+				return fmt.Errorf("TCPIdleTimeout should be nil %v", lb.Spec.Options.TCPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and enable TCPIdleTimeout")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceTCPIdleTimeout: "301",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for TCPIdleTimeout")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test22", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.TCPIdleTimeout != nil && *lb.Spec.Options.TCPIdleTimeout == 301 {
+					return nil
+				}
+				return fmt.Errorf("wrong TCPIdleTimeout settings %v", lb.Spec.Options.TCPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and disable TCPIdleTimeout")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for TCPIdleTimeout")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test22", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.TCPIdleTimeout == nil {
+					return nil
+				}
+				return fmt.Errorf("wrong TCPIdleTimeout is not nil %v", lb.Spec.Options.TCPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should create a service and check UDPIdleTimeout options", func() {
+			By("creating a service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test23",
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceUDPIdleTimeout: "300",
+					}},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30023,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check UDPIdleTimeout in LB")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test23", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.UDPIdleTimeout != nil && *lb.Spec.Options.UDPIdleTimeout == 300 {
+					return nil
+				}
+				return fmt.Errorf("wrong options UDPIdleTimeout %v", lb.Spec.Options.UDPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the UDPIdleTimeout field", func() {
+			By("creating a service without UDPIdleTimeout")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test24",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31024,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that UDPIdleTimeout is set to nil")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test24", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.UDPIdleTimeout == nil {
+					return nil
+				}
+				return fmt.Errorf("UDPIdleTimeout should be nil %v", lb.Spec.Options.UDPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and enable UDPIdleTimeout")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceUDPIdleTimeout: "301",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for UDPIdleTimeout")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test24", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.UDPIdleTimeout != nil && *lb.Spec.Options.UDPIdleTimeout == 301 {
+					return nil
+				}
+				return fmt.Errorf("wrong UDPIdleTimeout settings %v", lb.Spec.Options.UDPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and disable UDPIdleTimeout")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for UDPIdleTimeout")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test24", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.UDPIdleTimeout == nil {
+					return nil
+				}
+				return fmt.Errorf("wrong UDPIdleTimeout is not nil %v", lb.Spec.Options.UDPIdleTimeout)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
 	})
 })

@@ -285,7 +285,7 @@ func createEnvoyListener(
 		if string(port.Protocol) == protocolTCP {
 			listeners[i] = createEnvoyTCPListener(r, lb, listenAddress, port)
 		} else if string(port.Protocol) == protocolUDP {
-			listeners[i] = createEnvoyUDPListener(listenAddress, port)
+			listeners[i] = createEnvoyUDPListener(lb, listenAddress, port)
 		}
 	}
 
@@ -298,9 +298,16 @@ func createEnvoyTCPListener(
 	listenAddress string,
 	port corev1.ServicePort,
 ) *envoylistener.Listener {
+	var idleTimeout *duration.Duration
+
+	if lb.Spec.Options.TCPIdleTimeout != nil {
+		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.TCPIdleTimeout)}
+	}
+
 	listenPort, err := anypb.New(&envoytcp.TcpProxy{
 		StatPrefix:       "envoytcp",
 		ClusterSpecifier: &envoytcp.TcpProxy_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
+		IdleTimeout:      idleTimeout,
 	})
 
 	if err != nil {
@@ -351,6 +358,7 @@ func createEnvoyTCPListener(
 }
 
 func createEnvoyUDPListener(
+	lb *yawolv1beta1.LoadBalancer,
 	listenAddress string,
 	port corev1.ServicePort,
 ) *envoylistener.Listener {
@@ -361,8 +369,14 @@ func createEnvoyUDPListener(
 		panic(err)
 	}
 
+	var idleTimeout *duration.Duration
+	if lb.Spec.Options.UDPIdleTimeout != nil {
+		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.UDPIdleTimeout)}
+	}
+
 	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
-		StatPrefix: "envoyudp",
+		StatPrefix:  "envoyudp",
+		IdleTimeout: idleTimeout,
 		RouteSpecifier: &envoyudp.UdpProxyConfig_Matcher{
 			Matcher: &xdsmatcher.Matcher{
 				OnNoMatch: &xdsmatcher.Matcher_OnMatch{

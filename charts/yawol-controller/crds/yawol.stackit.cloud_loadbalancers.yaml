@@ -182,6 +182,12 @@ spec:
                           http://example.com:3100/loki/api/v1/push).'
                         type: string
                     type: object
+                  tcpIdleTimeout:
+                    description: TCPIdleTimeout sets TCP idle Timeout for all TCP
+                      connections from this LoadBalancer. Value is in Seconds. With
+                      0 you disable the idle timeout, be careful this can lead to
+                      side effects. Default is 3600s (1 hour).
+                    type: integer
                   tcpProxyProtocol:
                     description: TCPProxyProtocol enables HAProxy TCP Proxy Protocol
                     type: boolean
@@ -193,6 +199,12 @@ spec:
                       format: int32
                       type: integer
                     type: array
+                  udpIdleTimeout:
+                    description: UDPIdleTimeout sets UDP idle Timeout for all UDP
+                      connections from this LoadBalancer. Value is in Seconds. With
+                      0 you disable the idle timeout, be careful this can lead to
+                      side effects. Default is 60s (1 minute).
+                    type: integer
                 type: object
               ports:
                 description: Ports defines the Ports for the LoadBalancer (copy from
