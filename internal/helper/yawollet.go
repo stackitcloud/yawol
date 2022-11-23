@@ -370,8 +370,8 @@ func createEnvoyUDPListener(
 	}
 
 	var idleTimeout *duration.Duration
-	if lb.Spec.Options.TCPIdleTimeout != nil {
-		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.TCPIdleTimeout)}
+	if lb.Spec.Options.UDPIdleTimeout != nil {
+		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.UDPIdleTimeout)}
 	}
 
 	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
