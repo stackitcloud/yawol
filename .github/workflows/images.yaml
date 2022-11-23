@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
     env:
       FORCE_COLOR: 1
     steps:
