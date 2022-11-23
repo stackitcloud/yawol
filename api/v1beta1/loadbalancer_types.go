@@ -27,6 +27,10 @@ const (
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
 	ServiceTCPProxyProtocolPortsFilter = "yawol.stackit.cloud/tcpProxyProtocolPortsFilter"
+	// ServiceTCPIdleTimeout sets the TCP idle Timeout in seconds, default is 3600
+	ServiceTCPIdleTimeout = "yawol.stackit.cloud/tcpIdleTimeout"
+	// ServiceUDPIdleTimeout sets the UDP idle Timeout in seconds, default is 60
+	ServiceUDPIdleTimeout = "yawol.stackit.cloud/udpIdleTimeout"
 	// ServiceExistingFloatingIP enables usage of existing Floating IP
 	ServiceExistingFloatingIP = "yawol.stackit.cloud/existingFloatingIP"
 	// ServiceLogForward enables log forward for LoadBalancer
@@ -104,6 +108,16 @@ type LoadBalancerOptions struct {
 	// If empty it is enabled for all ports. Only has an affect if TCPProxyProtocol is enabled.
 	// +optional
 	TCPProxyProtocolPortsFilter []int32 `json:"tcpProxyProtocolPortFilter,omitempty"`
+	// TCPIdleTimeout sets TCP idle Timeout for all TCP connections from this LoadBalancer.
+	// Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
+	// Default is 3600s (1 hour).
+	// +optional
+	TCPIdleTimeout *int `json:"tcpIdleTimeout,omitempty"`
+	// UDPIdleTimeout sets UDP idle Timeout for all UDP connections from this LoadBalancer.
+	// Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
+	// Default is 60s (1 minute).
+	// +optional
+	UDPIdleTimeout *int `json:"udpIdleTimeout,omitempty"`
 	// LogForward enables log forward to a loki instance
 	// +optional
 	LogForward LoadBalancerLogForward `json:"logForward,omitempty"`

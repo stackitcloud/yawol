@@ -390,6 +390,24 @@ func (r *ServiceReconciler) reconcileOptions(
 		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 	}
 
+	if !reflect.DeepEqual(newOptions.TCPIdleTimeout, lb.Spec.Options.TCPIdleTimeout) {
+		data, err := json.Marshal(newOptions.TCPIdleTimeout)
+		if err != nil {
+			return err
+		}
+		patch := []byte(`{"spec":{"options":{"tcpIdleTimeout":` + string(data) + `}}}`)
+		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+	}
+
+	if !reflect.DeepEqual(newOptions.UDPIdleTimeout, lb.Spec.Options.UDPIdleTimeout) {
+		data, err := json.Marshal(newOptions.UDPIdleTimeout)
+		if err != nil {
+			return err
+		}
+		patch := []byte(`{"spec":{"options":{"udpIdleTimeout":` + string(data) + `}}}`)
+		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+	}
+
 	return nil
 }
 

@@ -64,6 +64,21 @@ func GetOptions(svc *coreV1.Service) yawolv1beta1.LoadBalancerOptions {
 			options.LogForward.LokiURL = svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL]
 		}
 	}
+
+	if svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout] != "" {
+		tcpIdleTimeout, err := strconv.Atoi(svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout])
+		if err == nil {
+			options.TCPIdleTimeout = &tcpIdleTimeout
+		}
+	}
+
+	if svc.Annotations[yawolv1beta1.ServiceUDPIdleTimeout] != "" {
+		udpIdleTimeout, err := strconv.Atoi(svc.Annotations[yawolv1beta1.ServiceUDPIdleTimeout])
+		if err == nil {
+			options.UDPIdleTimeout = &udpIdleTimeout
+		}
+	}
+
 	return options
 }
 

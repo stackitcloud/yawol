@@ -348,6 +348,16 @@ func (in *LoadBalancerOptions) DeepCopyInto(out *LoadBalancerOptions) {
 		*out = make([]int32, len(*in))
 		copy(*out, *in)
 	}
+	if in.TCPIdleTimeout != nil {
+		in, out := &in.TCPIdleTimeout, &out.TCPIdleTimeout
+		*out = new(int)
+		**out = **in
+	}
+	if in.UDPIdleTimeout != nil {
+		in, out := &in.UDPIdleTimeout, &out.UDPIdleTimeout
+		*out = new(int)
+		**out = **in
+	}
 	out.LogForward = in.LogForward
 }
 
