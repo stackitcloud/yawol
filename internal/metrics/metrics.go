@@ -17,7 +17,7 @@ type LoadBalancerMetricList struct {
 var LoadBalancerMetrics = LoadBalancerMetricList{
 	OpenstackMetrics:       OpenstackMetrics,
 	InfoMetrics:            LoadBalancerInfoMetrics,
-	OpenstackInfoMetrics:   LoadBalancerOpenstackMetrics,
+	OpenstackInfoMetrics:   LoadBalancerOpenstackInfoMetrics,
 	ReplicasMetrics:        LoadBalancerReplicasMetrics,
 	ReplicasCurrentMetrics: LoadBalancerReplicasCurrentMetrics,
 	ReplicasReadyMetrics:   LoadBalancerReplicasReadyMetrics,
@@ -36,15 +36,17 @@ var LoadBalancerSetMetrics = LoadBalancerSetMetricList{
 }
 
 type LoadBalancerMachineMetricList struct {
-	VM               *prometheus.GaugeVec
-	Conditions       *prometheus.GaugeVec
-	OpenstackMetrics *prometheus.CounterVec
+	VM                   *prometheus.GaugeVec
+	Conditions           *prometheus.GaugeVec
+	OpenstackMetrics     *prometheus.CounterVec
+	OpenstackInfoMetrics *prometheus.GaugeVec
 }
 
 var LoadBalancerMachineMetrics = LoadBalancerMachineMetricList{
-	VM:               LoadBalancerMachineVMMetrics,
-	Conditions:       LoadBalancerMachineConditionMetrics,
-	OpenstackMetrics: OpenstackMetrics,
+	VM:                   LoadBalancerMachineVMMetrics,
+	Conditions:           LoadBalancerMachineConditionMetrics,
+	OpenstackMetrics:     OpenstackMetrics,
+	OpenstackInfoMetrics: LoadBalancerMachineOpenstackInfoMetrics,
 }
 
 var (
@@ -58,9 +60,9 @@ var (
 	LoadBalancerInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_info",
 		Help: "Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP",
-	}, []string{"lb", "namespace", "isInternal", "tcpProxyProtocol", "externalIP"})
-	// LoadBalancerOpenstackMetrics Openstack Info contains labels with the OpenStackIDs for LoadBalancer
-	LoadBalancerOpenstackMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	}, []string{"lb", "namespace", "isInternal", "tcpProxyProtocol", "externalIP", "tcpIdleTimeout", "udpIdleTimeout", "lokiEnabled"})
+	// LoadBalancerOpenstackInfoMetrics Openstack Info contains labels with the OpenStackIDs for LoadBalancer
+	LoadBalancerOpenstackInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_openstack_info",
 		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancer",
 	}, []string{"lb", "namespace", "portID", "floatingID", "securityGroupID"})
@@ -106,13 +108,18 @@ var (
 		Name: "loadbalancermachine_condition",
 		Help: "Conditions of loadbalancermachine (lbm.status.conditions)",
 	}, []string{"lb", "lbm", "namespace", "condition", "reason", "status"})
+	// LoadBalancerMachineOpenstackInfoMetrics Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine
+	LoadBalancerMachineOpenstackInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "loadbalancermachine_openstack_info",
+		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine",
+	}, []string{"lb", "lbm", "namespace", "portID", "serverID"})
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
 	metrics.Registry.MustRegister(OpenstackMetrics)
 	metrics.Registry.MustRegister(LoadBalancerInfoMetrics)
-	metrics.Registry.MustRegister(LoadBalancerOpenstackMetrics)
+	metrics.Registry.MustRegister(LoadBalancerOpenstackInfoMetrics)
 	metrics.Registry.MustRegister(LoadBalancerReplicasMetrics)
 	metrics.Registry.MustRegister(LoadBalancerReplicasCurrentMetrics)
 	metrics.Registry.MustRegister(LoadBalancerReplicasReadyMetrics)
@@ -121,4 +128,5 @@ func init() {
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasReadyMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineVMMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineConditionMetrics)
+	metrics.Registry.MustRegister(LoadBalancerMachineOpenstackInfoMetrics)
 }
