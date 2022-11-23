@@ -336,14 +336,13 @@ func parseLoadBalancerInfoMetric(
 		labels["externalIP"] = *lb.Status.ExternalIP
 	}
 
-	// TODO wait for merge of other PR
-	//if lb.Spec.Options.TCPIdleTimeout != nil {
-	//	labels["tcpIdleTimeout"] = *lb.Spec.Options.TCPIdleTimeout
-	//}
+	if lb.Spec.Options.TCPIdleTimeout != nil {
+		labels["tcpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.TCPIdleTimeout)
+	}
 
-	//if lb.Spec.Options.UDPIdleTimeout != nil {
-	//	labels["udpIdleTimeout"] = *lb.Spec.Options.UDPIdleTimeout
-	//}
+	if lb.Spec.Options.UDPIdleTimeout != nil {
+		labels["udpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.UDPIdleTimeout)
+	}
 
 	loadbalancerInfoMetric.DeletePartialMatch(map[string]string{"lb": lb.Name, "namespace": lb.Namespace})
 	loadbalancerInfoMetric.With(labels).Set(1)
