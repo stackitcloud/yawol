@@ -327,10 +327,21 @@ func parseLoadBalancerInfoMetric(
 		"isInternal":       strconv.FormatBool(lb.Spec.Options.InternalLB),
 		"tcpProxyProtocol": strconv.FormatBool(lb.Spec.Options.TCPProxyProtocol),
 		"externalIP":       "nil",
+		"tcpIdleTimeout":   "nil",
+		"udpIdleTimeout":   "nil",
+		"lokiEnabled":      strconv.FormatBool(lb.Spec.Options.LogForward.Enabled),
 	}
 
 	if lb.Status.ExternalIP != nil {
 		labels["externalIP"] = *lb.Status.ExternalIP
+	}
+
+	if lb.Spec.Options.TCPIdleTimeout != nil {
+		labels["tcpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.TCPIdleTimeout)
+	}
+
+	if lb.Spec.Options.UDPIdleTimeout != nil {
+		labels["udpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.UDPIdleTimeout)
 	}
 
 	loadbalancerInfoMetric.DeletePartialMatch(map[string]string{"lb": lb.Name, "namespace": lb.Namespace})

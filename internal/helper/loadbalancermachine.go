@@ -57,6 +57,7 @@ func ParseLoadBalancerMachineMetrics(
 ) {
 	parseLoadBalancerMachineVMMetrics(loadBalancerMachine, metrics)
 	parseLoadBalancerMachineConditionsMetrics(loadBalancerMachine, metrics)
+	parseLoadBalancerMachineOpenstackInfoMetrics(loadBalancerMachine, metrics)
 }
 
 func parseLoadBalancerMachineVMMetrics(
@@ -103,6 +104,37 @@ func parseLoadBalancerMachineConditionsMetrics(
 	}
 }
 
+func parseLoadBalancerMachineOpenstackInfoMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
+) {
+	if metrics == nil || metrics.OpenstackInfoMetrics == nil {
+		return
+	}
+	labels := map[string]string{
+		"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
+		"lbm":       loadBalancerMachine.Name,
+		"namespace": loadBalancerMachine.Namespace,
+		"portID":    "nil",
+		"serverID":  "nil",
+	}
+
+	if loadBalancerMachine.Status.PortID != nil {
+		labels["portID"] = *loadBalancerMachine.Status.PortID
+	}
+
+	if loadBalancerMachine.Status.ServerID != nil {
+		labels["serverID"] = *loadBalancerMachine.Status.ServerID
+	}
+
+	metrics.OpenstackInfoMetrics.DeletePartialMatch(map[string]string{
+		"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
+		"lbm":       loadBalancerMachine.Name,
+		"namespace": loadBalancerMachine.Namespace,
+	})
+	metrics.OpenstackInfoMetrics.With(labels).Set(1)
+}
+
 func RemoveLoadBalancerMachineMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	metrics *helpermetrics.LoadBalancerMachineMetricList,
@@ -112,11 +144,15 @@ func RemoveLoadBalancerMachineMetrics(
 		return
 	}
 
-	metrics.VM.DeletePartialMatch(map[string]string{
+	labels := map[string]string{
 		"lb":        loadBalancerMachine.Spec.LoadBalancerRef.Name,
 		"lbm":       loadBalancerMachine.Name,
 		"namespace": loadBalancerMachine.Namespace,
-	})
+	}
+
+	metrics.VM.DeletePartialMatch(labels)
+	metrics.Conditions.DeletePartialMatch(labels)
+	metrics.OpenstackInfoMetrics.DeletePartialMatch(labels)
 }
 
 // RemoveFromLBMStatus removes key from loadbalancermachine status.

@@ -94,19 +94,20 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 
 The yawol-controller provides some metrics which are exposed via the `/metrics` endpoint.
 
-| metric                           | description                                                                                      | exposed by                                      |
-|----------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| yawol_openstack                  | Openstack usage counter by api, object, operation                                                | loadbalancer and loadbalancermachine controller |
-| loadbalancer_info                | Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP, tcpProxyProtocol | loadbalancer controller                         |
-| loadbalancer_openstack_info      | Openstack Info contains labels with the OpenStackIDs for LoadBalancer                            | loadbalancer controller                         |
-| loadbalancer_replicas            | Replicas for LoadBalancer (from lb.spec.replicas)                                                | loadbalancer controller                         |
-| loadbalancer_replicas_current    | Current replicas for LoadBalancer (from lb.status.replicas)                                      | loadbalancer controller                         |
-| loadbalancer_replicas_ready      | Ready replicas for LoadBalancer (from lb.status.readyReplicas)                                   | loadbalancer controller                         |
-| loadbalancerset_replicas         | Replicas for LoadBalancerSet (from lbs.spec.replicas)                                            | loadbalancerset controller                      |
-| loadbalancerset_replicas_current | Current replicas for LoadBalancerSet (from lbs.status.replicas)                                  | loadbalancerset controller                      |
-| loadbalancerset_replicas_ready   | Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)                               | loadbalancerset controller                      |
-| loadbalancermachine              | Metrics of loadbalancermachine (all metrics from lbm.status.metrics)                             | loadbalancermachine controller                  |
-| loadbalancermachine_condition    | Conditions of loadbalancermachine (lbm.status.conditions)                                        | loadbalancermachine controller                  |
+| metric                             | description                                                                                                                                   | exposed by                                      |
+|------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| yawol_openstack                    | Openstack usage counter by api, object, operation                                                                                             | loadbalancer and loadbalancermachine controller |
+| loadbalancer_info                  | Loadbalancer Info for LoadBalancer contains labels like isInternal, externalIP, tcpProxyProtocol, tcpIdleTimeout, udpIdleTimeout, lokiEnabled | loadbalancer controller                         |
+| loadbalancer_openstack_info        | Openstack Info contains labels with the OpenStackIDs for LoadBalancer                                                                         | loadbalancer controller                         |
+| loadbalancer_replicas              | Replicas for LoadBalancer (from lb.spec.replicas)                                                                                             | loadbalancer controller                         |
+| loadbalancer_replicas_current      | Current replicas for LoadBalancer (from lb.status.replicas)                                                                                   | loadbalancer controller                         |
+| loadbalancer_replicas_ready        | Ready replicas for LoadBalancer (from lb.status.readyReplicas)                                                                                | loadbalancer controller                         |
+| loadbalancerset_replicas           | Replicas for LoadBalancerSet (from lbs.spec.replicas)                                                                                         | loadbalancerset controller                      |
+| loadbalancerset_replicas_current   | Current replicas for LoadBalancerSet (from lbs.status.replicas)                                                                               | loadbalancerset controller                      |
+| loadbalancerset_replicas_ready     | Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)                                                                            | loadbalancerset controller                      |
+| loadbalancermachine                | Metrics of loadbalancermachine (all metrics from lbm.status.metrics)                                                                          | loadbalancermachine controller                  |
+| loadbalancermachine_condition      | Conditions of loadbalancermachine (lbm.status.conditions)                                                                                     | loadbalancermachine controller                  |
+| loadbalancermachine_openstack_info | Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine                                                                  | loadbalancermachine controller                  |
 
 ## yawollet
 
