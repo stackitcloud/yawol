@@ -133,7 +133,6 @@ func parseLoadBalancerMachineOpenstackInfoMetrics(
 		"namespace": loadBalancerMachine.Namespace,
 	})
 	metrics.OpenstackInfoMetrics.With(labels).Set(1)
-
 }
 
 func RemoveLoadBalancerMachineMetrics(
