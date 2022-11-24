@@ -337,11 +337,11 @@ func parseLoadBalancerInfoMetric(
 	}
 
 	if lb.Spec.Options.TCPIdleTimeout != nil {
-		labels["tcpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.TCPIdleTimeout)
+		labels["tcpIdleTimeout"] = lb.Spec.Options.TCPIdleTimeout.String()
 	}
 
 	if lb.Spec.Options.UDPIdleTimeout != nil {
-		labels["udpIdleTimeout"] = strconv.Itoa(*lb.Spec.Options.UDPIdleTimeout)
+		labels["udpIdleTimeout"] = lb.Spec.Options.UDPIdleTimeout.String()
 	}
 
 	loadbalancerInfoMetric.DeletePartialMatch(map[string]string{"lb": lb.Name, "namespace": lb.Namespace})
