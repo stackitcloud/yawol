@@ -110,14 +110,14 @@ type LoadBalancerOptions struct {
 	TCPProxyProtocolPortsFilter []int32 `json:"tcpProxyProtocolPortFilter,omitempty"`
 	// TCPIdleTimeout sets TCP idle Timeout for all TCP connections from this LoadBalancer.
 	// Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
-	// Default is 3600s (1 hour).
+	// Default is 1h.
 	// +optional
-	TCPIdleTimeout *int `json:"tcpIdleTimeout,omitempty"`
+	TCPIdleTimeout *metav1.Duration `json:"tcpIdleTimeout,omitempty"`
 	// UDPIdleTimeout sets UDP idle Timeout for all UDP connections from this LoadBalancer.
 	// Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
-	// Default is 60s (1 minute).
+	// Default is 1m.
 	// +optional
-	UDPIdleTimeout *int `json:"udpIdleTimeout,omitempty"`
+	UDPIdleTimeout *metav1.Duration `json:"udpIdleTimeout,omitempty"`
 	// LogForward enables log forward to a loki instance
 	// +optional
 	LogForward LoadBalancerLogForward `json:"logForward,omitempty"`

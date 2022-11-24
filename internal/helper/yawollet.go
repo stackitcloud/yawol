@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -301,7 +302,7 @@ func createEnvoyTCPListener(
 	var idleTimeout *duration.Duration
 
 	if lb.Spec.Options.TCPIdleTimeout != nil {
-		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.TCPIdleTimeout)}
+		idleTimeout = durationpb.New(lb.Spec.Options.TCPIdleTimeout.Duration)
 	}
 
 	listenPort, err := anypb.New(&envoytcp.TcpProxy{
@@ -371,7 +372,7 @@ func createEnvoyUDPListener(
 
 	var idleTimeout *duration.Duration
 	if lb.Spec.Options.UDPIdleTimeout != nil {
-		idleTimeout = &duration.Duration{Seconds: int64(*lb.Spec.Options.UDPIdleTimeout)}
+		idleTimeout = durationpb.New(lb.Spec.Options.UDPIdleTimeout.Duration)
 	}
 
 	listenPort, err := anypb.New(&envoyudp.UdpProxyConfig{
