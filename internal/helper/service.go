@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
 	coreV1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,7 +45,7 @@ func GetDebugSettings(svc *coreV1.Service) yawolv1beta1.LoadBalancerDebugSetting
 }
 
 // GetOptions return loadbalancer option settings for a service
-func GetOptions(svc *coreV1.Service) yawolv1beta1.LoadBalancerOptions {
+func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1.LoadBalancerOptions {
 	options := yawolv1beta1.LoadBalancerOptions{}
 	if svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer] != "" {
 		options.InternalLB, _ = strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer])
@@ -66,16 +69,22 @@ func GetOptions(svc *coreV1.Service) yawolv1beta1.LoadBalancerOptions {
 	}
 
 	if svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout] != "" {
-		tcpIdleTimeout, err := strconv.Atoi(svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout])
-		if err == nil {
-			options.TCPIdleTimeout = &tcpIdleTimeout
+		tcpIdleTimeout, err := time.ParseDuration(svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout])
+		if err != nil {
+			recorder.Event(svc, coreV1.EventTypeWarning, "update",
+				"Could not parse "+yawolv1beta1.ServiceTCPIdleTimeout+" to time duration. Ignoring option.")
+		} else {
+			options.TCPIdleTimeout = &metav1.Duration{Duration: tcpIdleTimeout}
 		}
 	}
 
 	if svc.Annotations[yawolv1beta1.ServiceUDPIdleTimeout] != "" {
-		udpIdleTimeout, err := strconv.Atoi(svc.Annotations[yawolv1beta1.ServiceUDPIdleTimeout])
-		if err == nil {
-			options.UDPIdleTimeout = &udpIdleTimeout
+		udpIdleTimeout, err := time.ParseDuration(svc.Annotations[yawolv1beta1.ServiceUDPIdleTimeout])
+		if err != nil {
+			recorder.Event(svc, coreV1.EventTypeWarning, "update",
+				"Could not parse "+yawolv1beta1.ServiceUDPIdleTimeout+" to time duration. Ignoring option.")
+		} else {
+			options.UDPIdleTimeout = &metav1.Duration{Duration: udpIdleTimeout}
 		}
 	}
 

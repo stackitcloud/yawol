@@ -213,7 +213,7 @@ func (r *ServiceReconciler) createLoadBalancer(
 				},
 			},
 			DebugSettings: helper.GetDebugSettings(svc),
-			Options:       helper.GetOptions(svc),
+			Options:       helper.GetOptions(svc, r.Recorder),
 		},
 		Status: yawolv1beta1.LoadBalancerStatus{},
 	}
@@ -353,7 +353,7 @@ func (r *ServiceReconciler) reconcileOptions(
 	lb *yawolv1beta1.LoadBalancer,
 	svc *coreV1.Service,
 ) error {
-	newOptions := helper.GetOptions(svc)
+	newOptions := helper.GetOptions(svc, r.Recorder)
 	if !reflect.DeepEqual(newOptions.LoadBalancerSourceRanges, lb.Spec.Options.LoadBalancerSourceRanges) {
 		if err := r.patchLoadBalancerSourceRanges(ctx, lb, newOptions.LoadBalancerSourceRanges); err != nil {
 			r.Log.WithValues("service", svc.Name).Error(err, "could not patch loadbalancer.spec.options.LoadBalancerSourceRanges")

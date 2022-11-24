@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -350,12 +351,12 @@ func (in *LoadBalancerOptions) DeepCopyInto(out *LoadBalancerOptions) {
 	}
 	if in.TCPIdleTimeout != nil {
 		in, out := &in.TCPIdleTimeout, &out.TCPIdleTimeout
-		*out = new(int)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.UDPIdleTimeout != nil {
 		in, out := &in.UDPIdleTimeout, &out.UDPIdleTimeout
-		*out = new(int)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	out.LogForward = in.LogForward
