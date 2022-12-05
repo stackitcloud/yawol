@@ -265,6 +265,10 @@ func GetFakeClient() *MockClient {
 		},
 		DeleteFunc: func(ctx context.Context, id string) error {
 			prts := client.StoredValues["ports"]
+			_, found := prts.(map[string]*ports.Port)[id]
+			if !found {
+				return gophercloud.ErrDefault404{}
+			}
 			delete(prts.(map[string]*ports.Port), id)
 			return nil
 		},
@@ -306,11 +310,19 @@ func GetFakeClient() *MockClient {
 		CreateFunc: func(ctx context.Context, optsBuilder servers.CreateOptsBuilder) (*servers.Server, error) {
 			opts := optsBuilder.(*servers.CreateOpts)
 
+			addresses := make(map[string]interface{})
+			if nets, ok := opts.Networks.([]servers.Network); ok {
+				for i := range nets {
+					addresses[nets[i].UUID] = servers.Address{Address: "10.0.0.1"}
+				}
+			}
+
 			server := &servers.Server{
-				ID:      getID(&client),
-				Name:    opts.Name,
-				Status:  "ACTIVE",
-				Created: time.Now(),
+				ID:        getID(&client),
+				Name:      opts.Name,
+				Status:    "ACTIVE",
+				Created:   time.Now(),
+				Addresses: addresses,
 			}
 
 			srvs := client.StoredValues["servers"]

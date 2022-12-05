@@ -68,9 +68,16 @@ type LoadBalancerMachineStatus struct {
 	// ServerID contains the openstack server ID for a LoadBalancerMachine.
 	// +optional
 	ServerID *string `json:"serverID,omitempty"`
+	// Deprecated: use defaultPortID instead
 	// PortID contains the openstack port ID for a LoadBalancerMachine.
 	// +optional
 	PortID *string `json:"portID,omitempty"`
+	// DefaultPortID contains the default openstack port ID for a LoadBalancerMachine.
+	// +optional
+	DefaultPortID *string `json:"defaultPortID,omitempty"`
+	// DefaultPortID contains the default openstack port ID for a LoadBalancerMachine.
+	// +optional
+	DefaultPortName *string `json:"defaultPortName,omitempty"`
 	// ServiceAccountName contains the namespacedName from the ServiceAccount for a LoadBalancerMachine.
 	// +optional
 	ServiceAccountName *string `json:"serviceAccountName,omitempty"`

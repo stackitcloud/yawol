@@ -221,8 +221,9 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 
 			patch := []byte(`{"spec":{` +
 				`"infrastructure":{` +
+				`"defaultNetwork":{` +
 				`"floatingNetID":"CHANGED",` +
-				`"networkID":"CHANGED",` +
+				`"networkID":"CHANGED"},` +
 				`"availabilityZone":"CHANGED",` +
 				`"flavor":{"flavor_id":"CHANGED"},` +
 				`"image":{"image_id":"CHANGED"},` +
@@ -249,8 +250,8 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				if err != nil {
 					return err
 				}
-				if lb.Spec.Infrastructure.NetworkID == *testInfraDefaults.NetworkID &&
-					*lb.Spec.Infrastructure.FloatingNetID == *testInfraDefaults.FloatingNetworkID &&
+				if lb.Spec.Infrastructure.DefaultNetwork.NetworkID == *testInfraDefaults.NetworkID &&
+					*lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID == *testInfraDefaults.FloatingNetworkID &&
 					*lb.Spec.Infrastructure.Flavor.FlavorID == *testInfraDefaults.FlavorRef.FlavorID &&
 					*lb.Spec.Infrastructure.Image.ImageID == *testInfraDefaults.ImageRef.ImageID {
 					return nil
@@ -1890,6 +1891,221 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 					return nil
 				}
 				return fmt.Errorf("wrong ServerGroupPolicy is not nil %v", lb.Spec.Options.ServerGroupPolicy)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the floatingNetwork field", func() {
+			By("creating a service without floatingNetwork")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test28",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31028,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that the floatingNetwork ID are set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test28", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if *lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID == *testInfraDefaults.FloatingNetworkID {
+					return nil
+				}
+				return fmt.Errorf("floatingNetwork ID is not correct %v", lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to overwrite floatingNetwork ID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceFloatingNetworkID: "newFloatingID",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new floatingNetwork ID")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test28", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if *lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID == "newFloatingID" {
+					return nil
+				}
+				return fmt.Errorf("floatingNetwork ID is not correct %v", lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to disable overwrite floatingNetwork ID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("checking that the defaultNetwork ID are set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test28", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if *lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID == *testInfraDefaults.FloatingNetworkID {
+					return nil
+				}
+				return fmt.Errorf("floatingNetwork ID is not correct %v", lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the defaultNetwork field", func() {
+			By("creating a service without overwritten defaultNetwork")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test29",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31029,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that the defaultNetwork ID are set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test29", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.DefaultNetwork.NetworkID == *testInfraDefaults.NetworkID {
+					return nil
+				}
+				return fmt.Errorf("defaultNetwork IDs are not correct %v", lb.Spec.Infrastructure.DefaultNetwork.NetworkID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to overwrite default network IDs")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceDefaultNetworkID: "newNetworkID",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new defaultNetwork IDs")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test29", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.DefaultNetwork.NetworkID == "newNetworkID" &&
+					len(lb.Spec.Infrastructure.AdditionalNetworks) == 1 &&
+					lb.Spec.Infrastructure.AdditionalNetworks[0].NetworkID == *testInfraDefaults.NetworkID {
+					return nil
+				}
+				return fmt.Errorf("defaultNetwork ID is not correct %v or not infraDefault is not present in additionalNetworks %v",
+					lb.Spec.Infrastructure.DefaultNetwork.NetworkID, lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to disable overwrite default network ID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("checking that the defaultNetwork ID are set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test29", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.DefaultNetwork.NetworkID == *testInfraDefaults.NetworkID &&
+					len(lb.Spec.Infrastructure.AdditionalNetworks) == 0 {
+					return nil
+				}
+				return fmt.Errorf("defaultNetwork ID are not correct %v  or still present in additionalNetworks%v",
+					lb.Spec.Infrastructure.DefaultNetwork.NetworkID, lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the additionalNetwork field", func() {
+			By("creating a service without additionalNetwork")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test30",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31030,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that the additionalNetwork are not set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test30", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 0 {
+					return nil
+				}
+				return fmt.Errorf("additionalNetwork are already set %v", lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to add additionalNetwork")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceAdditionalNetworks: "additionalNetworkID1,additionalNetworkID1,additionalNetworkID2",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets additionalNetworks")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test30", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 2 {
+					return nil
+				}
+				return fmt.Errorf("additionalNetworks are not correct %v", lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to disable additionalNetworks")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("checking that no additionalNetworks are set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test30", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 0 {
+					return nil
+				}
+				return fmt.Errorf("additionalNetwork are still set %v", lb.Spec.Infrastructure.AdditionalNetworks)
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 	})

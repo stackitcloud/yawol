@@ -67,8 +67,10 @@ var _ = Describe("LB Status update", func() {
 				Endpoints: nil,
 				Ports:     nil,
 				Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-					FloatingNetID: pointer.String("floatingnetid"),
-					NetworkID:     "networkid",
+					DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+						FloatingNetID: pointer.String("floatingnetid"),
+						NetworkID:     "networkid",
+					},
 					Flavor: &yawolv1beta1.OpenstackFlavorRef{
 						FlavorID: pointer.String("mycool-openstack-flavor-id"),
 					},

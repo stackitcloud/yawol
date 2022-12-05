@@ -680,8 +680,10 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 			Ports:              nil,
 			ExistingFloatingIP: nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.String("floatingnet-id"),
-				NetworkID:     "network-id",
+				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+					FloatingNetID: pointer.String("floatingnet-id"),
+					NetworkID:     "network-id",
+				},
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},

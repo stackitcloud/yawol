@@ -59,8 +59,10 @@ var _ = Describe("LoadBalancerSet controller", func() {
 				Labels: map[string]string{LoadBalancerLabelKey: LoadBalancerLabelValue},
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-						FloatingNetID: pointer.String(FloatingNetID),
-						NetworkID:     NetworkID,
+						DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+							FloatingNetID: pointer.String(FloatingNetID),
+							NetworkID:     NetworkID,
+						},
 						Flavor: &yawolv1beta1.OpenstackFlavorRef{
 							FlavorID: pointer.String(FlavorID),
 						},

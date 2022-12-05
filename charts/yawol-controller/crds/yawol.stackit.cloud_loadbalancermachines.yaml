@@ -57,6 +57,20 @@ spec:
               infrastructure:
                 description: Infrastructure defines parameters for the Infrastructure.
                 properties:
+                  additionalNetworks:
+                    description: AdditionalNetworks defines additional networks that
+                      will be added to the LoadBalancerMachines.
+                    items:
+                      description: LoadBalancerAdditionalNetwork defines additional
+                        networks for the LoadBalancer
+                      properties:
+                        networkID:
+                          description: NetworkID defines an openstack ID for the network.
+                          type: string
+                      required:
+                      - networkID
+                      type: object
+                    type: array
                   authSecretRef:
                     description: AuthSecretRef defines a secretRef for the openstack
                       secret.
@@ -75,6 +89,21 @@ spec:
                     description: AvailabilityZone defines the openstack availability
                       zone for the LoadBalancer.
                     type: string
+                  defaultNetwork:
+                    description: DefaultNetwork defines the default/listener network
+                      for the Loadbalancer. TODO Remove optional when Deprecations
+                      are removed
+                    properties:
+                      floatingNetID:
+                        description: FloatingNetID defines an openstack ID for the
+                          floatingNet.
+                        type: string
+                      networkID:
+                        description: NetworkID defines an openstack ID for the network.
+                        type: string
+                    required:
+                    - networkID
+                    type: object
                   flavor:
                     description: Flavor defines openstack flavor for the LoadBalancer.
                       Uses a default if not defined.
@@ -112,7 +141,8 @@ spec:
                         type: string
                     type: object
                   floatingNetID:
-                    description: FloatingNetID defines a openstack ID for the floatingNet.
+                    description: 'Deprecated: use defaultNetwork instead FloatingNetID
+                      defines a openstack ID for the floatingNet.'
                     type: string
                   image:
                     description: Image defines openstack image for the LoadBalancer.
@@ -151,11 +181,11 @@ spec:
                         type: string
                     type: object
                   networkID:
-                    description: NetworkID defines a openstack ID for the network.
+                    description: 'Deprecated: use defaultNetwork instead NetworkID
+                      defines a openstack ID for the network.'
                     type: string
                 required:
                 - authSecretRef
-                - networkID
                 type: object
               loadBalancerRef:
                 description: LoadBalancerRef defines a reference to the LoadBalancer
@@ -227,6 +257,14 @@ spec:
                 description: CreationTimestamp contains the creation timestamp a LoadBalancerMachine.
                 format: date-time
                 type: string
+              defaultPortID:
+                description: DefaultPortID contains the default openstack port ID
+                  for a LoadBalancerMachine.
+                type: string
+              defaultPortName:
+                description: DefaultPortID contains the default openstack port ID
+                  for a LoadBalancerMachine.
+                type: string
               lastOpenstackReconcile:
                 description: LastOpenstackReconcile contains the timestamp of the
                   last openstack reconciliation.
@@ -255,7 +293,8 @@ spec:
                   type: object
                 type: array
               portID:
-                description: PortID contains the openstack port ID for a LoadBalancerMachine.
+                description: 'Deprecated: use defaultPortID instead PortID contains
+                  the openstack port ID for a LoadBalancerMachine.'
                 type: string
               roleBindingName:
                 description: RoleBindingName contains the namespacedName from the

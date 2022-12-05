@@ -223,6 +223,35 @@ var _ = Describe("load balancer machine", func() {
 		})
 	}) // openstack not working
 
+	Context("additionalNetworks features", func() {
+		BeforeEach(func() {
+			lbm.Spec.Infrastructure.AdditionalNetworks = []yawolv1beta1.LoadBalancerAdditionalNetwork{
+				{NetworkID: "networkID-1"},
+				{NetworkID: "networkID-2"},
+			}
+		})
+
+		It("should create openstack resources", func() {
+			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+			Eventually(func(g Gomega) {
+				var actual yawolv1beta1.LoadBalancerMachine
+				g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
+
+				g.Expect(len(actual.Spec.Infrastructure.AdditionalNetworks)).To(Equal(2))
+				g.Expect(actual.Status.ServerID).ToNot(BeNil())
+
+				server, err := client.ServerClientObj.Get(ctx, *actual.Status.ServerID)
+				g.Expect(err).To(Succeed())
+				g.Expect(len(server.Addresses)).To(Equal(3))
+
+				g.Expect(server.Addresses["networkID-1"].(servers.Address).Address).ToNot(Equal(""))
+				g.Expect(server.Addresses["networkID-2"].(servers.Address).Address).ToNot(Equal(""))
+				g.Expect(server.Addresses[lbm.Spec.Infrastructure.DefaultNetwork.NetworkID].(servers.Address).Address).ToNot(Equal(""))
+			}, timeout, interval).Should(Succeed())
+		})
+	}) // additionalNetworks features
+
 	Context("HA features", func() {
 		It("should create openstack resources", func() {
 			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
@@ -232,8 +261,8 @@ var _ = Describe("load balancer machine", func() {
 				var actual yawolv1beta1.LoadBalancerMachine
 				g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
 
-				g.Expect(actual.Status.PortID).ToNot(BeNil())
-				port, err := client.PortClientObj.Get(ctx, *actual.Status.PortID)
+				g.Expect(actual.Status.DefaultPortName).ToNot(BeNil())
+				port, err := client.PortClientObj.Get(ctx, *actual.Status.DefaultPortID)
 				g.Expect(err).To(Succeed())
 				g.Expect(len(port.AllowedAddressPairs)).To(Equal(1))
 
@@ -272,7 +301,7 @@ var _ = Describe("load balancer machine", func() {
 				Eventually(func(g Gomega) {
 					var actual yawolv1beta1.LoadBalancerMachine
 					g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
-					g.Expect(actual.Status.PortID).To(Not(BeNil()))
+					g.Expect(actual.Status.DefaultPortID).To(Not(BeNil()))
 				}, timeout, interval).Should(Succeed())
 
 				By("checking if one of the ports got used")
@@ -380,8 +409,10 @@ func getMockLB() *LB {
 			Endpoints: nil,
 			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.String("floatingnet-id"),
-				NetworkID:     "network-id",
+				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+					FloatingNetID: pointer.String("floatingnetid"),
+					NetworkID:     "networkid",
+				},
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},
@@ -411,8 +442,10 @@ func getMockLBM(lb *LB) *LBM {
 			},
 			PortID: "0",
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.String("floatingnet-id"),
-				NetworkID:     "network-id",
+				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+					FloatingNetID: pointer.String("floatingnetid"),
+					NetworkID:     "networkid",
+				},
 				Flavor: &yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},

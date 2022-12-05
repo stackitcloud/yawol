@@ -503,10 +503,19 @@ func (r *Reconciler) reconcilePort(
 	}
 
 	// Create Port
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID == nil {
 		r.Log.Info("Create Port", "lb", lb.Name)
-		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
+
+		// TODO cleanup after removing deprecated fields
+		var networkID string
+		if lb.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
+			networkID = lb.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+		}
+		if lb.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
+			networkID = lb.Spec.Infrastructure.DefaultNetwork.NetworkID
+		}
+
+		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, networkID)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -740,7 +749,6 @@ func (r *Reconciler) reconcileServerGroup(
 	}
 
 	// Create server group
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.ServerGroupID == nil {
 		r.Log.Info("Create ServerGroup", "lb", lb.Name)
 		serverGroup, err = openstackhelper.CreateServerGroup(

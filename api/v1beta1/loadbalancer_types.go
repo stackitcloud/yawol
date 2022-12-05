@@ -11,7 +11,13 @@ const (
 	ServiceImageID = "yawol.stackit.cloud/imageId"
 	// ServiceFlavorID overwrite default flavorID
 	ServiceFlavorID = "yawol.stackit.cloud/flavorId"
-	// AvailabilityZoneID set availability zone for specific service
+	// ServiceDefaultNetworkID overwrites the default openstack network for the loadbalancer
+	// If this is set to a different network ID than defined as default in the yawol-cloud-controller
+	// the default from the yawol-cloud-controller will be added to the additionalNetworks
+	ServiceDefaultNetworkID = "yawol.stackit.cloud/defaultNetworkID"
+	// ServiceFloatingNetworkID overwrites the openstack floating network for the loadbalancer
+	ServiceFloatingNetworkID = "yawol.stackit.cloud/floatingNetworkID"
+	// ServiceAvailabilityZone set availability zone for specific service
 	ServiceAvailabilityZone = "yawol.stackit.cloud/availabilityZone"
 	// ServiceInternalLoadbalancer sets the internal flag in LB objects
 	ServiceInternalLoadbalancer = "yawol.stackit.cloud/internalLB"
@@ -39,6 +45,8 @@ const (
 	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
 	// ServiceServerGroupPolicy set openstack server group policy for a LoadBalancer
 	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
+	// ServiceAdditionalNetworks adds additional openstack networks for the loadbalancer (comma separated list)
+	ServiceAdditionalNetworks = "yawol.stackit.cloud/additionalNetworks"
 )
 
 // +kubebuilder:object:root=true
@@ -160,22 +168,47 @@ type LoadBalancerEndpoint struct {
 
 // LoadBalancerInfrastructure defines infrastructure defaults for the LoadBalancer
 type LoadBalancerInfrastructure struct {
+	// Deprecated: use defaultNetwork instead
 	// FloatingNetID defines a openstack ID for the floatingNet.
 	// +optional
 	FloatingNetID *string `json:"floatingNetID,omitempty"`
+	// Deprecated: use defaultNetwork instead
 	// NetworkID defines a openstack ID for the network.
-	NetworkID string `json:"networkID"`
+	// +optional
+	NetworkID string `json:"networkID,omitempty"`
+	// DefaultNetwork defines the default/listener network for the Loadbalancer.
+	// +optional
+	// TODO Remove optional when Deprecations are removed
+	DefaultNetwork LoadBalancerDefaultNetwork `json:"defaultNetwork"`
+	// AdditionalNetworks defines additional networks that will be added to the LoadBalancerMachines.
+	// +optional
+	AdditionalNetworks []LoadBalancerAdditionalNetwork `json:"additionalNetworks"`
 	// Flavor defines openstack flavor for the LoadBalancer. Uses a default if not defined.
 	// +optional
-	Flavor *OpenstackFlavorRef `json:"flavor,omitempty"`
+	Flavor *OpenstackFlavorRef `json:"flavor"`
 	// Image defines openstack image for the LoadBalancer. Uses a default if not defined.
 	// +optional
-	Image *OpenstackImageRef `json:"image,omitempty"`
+	Image *OpenstackImageRef `json:"image"`
 	// AvailabilityZone defines the openstack availability zone for the LoadBalancer.
 	// +optional
 	AvailabilityZone string `json:"availabilityZone"`
 	// AuthSecretRef defines a secretRef for the openstack secret.
 	AuthSecretRef corev1.SecretReference `json:"authSecretRef"`
+}
+
+// LoadBalancerAdditionalNetwork defines additional networks for the LoadBalancer
+type LoadBalancerAdditionalNetwork struct {
+	// NetworkID defines an openstack ID for the network.
+	NetworkID string `json:"networkID"`
+}
+
+// LoadBalancerDefaultNetwork defines the default/listener network for the Loadbalancer
+type LoadBalancerDefaultNetwork struct {
+	// FloatingNetID defines an openstack ID for the floatingNet.
+	// +optional
+	FloatingNetID *string `json:"floatingNetID,omitempty"`
+	// NetworkID defines an openstack ID for the network.
+	NetworkID string `json:"networkID"`
 }
 
 // OpenstackImageRef defines a reference to a Openstack image.

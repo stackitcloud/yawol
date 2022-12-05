@@ -20,6 +20,7 @@ var (
 	ErrLBPortNotSet                          = errors.New("load balancer port not set")
 	ErrFIPIDEmpty                            = errors.New("fip was successfully created but fip id is empty")
 	ErrPortIDEmpty                           = errors.New("port was successfully created but port id is empty")
+	ErrPortNameEmpty                         = errors.New("port name is empty")
 	ErrServerGroupIDEmpty                    = errors.New("server group was successfully created but server group id is empty")
 	ErrSecGroupIDEmpty                       = errors.New("secGroup was successfully created but secGroup id is empty")
 	ErrSecGroupNil                           = errors.New("SecGroup is nil, cannot create rules")

@@ -186,41 +186,50 @@ kind: Service
 metadata:
   name: loadbalancer
   annotations:
-    # override the default  OpenStack image ID
+    # Override the default  OpenStack image ID.
     yawol.stackit.cloud/imageId: "OS-imageId"
-    # override the default OpenStack machine flavor
+    # Override the default OpenStack machine flavor.
     yawol.stackit.cloud/flavorId: "OS-flavorId"
-    # override the default OpenStack availability zone
+    # Overwrites the default openstack network for the loadbalancer.
+    # If this is set to a different network ID than defined as default in the yawol-cloud-controller
+    # the default from the yawol-cloud-controller will be added to the additionalNetworks.
+    yawol.stackit.cloud/defaultNetworkID: "OS-networkID"
+    # Overwrites the openstack floating network for the loadbalancer.
+    yawol.stackit.cloud/floatingNetworkID: "OS-floatingNetID"
+    # Override the default OpenStack availability zone.
     yawol.stackit.cloud/availabilityZone: "OS-AZ"
-    # specify if this should be an internal LoadBalancer 
+    # Specify if this should be an internal LoadBalancer .
     yawol.stackit.cloud/internalLB: "false"
-    # run yawollet in debug mode
+    # Run yawollet in debug mode.
     yawol.stackit.cloud/debug: "false"
-    # reference the name of the SSH key provided to OpenStack for debugging 
+    # Reference the name of the SSH key provided to OpenStack for debugging .
     yawol.stackit.cloud/debugsshkey: "OS-keyName"
-    # allows filtering services in cloud-controller
+    # Allows filtering services in cloud-controller.
     yawol.stackit.cloud/className: "test"
-    # specify the number of LoadBalancer machines to deploy (default 1)
+    # Specify the number of LoadBalancer machines to deploy (default 1).
     yawol.stackit.cloud/replicas: "3"
-    # specify an existing floating IP for yawol to use
+    # Specify an existing floating IP for yawol to use.
     yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
-    # enable/disable envoy support for proxy protocol
+    # Enable/disable envoy support for proxy protocol.
     yawol.stackit.cloud/tcpProxyProtocol: "false"
-    # defines proxy protocol ports (comma separated list)
+    # Defines proxy protocol ports (comma separated list).
     yawol.stackit.cloud/tcpProxyProtocolPortsFilter: "80,443"
-    # enables log forwarding
+    # Enables log forwarding.
     yawol.stackit.cloud/logForward: "true"
-    # defines loki URL for the log forwarding
+    # Defines loki URL for the log forwarding.
     yawol.stackit.cloud/logForwardLokiURL: "http://example.com:3100/loki/api/v1/push"
-    # defines the TCP idle Timeout as duration, default is 1h
-    # make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored
+    # Defines the TCP idle Timeout as duration, default is 1h.
+    # Make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored.
     yawol.stackit.cloud/tcpIdleTimeout: "5m30s"
-    # defines the UDP idle Timeout as duration, default is 1m
-    # make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored
+    # Defines the UDP idle Timeout as duration, default is 1m.
+    # Make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored.
     yawol.stackit.cloud/udpIdleTimeout: "5m"
-    # can be 'affinity', 'anti-affinity' 'soft-affinity', 'soft-anti-affinity' depending on the OpenStack Infrastructure.
+    # Defines the openstack server group policy for a LoadBalancer.
+    # Can be 'affinity', 'anti-affinity' 'soft-affinity', 'soft-anti-affinity' depending on the OpenStack Infrastructure.
     # If not set openstack server group is disabled.
     yawol.stackit.cloud/serverGroupPolicy: anti-affinity
+    # Defines additional openstack networks for the loadbalancer (comma separated list).
+    yawol.stackit.cloud/additionalNetworks: "OS-networkID1,OS-networkID2"
 ```
 
 See [our example service](example-setup/yawol-cloud-controller/service.yaml)
