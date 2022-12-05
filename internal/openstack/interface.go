@@ -33,6 +33,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
@@ -54,6 +55,8 @@ type Client interface {
 	RuleClient(ctx context.Context) (RuleClient, error)
 	// Returns the ServerClient created from the configured ini
 	ServerClient(ctx context.Context) (ServerClient, error)
+	// Returns the ServerClient created from the configured ini
+	ServerGroupClient(ctx context.Context) (ServerGroupClient, error)
 	// Returns the KeyPairClient created from the configured ini
 	KeyPairClient(ctx context.Context) (KeyPairClient, error)
 }
@@ -105,6 +108,15 @@ type ServerClient interface {
 	Create(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error)
 	Get(ctx context.Context, id string) (*servers.Server, error)
 	Update(ctx context.Context, id string, opts servers.UpdateOptsBuilder) (*servers.Server, error)
+	Delete(ctx context.Context, id string) error
+}
+
+// ServerGroupClient is used to modify ServerGroups in an OpenStack environment.
+// It provides methods with CRUD functionalities.
+type ServerGroupClient interface {
+	List(ctx context.Context, opts servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error)
+	Create(ctx context.Context, opts servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error)
+	Get(ctx context.Context, id string) (*servergroups.ServerGroup, error)
 	Delete(ctx context.Context, id string) error
 }
 

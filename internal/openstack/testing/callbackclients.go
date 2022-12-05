@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
@@ -144,5 +145,25 @@ func (r *CallbackKeypairClient) Get(ctx context.Context, name string) (*keypairs
 	return r.GetFunc(ctx, name)
 }
 func (r *CallbackKeypairClient) Delete(ctx context.Context, name string) error {
+	return r.DeleteFunc(ctx, name)
+}
+
+type CallbackServerGroupClient struct {
+	ListFunc   func(ctx context.Context, opts servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error)
+	CreateFunc func(ctx context.Context, opts servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error)
+	GetFunc    func(ctx context.Context, name string) (*servergroups.ServerGroup, error)
+	DeleteFunc func(ctx context.Context, name string) error
+}
+
+func (r *CallbackServerGroupClient) List(ctx context.Context, opts servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error) {
+	return r.ListFunc(ctx, opts)
+}
+func (r *CallbackServerGroupClient) Create(ctx context.Context, opts servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error) {
+	return r.CreateFunc(ctx, opts)
+}
+func (r *CallbackServerGroupClient) Get(ctx context.Context, name string) (*servergroups.ServerGroup, error) {
+	return r.GetFunc(ctx, name)
+}
+func (r *CallbackServerGroupClient) Delete(ctx context.Context, name string) error {
 	return r.DeleteFunc(ctx, name)
 }

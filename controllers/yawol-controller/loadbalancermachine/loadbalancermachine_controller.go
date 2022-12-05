@@ -17,6 +17,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
@@ -623,6 +624,15 @@ func (r *LoadBalancerMachineReconciler) createServer(
 		createOpts = &keypairs.CreateOptsExt{
 			CreateOptsBuilder: createOpts,
 			KeyName:           loadBalancer.Spec.DebugSettings.SshkeyName,
+		}
+	}
+
+	if loadBalancerMachine.Spec.ServerGroupID != "" {
+		createOpts = &schedulerhints.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			SchedulerHints: schedulerhints.SchedulerHints{
+				Group: loadBalancerMachine.Spec.ServerGroupID,
+			},
 		}
 	}
 

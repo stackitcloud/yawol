@@ -88,6 +88,10 @@ func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1
 		}
 	}
 
+	if svc.Annotations[yawolv1beta1.ServiceServerGroupPolicy] != "" {
+		options.ServerGroupPolicy = svc.Annotations[yawolv1beta1.ServiceServerGroupPolicy]
+	}
+
 	return options
 }
 

@@ -291,6 +291,37 @@ var _ = Describe("loadbalancer controller", func() {
 		})
 	}) // loadbalancerset context
 
+	Context("server group", func() {
+		BeforeEach(func() {
+			lb.Spec.Options.ServerGroupPolicy = "affinity"
+		})
+
+		It("should create matching server group with policy", func() {
+			By("creating default rules")
+			hopefully(lbNN, func(g Gomega, act LB) error {
+				if act.Status.ServerGroupID == nil || act.Status.ServerGroupName == nil {
+					return fmt.Errorf("servergroupid or servergroupname is nil")
+				}
+
+				if *act.Status.ServerGroupName != lbNN.Namespace+"/"+lbNN.Name {
+					return fmt.Errorf("servergroupname is wrong: %v", *act.Status.ServerGroupName)
+				}
+
+				serverGroup, err := client.ServerGroupClientObj.Get(ctx, *act.Status.ServerGroupID)
+
+				if err != nil {
+					return err
+				}
+
+				if len(serverGroup.Policies) == 1 && serverGroup.Policies[0] == lb.Spec.Options.ServerGroupPolicy {
+					return fmt.Errorf("wrong policy in server group %v", lb.Spec.Options.ServerGroupPolicy)
+				}
+
+				return nil
+			})
+		})
+	}) // security group rules context
+
 	Context("security group rules", func() {
 		BeforeEach(func() {
 			lb.Spec.Ports = []v1.ServicePort{
@@ -459,6 +490,8 @@ var _ = Describe("loadbalancer controller", func() {
 				g.Expect(act.Status.FloatingID).Should(BeNil())
 				g.Expect(act.Status.SecurityGroupID).Should(BeNil())
 				g.Expect(act.Status.SecurityGroupName).Should(BeNil())
+				g.Expect(act.Status.ServerGroupID).Should(BeNil())
+				g.Expect(act.Status.ServerGroupName).Should(BeNil())
 				return nil
 			})
 

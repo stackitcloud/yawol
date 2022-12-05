@@ -123,6 +123,22 @@ func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
 }
 
+// Returns a configured OSServerGroupClient as ServerGroupClient.
+// Make sure that you invoked Configure() before this.
+func (r *OSClient) ServerGroupClient(ctx context.Context) (ServerGroupClient, error) {
+	if r.computeV2 == nil {
+		var sc *gophercloud.ServiceClient
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
+		if err != nil {
+			return nil, err
+		}
+		r.computeV2 = sc
+	}
+
+	client := &OSServerGroupClient{}
+	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
+}
+
 // Returns a configured OSKeypairClient as KeyPairClient.
 // Make sure that you invoked Configure() before this.
 func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {

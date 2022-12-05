@@ -182,11 +182,18 @@ spec:
                           http://example.com:3100/loki/api/v1/push).'
                         type: string
                     type: object
+                  serverGroupPolicy:
+                    description: ServerGroupPolicy creates a server group with that
+                      policy. Can be 'affinity', 'anti-affinity' 'soft-affinity',
+                      'soft-anti-affinity' depends on the OpenStack Infrastructure.
+                      If empty Openstack server group will not be used. Default is
+                      disabled
+                    type: string
                   tcpIdleTimeout:
                     description: TCPIdleTimeout sets TCP idle Timeout for all TCP
                       connections from this LoadBalancer. Value is in Seconds. With
                       0 you disable the idle timeout, be careful this can lead to
-                      side effects. Default is 3600s (1 hour).
+                      side effects. Default is 1h.
                     type: string
                   tcpProxyProtocol:
                     description: TCPProxyProtocol enables HAProxy TCP Proxy Protocol
@@ -203,7 +210,7 @@ spec:
                     description: UDPIdleTimeout sets UDP idle Timeout for all UDP
                       connections from this LoadBalancer. Value is in Seconds. With
                       0 you disable the idle timeout, be careful this can lead to
-                      side effects. Default is 60s (1 minute).
+                      side effects. Default is 1m.
                     type: string
                 type: object
               ports:
@@ -363,6 +370,12 @@ spec:
               security_group_name:
                 description: SecurityGroupName is the current security group name
                   mapped to the port
+                type: string
+              serverGroupID:
+                description: ServerGroupID is the current sever group ID
+                type: string
+              serverGroupName:
+                description: ServerGroupName is the current sever group name
                 type: string
             type: object
         required:

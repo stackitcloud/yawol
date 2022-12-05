@@ -218,6 +218,9 @@ metadata:
     # defines the UDP idle Timeout as duration, default is 1m
     # make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored
     yawol.stackit.cloud/udpIdleTimeout: "5m"
+    # can be 'affinity', 'anti-affinity' 'soft-affinity', 'soft-anti-affinity' depending on the OpenStack Infrastructure.
+    # If not set openstack server group is disabled.
+    yawol.stackit.cloud/serverGroupPolicy: anti-affinity
 ```
 
 See [our example service](example-setup/yawol-cloud-controller/service.yaml)

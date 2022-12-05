@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
@@ -165,6 +166,20 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 		return ctrl.Result{}, err
 	}
 	overallRequeue = overallRequeue || requeue
+
+	if lb.Spec.Options.ServerGroupPolicy != "" {
+		requeue, err = r.reconcileServerGroup(ctx, req, lb, osClient)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		overallRequeue = overallRequeue || requeue
+	} else {
+		requeue, err = r.deleteServerGroups(ctx, osClient, lb)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		overallRequeue = overallRequeue || requeue
+	}
 
 	if overallRequeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -403,6 +418,7 @@ func (r *Reconciler) reconcilePort(
 	}
 
 	// Create Port
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID == nil {
 		r.Log.Info("Create Port", "lb", lb.Name)
 		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
@@ -595,6 +611,104 @@ func (r *Reconciler) reconcileSecGroup(
 	return requeue, nil
 }
 
+func (r *Reconciler) reconcileServerGroup(
+	ctx context.Context,
+	req ctrl.Request,
+	lb *yawolv1beta1.LoadBalancer,
+	osClient openstack.Client,
+) (bool, error) {
+	r.Log.Info("Reconcile server group", "lb", lb.Name)
+	var requeue bool
+	var serverGroupClient openstack.ServerGroupClient
+	var err error
+
+	serverGroupClient, err = osClient.ServerGroupClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// Patch Floating Name, so we can reference it later
+	if lb.Status.ServerGroupName == nil {
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			ServerGroupName: pointer.String(req.NamespacedName.String()),
+		}); err != nil {
+			return false, err
+		}
+		requeue = true
+	}
+
+	var serverGroup *servergroups.ServerGroup
+
+	// try to get port my name to use it if possible
+	if lb.Status.ServerGroupID == nil {
+		serverGroup, err = openstackhelper.GetServerGroupByName(ctx, serverGroupClient, *lb.Status.ServerGroupName)
+		if err != nil {
+			return false, err
+		}
+		if serverGroup != nil {
+			r.Log.Info("found server group with name", "id", serverGroup.ID, "lb", req.NamespacedName, "ServerGroupName", *lb.Status.ServerGroupName)
+			if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{ServerGroupID: &serverGroup.ID}); err != nil {
+				return false, err
+			}
+			requeue = true
+		}
+	}
+
+	// Create server group
+	//nolint: dupl // we can't extract this code because of generics
+	if lb.Status.ServerGroupID == nil {
+		r.Log.Info("Create ServerGroup", "lb", lb.Name)
+		serverGroup, err = openstackhelper.CreateServerGroup(
+			ctx, serverGroupClient,
+			*lb.Status.ServerGroupName,
+			lb.Spec.Options.ServerGroupPolicy)
+		if err != nil {
+			r.Log.Info("unexpected error occurred creating a server group", "lb", req.NamespacedName)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+		}
+
+		// double check so status won't be corrupted
+		if serverGroup.ID == "" {
+			return false, helper.ErrPortIDEmpty
+		}
+
+		r.Log.Info("successfully created server group", "id", serverGroup.ID, "lb", req.NamespacedName)
+
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			ServerGroupID: &serverGroup.ID,
+		}); err != nil {
+			return false, err
+		}
+		requeue = true
+	}
+
+	// Check if port still exists properly
+	if lb.Status.ServerGroupID != nil {
+		if serverGroup, err = openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+				r.Log.Info("server group not found in openstack", "serverGroupID", *lb.Status.ServerGroupID)
+				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupID"); err != nil {
+					return false, err
+				}
+				return true, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			default:
+				r.Log.Info("unexpected error occurred")
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			}
+		}
+		if len(serverGroup.Policies) != 1 || serverGroup.Policies[0] != lb.Spec.Options.ServerGroupPolicy {
+			r.Log.Info("server group not correct affinity policy delete", "serverGroupID", *lb.Status.ServerGroupID)
+			if err = openstackhelper.DeleteServerGroup(ctx, serverGroupClient, serverGroup.ID); err != nil {
+				r.Log.Info("unexpected error occurred deleting a server group", "lb", req.NamespacedName)
+				return false, err
+			}
+			requeue = true
+		}
+	}
+	return requeue, nil
+}
+
 func (r *Reconciler) reconcileFIPAssociate(
 	ctx context.Context,
 	req ctrl.Request,
@@ -694,9 +808,15 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			return ctrl.Result{}, helper.ErrLBPortNotSet
 		}
 
+		var serverGroupID string
+		if lb.Status.ServerGroupID != nil {
+			serverGroupID = *lb.Status.ServerGroupID
+		}
+
 		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
 			PortID:         *lb.Status.PortID,
+			ServerGroupID:  serverGroupID,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Namespace: lb.Namespace,
 				Name:      lb.Name,
@@ -786,8 +906,16 @@ func (r *Reconciler) deletionRoutine(
 	if len(list.Items) != 0 {
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
-
 	var requeue bool
+
+	requeue, err = r.deleteServerGroups(ctx, osClient, lb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if requeue {
+		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+	}
+
 	requeue, err = r.deleteFips(ctx, osClient, lb)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -1101,6 +1229,85 @@ func (r *Reconciler) deleteSecGroups(
 		requeue = true
 	}
 
+	return requeue, nil
+}
+
+// Deletes SecGroups related to the LoadBalancer objects and disassociate it from other ports
+// 1. Removes sec group from all listable ports
+// 2. Retrieves sec group by ID in lb.Status.SecGroupID
+// 2.1 if found => delete sec group
+// 3. Retrieves sec group by Name in lb.Status.SecGroupName
+// 3.1 if found => delete sec group
+func (r *Reconciler) deleteServerGroups(
+	ctx context.Context,
+	osClient openstack.Client,
+	lb *yawolv1beta1.LoadBalancer,
+) (bool, error) {
+	var err error
+
+	serverGroupClient, err := osClient.ServerGroupClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	var requeue bool
+	//nolint: dupl // we can't extract this code because of generics
+	if lb.Status.ServerGroupID != nil {
+		serverGroup, err := openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID)
+		if err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+				r.Log.Info("server group has already been deleted",
+					"lb", lb.Namespace+"/"+lb.Name, "serverGroupID", *lb.Status.ServerGroupID)
+				// requeue to clean orphan server groups
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupID")
+			default:
+				r.Log.Info("an unexpected error occurred retrieving secGroup",
+					"lb", lb.Namespace+"/"+lb.Name, "serverGroupID", *lb.Status.ServerGroupID)
+				return false, err
+			}
+		}
+		if serverGroup != nil {
+			if err := openstackhelper.DeleteServerGroup(ctx, serverGroupClient, serverGroup.ID); err != nil {
+				r.Log.Info("an unexpected error occurred deleting server group",
+					"lb", lb.Namespace+"/"+lb.Name, "serverGroupID", *lb.Status.ServerGroupID)
+				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			}
+		}
+
+		// requeue to delete status in next run
+		requeue = true
+	}
+
+	// clean up orphan serverGroup
+	if lb.Status.ServerGroupName != nil {
+		serverGroup, err := openstackhelper.GetServerGroupByName(ctx, serverGroupClient, *lb.Status.ServerGroupName)
+		if err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+				r.Log.Info("server group has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "serverGroup", *lb.Status.ServerGroupName)
+				// requeue to clean orphan secgroups
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupName")
+			default:
+				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
+				return false, err
+			}
+		}
+
+		if serverGroup == nil {
+			r.Log.Info("server group has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "serverGroup", *lb.Status.ServerGroupName)
+			// requeue to clean orphan secgroups
+			return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupName")
+		}
+
+		if err := openstackhelper.DeleteServerGroup(ctx, serverGroupClient, serverGroup.ID); err != nil {
+			r.Log.Info("an unexpected error occurred deleting serverGroup", "lb", lb.Namespace+"/"+lb.Name, "serverGroupID", serverGroup.ID)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+		}
+
+		// requeue so next run will delete the status
+		requeue = true
+	}
 	return requeue, nil
 }
 

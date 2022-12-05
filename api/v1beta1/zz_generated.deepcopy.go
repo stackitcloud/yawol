@@ -569,6 +569,16 @@ func (in *LoadBalancerStatus) DeepCopyInto(out *LoadBalancerStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ServerGroupID != nil {
+		in, out := &in.ServerGroupID, &out.ServerGroupID
+		*out = new(string)
+		**out = **in
+	}
+	if in.ServerGroupName != nil {
+		in, out := &in.ServerGroupName, &out.ServerGroupName
+		*out = new(string)
+		**out = **in
+	}
 	if in.SecurityGroupID != nil {
 		in, out := &in.SecurityGroupID, &out.SecurityGroupID
 		*out = new(string)

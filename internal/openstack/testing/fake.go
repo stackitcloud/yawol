@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
@@ -22,12 +23,13 @@ func GetFakeClient() *MockClient {
 	client := MockClient{}
 
 	client.StoredValues = map[string]interface{}{
-		"id":      0, // used to generate unique ids across resources
-		"groups":  make(map[string]*groups.SecGroup),
-		"rules":   make(map[string]*rules.SecGroupRule),
-		"fips":    make(map[string]*floatingips.FloatingIP),
-		"ports":   make(map[string]*ports.Port),
-		"servers": make(map[string]*servers.Server),
+		"id":          0, // used to generate unique ids across resources
+		"groups":      make(map[string]*groups.SecGroup),
+		"rules":       make(map[string]*rules.SecGroupRule),
+		"fips":        make(map[string]*floatingips.FloatingIP),
+		"ports":       make(map[string]*ports.Port),
+		"servers":     make(map[string]*servers.Server),
+		"servergroup": make(map[string]*servergroups.ServerGroup),
 	}
 
 	client.GroupClientObj = &CallbackGroupClient{
@@ -333,6 +335,48 @@ func GetFakeClient() *MockClient {
 		UpdateFunc: func(ctx context.Context, id string, optsBuilder servers.UpdateOptsBuilder) (*servers.Server, error) {
 			// TODO we do not use it yet
 			return nil, nil
+		},
+	}
+
+	client.ServerGroupClientObj = &CallbackServerGroupClient{
+		ListFunc: func(ctx context.Context, optsBuilder servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error) {
+			_ = optsBuilder.(servergroups.ListOpts)
+
+			srvs := client.StoredValues["servergroup"].(map[string]*servergroups.ServerGroup)
+
+			items := make([]servergroups.ServerGroup, 0)
+			for _, v := range srvs {
+				items = append(items, *v)
+			}
+
+			return items, nil
+		},
+		CreateFunc: func(ctx context.Context, optsBuilder servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error) {
+			opts := optsBuilder.(servergroups.CreateOpts)
+
+			servergroup := &servergroups.ServerGroup{
+				ID:   getID(&client),
+				Name: opts.Name,
+			}
+
+			srvs := client.StoredValues["servergroup"]
+			srvs.(map[string]*servergroups.ServerGroup)[servergroup.ID] = servergroup
+
+			return servergroup, nil
+		},
+		GetFunc: func(ctx context.Context, id string) (*servergroups.ServerGroup, error) {
+			srvs := client.StoredValues["servergroup"]
+			server, found := srvs.(map[string]*servergroups.ServerGroup)[id]
+			if !found {
+				return nil, gophercloud.ErrDefault404{}
+			}
+
+			return server, nil
+		},
+		DeleteFunc: func(ctx context.Context, id string) error {
+			srvs := client.StoredValues["servergroup"]
+			delete(srvs.(map[string]*servergroups.ServerGroup), id)
+			return nil
 		},
 	}
 
