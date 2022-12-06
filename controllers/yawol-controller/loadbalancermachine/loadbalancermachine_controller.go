@@ -371,7 +371,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 			port, err = openstackhelper.CreatePort(ctx, portClient, portName, lbm.Spec.Infrastructure.NetworkID)
 			if err != nil {
 				r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
-				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lbm)
 			}
 		}
 
@@ -555,7 +555,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 			userData,
 		)
 		if err != nil {
-			return kubernetes.SendErrorAsEvent(r.Recorder, err, loadbalancer)
+			return kubernetes.SendErrorAsEvent(r.RecorderLB, err, loadbalancer)
 		}
 	}
 
