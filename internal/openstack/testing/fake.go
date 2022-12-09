@@ -355,8 +355,9 @@ func GetFakeClient() *MockClient {
 			opts := optsBuilder.(servergroups.CreateOpts)
 
 			servergroup := &servergroups.ServerGroup{
-				ID:   getID(&client),
-				Name: opts.Name,
+				ID:       getID(&client),
+				Name:     opts.Name,
+				Policies: opts.Policies,
 			}
 
 			srvs := client.StoredValues["servergroup"]

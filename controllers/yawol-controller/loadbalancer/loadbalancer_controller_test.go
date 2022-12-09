@@ -296,6 +296,10 @@ var _ = Describe("loadbalancer controller", func() {
 			lb.Spec.Options.ServerGroupPolicy = "affinity"
 		})
 
+		AfterEach(func() {
+			lb.Spec.Options.ServerGroupPolicy = ""
+		})
+
 		It("should create matching server group with policy", func() {
 			By("creating default rules")
 			hopefully(lbNN, func(g Gomega, act LB) error {
@@ -313,14 +317,14 @@ var _ = Describe("loadbalancer controller", func() {
 					return err
 				}
 
-				if len(serverGroup.Policies) == 1 && serverGroup.Policies[0] == lb.Spec.Options.ServerGroupPolicy {
+				if len(serverGroup.Policies) != 1 && serverGroup.Policies[0] != lb.Spec.Options.ServerGroupPolicy {
 					return fmt.Errorf("wrong policy in server group %v", lb.Spec.Options.ServerGroupPolicy)
 				}
 
 				return nil
 			})
 		})
-	}) // security group rules context
+	}) // server group rules context
 
 	Context("security group rules", func() {
 		BeforeEach(func() {
