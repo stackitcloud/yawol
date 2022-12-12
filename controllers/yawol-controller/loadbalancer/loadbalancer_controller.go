@@ -627,7 +627,7 @@ func (r *Reconciler) reconcileServerGroup(
 		return false, err
 	}
 
-	// Patch Floating Name, so we can reference it later
+	// Patch server group name, so we can reference it later
 	if lb.Status.ServerGroupName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ServerGroupName: pointer.String(req.NamespacedName.String()),
@@ -639,7 +639,7 @@ func (r *Reconciler) reconcileServerGroup(
 
 	var serverGroup *servergroups.ServerGroup
 
-	// try to get port my name to use it if possible
+	// try to get server group my name to use it if possible
 	if lb.Status.ServerGroupID == nil {
 		serverGroup, err = openstackhelper.GetServerGroupByName(ctx, serverGroupClient, *lb.Status.ServerGroupName)
 		if err != nil {
@@ -682,7 +682,7 @@ func (r *Reconciler) reconcileServerGroup(
 		requeue = true
 	}
 
-	// Check if port still exists properly
+	// Check if server group still exists properly
 	if lb.Status.ServerGroupID != nil {
 		if serverGroup, err = openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID); err != nil {
 			switch err.(type) {
