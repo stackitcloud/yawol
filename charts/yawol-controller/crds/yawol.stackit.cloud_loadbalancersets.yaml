@@ -210,8 +210,8 @@ spec:
                           to the FloatingIP.
                         type: string
                       serverGroupID:
-                        description: PortID defines the openstack ID of the port attached
-                          to the FloatingIP.
+                        description: ServerGroupID defines the openstack ID of the
+                          openstack server group.
                         type: string
                     required:
                     - infrastructure

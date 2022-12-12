@@ -185,7 +185,7 @@ spec:
                   serverGroupPolicy:
                     description: ServerGroupPolicy creates a server group with that
                       policy. Can be 'affinity', 'anti-affinity' 'soft-affinity',
-                      'soft-anti-affinity' depends on the OpenStack Infrastructure.
+                      'soft-anti-affinity' depending on the OpenStack Infrastructure.
                       If empty Openstack server group will not be used. Default is
                       disabled
                     type: string
