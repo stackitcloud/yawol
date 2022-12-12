@@ -669,7 +669,7 @@ func (r *Reconciler) reconcileServerGroup(
 
 		// double check so status won't be corrupted
 		if serverGroup.ID == "" {
-			return false, helper.ErrPortIDEmpty
+			return false, helper.ErrServerGroupIDEmpty
 		}
 
 		r.Log.Info("successfully created server group", "id", serverGroup.ID, "lb", req.NamespacedName)
