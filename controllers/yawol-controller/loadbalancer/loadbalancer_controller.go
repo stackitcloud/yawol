@@ -1232,12 +1232,11 @@ func (r *Reconciler) deleteSecGroups(
 	return requeue, nil
 }
 
-// Deletes SecGroups related to the LoadBalancer objects and disassociate it from other ports
-// 1. Removes sec group from all listable ports
-// 2. Retrieves sec group by ID in lb.Status.SecGroupID
-// 2.1 if found => delete sec group
-// 3. Retrieves sec group by Name in lb.Status.SecGroupName
-// 3.1 if found => delete sec group
+// Deletes ServerGroups related to the LoadBalancer servers
+// 1. Retrieves servergroup by ID in lb.Status.ServerGroupID
+// 1.1 if found => delete servergroup
+// 2. Retrieves servergroup by Name in lb.Status.ServerGroupName
+// 2.1 if found => delete all servergroups
 func (r *Reconciler) deleteServerGroups(
 	ctx context.Context,
 	osClient openstack.Client,

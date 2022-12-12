@@ -12,12 +12,13 @@ const (
 )
 
 const (
-	MetricObjectFloatingIP MetricObject = "floatingip"
-	MetricObjectGroup      MetricObject = "group"
-	MetricObjectKeyPair    MetricObject = "keypair"
-	MetricObjectPort       MetricObject = "port"
-	MetricObjectRule       MetricObject = "rule"
-	MetricObjectServer     MetricObject = "server"
+	MetricObjectFloatingIP  MetricObject = "floatingip"
+	MetricObjectGroup       MetricObject = "group"
+	MetricObjectKeyPair     MetricObject = "keypair"
+	MetricObjectPort        MetricObject = "port"
+	MetricObjectRule        MetricObject = "rule"
+	MetricObjectServer      MetricObject = "server"
+	MetricObjectServerGroup MetricObject = "servergroup"
 )
 
 const (
