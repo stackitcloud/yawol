@@ -159,7 +159,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	err = r.reconcileOptions(ctx, loadBalancer, svc)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, err, svc)
 	}
 
 	err = r.reconcileExistingFloatingIP(ctx, loadBalancer, svc)
@@ -405,6 +405,15 @@ func (r *ServiceReconciler) reconcileOptions(
 			return err
 		}
 		patch := []byte(`{"spec":{"options":{"udpIdleTimeout":` + string(data) + `}}}`)
+		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+	}
+
+	if !reflect.DeepEqual(newOptions.ServerGroupPolicy, lb.Spec.Options.ServerGroupPolicy) {
+		data, err := json.Marshal(newOptions.ServerGroupPolicy)
+		if err != nil {
+			return err
+		}
+		patch := []byte(`{"spec":{"options":{"serverGroupPolicy":` + string(data) + `}}}`)
 		return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
 	}
 

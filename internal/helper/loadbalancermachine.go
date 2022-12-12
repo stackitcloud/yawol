@@ -37,17 +37,24 @@ func GetHashForLoadBalancerMachineSet(lb *yawolv1beta1.LoadBalancer) (string, er
 		portID = *lb.Status.PortID
 	}
 
+	var serverGroupName string
+	if lb.Status.ServerGroupName != nil {
+		serverGroupName = *lb.Status.ServerGroupName
+	}
+
 	return HashData(map[string]interface{}{
 		"loadBalancerMachineSpec": yawolv1beta1.LoadBalancerMachineSpec{
 			Infrastructure: lb.Spec.Infrastructure,
 			PortID:         portID,
+			ServerGroupID:  serverGroupName,
 			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 				Namespace: lb.Namespace,
 				Name:      lb.Name,
 			},
 		},
-		"logForward":    lb.Spec.Options.LogForward,
-		"debugSettings": lb.Spec.DebugSettings,
+		"logForward":        lb.Spec.Options.LogForward,
+		"debugSettings":     lb.Spec.DebugSettings,
+		"serverGroupPolicy": lb.Spec.Options.ServerGroupPolicy,
 	})
 }
 

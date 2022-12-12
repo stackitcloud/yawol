@@ -1786,5 +1786,111 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
 		})
+
+		It("should create a service and check ServerGroupPolicy options", func() {
+			By("creating a service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test26",
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceServerGroupPolicy: "affinity",
+					}},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30026,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check ServerGroupPolicy in LB")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test26", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.ServerGroupPolicy == "affinity" {
+					return nil
+				}
+				return fmt.Errorf("wrong options ServerGroupPolicy %v", lb.Spec.Options.ServerGroupPolicy)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should update the ServerGroupPolicy field", func() {
+			By("creating a service without ServerGroupPolicy")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test27",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31027,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that ServerGroupPolicy is set to empty")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test27", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.ServerGroupPolicy == "" {
+					return nil
+				}
+				return fmt.Errorf("ServerGroupPolicy should be empty %v", lb.Spec.Options.ServerGroupPolicy)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and enable ServerGroupPolicy")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceServerGroupPolicy: "affinity",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for ServerGroupPolicy")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test27", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.ServerGroupPolicy == "affinity" {
+					return nil
+				}
+				return fmt.Errorf("wrong ServerGroupPolicy settings %v", lb.Spec.Options.ServerGroupPolicy)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc and disable ServerGroupPolicy")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new options for ServerGroupPolicy")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test27", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Options.ServerGroupPolicy == "" {
+					return nil
+				}
+				return fmt.Errorf("wrong ServerGroupPolicy is not nil %v", lb.Spec.Options.ServerGroupPolicy)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
 	})
 })

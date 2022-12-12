@@ -29,13 +29,14 @@ import (
 )
 
 type MockClient struct {
-	StoredValues     map[string]interface{}
-	FipClientObj     openstack.FipClient
-	PortClientObj    openstack.PortClient
-	GroupClientObj   openstack.GroupClient
-	RuleClientObj    openstack.RuleClient
-	ServerClientObj  openstack.ServerClient
-	KeyPairClientObj openstack.KeyPairClient
+	StoredValues         map[string]interface{}
+	FipClientObj         openstack.FipClient
+	PortClientObj        openstack.PortClient
+	GroupClientObj       openstack.GroupClient
+	RuleClientObj        openstack.RuleClient
+	ServerClientObj      openstack.ServerClient
+	KeyPairClientObj     openstack.KeyPairClient
+	ServerGroupClientObj openstack.ServerGroupClient
 }
 
 func (r *MockClient) Configure(ini []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error {
@@ -59,4 +60,7 @@ func (r *MockClient) ServerClient(ctx context.Context) (openstack.ServerClient, 
 }
 func (r *MockClient) KeyPairClient(ctx context.Context) (openstack.KeyPairClient, error) {
 	return r.KeyPairClientObj, nil
+}
+func (r *MockClient) ServerGroupClient(ctx context.Context) (openstack.ServerGroupClient, error) {
+	return r.ServerGroupClientObj, nil
 }

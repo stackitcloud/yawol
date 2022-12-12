@@ -37,6 +37,8 @@ type LoadBalancerMachineSpec struct {
 	Infrastructure LoadBalancerInfrastructure `json:"infrastructure"`
 	// PortID defines the openstack ID of the port attached to the FloatingIP.
 	PortID string `json:"portID"`
+	// ServerGroupID defines the openstack ID of the openstack server group.
+	ServerGroupID string `json:"serverGroupID"`
 	// LoadBalancerRef defines a reference to the LoadBalancer Object.
 	LoadBalancerRef LoadBalancerRef `json:"loadBalancerRef"`
 }

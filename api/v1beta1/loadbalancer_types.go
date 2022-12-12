@@ -37,6 +37,8 @@ const (
 	ServiceLogForward = "yawol.stackit.cloud/logForward"
 	// ServiceLogForwardLokiURL set loki url into LoadBalancer
 	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
+	// ServiceServerGroupPolicy set openstack server group policy for a LoadBalancer
+	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
 )
 
 // +kubebuilder:object:root=true
@@ -121,6 +123,11 @@ type LoadBalancerOptions struct {
 	// LogForward enables log forward to a loki instance
 	// +optional
 	LogForward LoadBalancerLogForward `json:"logForward,omitempty"`
+	// ServerGroupPolicy creates a server group with that policy.
+	// Can be 'affinity', 'anti-affinity' 'soft-affinity', 'soft-anti-affinity' depending on the OpenStack Infrastructure.
+	// If empty Openstack server group will not be used. Default is disabled
+	// +optional
+	ServerGroupPolicy string `json:"serverGroupPolicy,omitempty"`
 }
 
 // LoadBalancerLogForward enables log forward to a loki instance.
@@ -235,6 +242,12 @@ type LoadBalancerStatus struct {
 	// PortName is the current openstack name from the virtual Port.
 	// +optional
 	PortName *string `json:"portName,omitempty"`
+	// ServerGroupID is the current sever group ID
+	// +optional
+	ServerGroupID *string `json:"serverGroupID,omitempty"`
+	// ServerGroupName is the current sever group name
+	// +optional
+	ServerGroupName *string `json:"serverGroupName,omitempty"`
 	// SecurityGroupID is the current security group ID mapped to the port
 	// +optional
 	SecurityGroupID *string `json:"security_group_id,omitempty"`

@@ -145,10 +145,15 @@ spec:
                 description: PortID defines the openstack ID of the port attached
                   to the FloatingIP.
                 type: string
+              serverGroupID:
+                description: ServerGroupID defines the openstack ID of the openstack
+                  server group.
+                type: string
             required:
             - infrastructure
             - loadBalancerRef
             - portID
+            - serverGroupID
             type: object
           status:
             description: LoadBalancerMachineStatus defines the observed state of LoadBalancerMachine.
