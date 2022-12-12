@@ -33,9 +33,9 @@ func (r *OSServerGroupClient) Configure(
 	return r
 }
 
-// Invokes servers.List() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
+// Invokes servergroups.List() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
 func (r *OSServerGroupClient) List(ctx context.Context, opts servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error) {
-	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationList)
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -49,9 +49,9 @@ func (r *OSServerGroupClient) List(ctx context.Context, opts servergroups.ListOp
 	return servergroups.ExtractServerGroups(page)
 }
 
-// Invokes servers.Create() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
+// Invokes servergroups.Create() in gophercloud's servergroups package. Uses the computeV2 client provided in Configure().
 func (r *OSServerGroupClient) Create(ctx context.Context, opts servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error) {
-	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationCreate)
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -60,13 +60,12 @@ func (r *OSServerGroupClient) Create(ctx context.Context, opts servergroups.Crea
 	}()
 
 	srv, err := servergroups.Create(r.computeV2, opts).Extract()
-	r.computeV2.Context = nil
 	return srv, err
 }
 
-// Invokes servergroups.Get() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
+// Invokes servergroups.Get() in gophercloud's servergroups package. Uses the computeV2 client provided in Configure().
 func (r *OSServerGroupClient) Get(ctx context.Context, id string) (*servergroups.ServerGroup, error) {
-	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationGet)
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -78,9 +77,9 @@ func (r *OSServerGroupClient) Get(ctx context.Context, id string) (*servergroups
 	return srv, err
 }
 
-// Invokes servers.Delete() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
+// Invokes servergroups.Delete() in gophercloud's servergroups package. Uses the computeV2 client provided in Configure().
 func (r *OSServerGroupClient) Delete(ctx context.Context, id string) error {
-	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationDelete)
+	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 	r.computeV2.Context = tctx
@@ -88,6 +87,5 @@ func (r *OSServerGroupClient) Delete(ctx context.Context, id string) error {
 		r.computeV2.Context = nil
 	}()
 
-	err := servergroups.Delete(r.computeV2, id).ExtractErr()
-	return err
+	return servergroups.Delete(r.computeV2, id).ExtractErr()
 }
