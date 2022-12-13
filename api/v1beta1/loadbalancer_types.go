@@ -193,19 +193,13 @@ type OpenstackImageRef struct {
 	// +optional
 	ImageSearch *string `json:"imageSearch,omitempty"`
 
-	// Deprecated: used for migration
-	// ImageID is the image ID used for requesting virtual machines.
+	// Deprecated: use imageID instead.
 	// +optional
 	ImageIDOld *string `json:"image_id,omitempty"`
-	// Deprecated: used for migration
-	// ImageName is the name of the image used for requesting virtual machines.
-	// ImageName is only used if ImageID is not defined.
+	// Deprecated: use imageName instead.
 	// +optional
 	ImageNameOld *string `json:"image_name,omitempty"`
-	// Deprecated: used for migration
-	// ImageSearch is a search string to find the image used for requesting virtual machines.
-	// Search will be performed in metadata of the images.
-	// ImageSearch is only used if ImageName and ImageID are not defined.
+	// Deprecated: use imageSearch instead.
 	// +optional
 	ImageSearchOld *string `json:"image_search,omitempty"`
 }
@@ -226,19 +220,13 @@ type OpenstackFlavorRef struct {
 	// +optional
 	FlavorSearch *string `json:"flavorSearch,omitempty"`
 
-	// Deprecated: used for migration
-	// FlavorID is the flavor ID used for requesting virtual machines.
+	// Deprecated: use flavorID instead.
 	// +optional
 	FlavorIDOld *string `json:"flavor_id,omitempty"`
-	// Deprecated: used for migration
-	// FlavorName is the name of the flavor used for requesting virtual machines.
-	// FlavorName is only used if FlavorID is not defined.
+	// Deprecated: use flavorName instead.
 	// +optional
 	FlavorNameOld *string `json:"flavor_name,omitempty"`
-	// Deprecated: used for migration
-	// FlavorSearch is a search string to find the flavor used for requesting virtual machines.
-	// Search will be performed in metadata of the flavors.
-	// FlavorSearch is only used if FlavorName and FlavorID are not defined.
+	// Deprecated: use flavorSearch instead.
 	// +optional
 	FlavorSearchOld *string `json:"flavor_search,omitempty"`
 }
@@ -286,12 +274,10 @@ type LoadBalancerStatus struct {
 	// SecurityGroupName is the current security group name mapped to the port
 	// +optional
 	SecurityGroupName *string `json:"securityGroupName,omitempty"`
-	// Deprecated: used for migration
-	// SecurityGroupID is the current security group ID mapped to the port
+	// Deprecated: use securityGroupID instead.
 	// +optional
 	SecurityGroupIDOld *string `json:"security_group_id,omitempty"`
-	// Deprecated: used for migration
-	// SecurityGroupName is the current security group name mapped to the port
+	// Deprecated: use securityGroupName instead.
 	// +optional
 	SecurityGroupNameOld *string `json:"security_group_name,omitempty"`
 	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.

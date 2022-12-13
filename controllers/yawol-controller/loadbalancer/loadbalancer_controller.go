@@ -136,25 +136,51 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *Reconciler) migrateAPI(ctx context.Context, lb *yawolv1beta1.LoadBalancer) error {
 	if lb.Status.SecurityGroupIDOld != nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupID: lb.Status.SecurityGroupIDOld,
-			//SecurityGroupIDOld: nil,
+			SecurityGroupID:    lb.Status.SecurityGroupIDOld,
+			SecurityGroupIDOld: nil,
 		}); err != nil {
+			return err
+		}
+
+		// needed because omitempty prevents setting the status to nil
+		if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id"); err != nil {
 			return err
 		}
 	}
 
 	if lb.Status.SecurityGroupNameOld != nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupName: lb.Status.SecurityGroupNameOld,
-			//SecurityGroupNameOld: nil,
+			SecurityGroupName:    lb.Status.SecurityGroupNameOld,
+			SecurityGroupNameOld: nil,
 		}); err != nil {
+			return err
+		}
+
+		// needed because omitempty prevents setting the status to nil
+		if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_name"); err != nil {
 			return err
 		}
 	}
 
 	if lb.Spec.Infrastructure.Flavor.FlavorIDOld != nil {
 		lb.Spec.Infrastructure.Flavor.FlavorID = lb.Spec.Infrastructure.Flavor.FlavorIDOld
-		//lb.Spec.Infrastructure.Flavor.FlavorIDOld = nil
+		lb.Spec.Infrastructure.Flavor.FlavorIDOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Flavor.FlavorNameOld != nil {
+		lb.Spec.Infrastructure.Flavor.FlavorName = lb.Spec.Infrastructure.Flavor.FlavorNameOld
+		lb.Spec.Infrastructure.Flavor.FlavorNameOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Flavor.FlavorSearchOld != nil {
+		lb.Spec.Infrastructure.Flavor.FlavorSearch = lb.Spec.Infrastructure.Flavor.FlavorSearchOld
+		lb.Spec.Infrastructure.Flavor.FlavorSearchOld = nil
 		if err := r.Client.Update(ctx, lb); err != nil {
 			return err
 		}
@@ -162,7 +188,23 @@ func (r *Reconciler) migrateAPI(ctx context.Context, lb *yawolv1beta1.LoadBalanc
 
 	if lb.Spec.Infrastructure.Image.ImageIDOld != nil {
 		lb.Spec.Infrastructure.Image.ImageID = lb.Spec.Infrastructure.Image.ImageIDOld
-		//lb.Spec.Infrastructure.ImageID.ImageIDOld = nil
+		lb.Spec.Infrastructure.Image.ImageIDOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Image.ImageNameOld != nil {
+		lb.Spec.Infrastructure.Image.ImageName = lb.Spec.Infrastructure.Image.ImageNameOld
+		lb.Spec.Infrastructure.Image.ImageNameOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Image.ImageSearchOld != nil {
+		lb.Spec.Infrastructure.Image.ImageSearch = lb.Spec.Infrastructure.Image.ImageSearchOld
+		lb.Spec.Infrastructure.Image.ImageSearchOld = nil
 		if err := r.Client.Update(ctx, lb); err != nil {
 			return err
 		}
@@ -622,7 +664,7 @@ func (r *Reconciler) reconcileSecGroup(
 			switch err.(type) {
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("SecurityGroupID not found in openstack", "SecurityGroupID", *lb.Status.SecurityGroupID)
-				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id"); err != nil {
+				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID"); err != nil {
 					return false, err
 				}
 				return true, nil
@@ -1221,7 +1263,7 @@ func (r *Reconciler) deleteSecGroups(
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				// requeue to clean orphan secgroups
-				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_id")
+				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				return false, err
@@ -1253,7 +1295,7 @@ func (r *Reconciler) deleteSecGroups(
 				lb.Namespace+"/"+lb.Name, "secGroup", secGroupName,
 			)
 			// no requeue, everything is cleaned
-			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "security_group_name")
+			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupName")
 		}
 
 		for i := range secGroupList {
