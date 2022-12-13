@@ -68,6 +68,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if err := r.migrateAPI(ctx, &lb); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// get OpenStack Client for LoadBalancer
 	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
 	if err != nil {
@@ -126,6 +130,45 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MaxConcurrentReconciles: r.WorkerCount,
 		}).
 		Complete(r)
+}
+
+//nolint:staticcheck // migration function
+func (r *Reconciler) migrateAPI(ctx context.Context, lb *yawolv1beta1.LoadBalancer) error {
+	if lb.Status.SecurityGroupIDOld != nil {
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			SecurityGroupID: lb.Status.SecurityGroupIDOld,
+			//SecurityGroupIDOld: nil,
+		}); err != nil {
+			return err
+		}
+	}
+
+	if lb.Status.SecurityGroupNameOld != nil {
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			SecurityGroupName: lb.Status.SecurityGroupNameOld,
+			//SecurityGroupNameOld: nil,
+		}); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Flavor.FlavorIDOld != nil {
+		lb.Spec.Infrastructure.Flavor.FlavorID = lb.Spec.Infrastructure.Flavor.FlavorIDOld
+		//lb.Spec.Infrastructure.Flavor.FlavorIDOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	if lb.Spec.Infrastructure.Image.ImageIDOld != nil {
+		lb.Spec.Infrastructure.Image.ImageID = lb.Spec.Infrastructure.Image.ImageIDOld
+		//lb.Spec.Infrastructure.ImageID.ImageIDOld = nil
+		if err := r.Client.Update(ctx, lb); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *Reconciler) reconcileOpenStackIfNeeded(
