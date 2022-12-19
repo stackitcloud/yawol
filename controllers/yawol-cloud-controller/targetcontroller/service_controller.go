@@ -626,7 +626,9 @@ func getAdditionalNetworks(
 
 	if _, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
 		if svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID] != *infraConfig.NetworkID {
-			networkIDs[*infraConfig.NetworkID] = struct{}{}
+			if skip, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceSkipCloudControllerDefaultNetworkID]); !skip {
+				networkIDs[*infraConfig.NetworkID] = struct{}{}
+			}
 		}
 	}
 

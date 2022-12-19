@@ -15,6 +15,9 @@ const (
 	// If this is set to a different network ID than defined as default in the yawol-cloud-controller
 	// the default from the yawol-cloud-controller will be added to the additionalNetworks
 	ServiceDefaultNetworkID = "yawol.stackit.cloud/defaultNetworkID"
+	// ServiceSkipCloudControllerDefaultNetworkID if set to true it do not add the default network ID from
+	// the yawol-cloud-controller to the additionalNetworks
+	ServiceSkipCloudControllerDefaultNetworkID = "yawol.stackit.cloud/skipCloudControllerDefaultNetworkID"
 	// ServiceDefaultProjectID overwrites the projectID which is set by the secret.
 	// If not set the settings from the secret binding will be used.
 	ServiceDefaultProjectID = "yawol.stackit.cloud/projectID"
