@@ -582,6 +582,17 @@ func (r *Reconciler) reconcilePort(
 		return true, nil
 	}
 
+	// Patch PortIP to status
+	if len(port.FixedIPs) >= 1 &&
+		(lb.Status.PortIP == nil || *lb.Status.PortIP != port.FixedIPs[0].IPAddress) {
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			PortIP: &port.FixedIPs[0].IPAddress,
+		}); err != nil {
+			return false, err
+		}
+		requeue = true
+	}
+
 	// If internal LB, use first port ip as external ip
 	if lb.Spec.Options.InternalLB && len(port.FixedIPs) >= 1 &&
 		(lb.Status.ExternalIP == nil || *lb.Status.ExternalIP != port.FixedIPs[0].IPAddress) {
@@ -1183,6 +1194,7 @@ func (r *Reconciler) deletePorts(
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				// requeue true to clean orphan ports in the next run
+				_ = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portIP")
 				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)

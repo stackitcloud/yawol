@@ -295,6 +295,9 @@ type LoadBalancerStatus struct {
 	// PortName is the current openstack name from the virtual Port.
 	// +optional
 	PortName *string `json:"portName,omitempty"`
+	// PortIP is the IP from the openstack virtual Port.
+	// +optional
+	PortIP *string `json:"portIP,omitempty"`
 	// ServerGroupID is the current sever group ID
 	// +optional
 	ServerGroupID *string `json:"serverGroupID,omitempty"`
