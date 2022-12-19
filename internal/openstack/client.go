@@ -13,6 +13,12 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+type GetOSClientFunc func(iniData []byte, overwrite OSClientOverwrite) (Client, error)
+
+type OSClientOverwrite struct {
+	ProjectID *string
+}
+
 // OSClient is an implementation of Client. It must be configured by calling Configure().
 // When requesting any specific client the required resources will be created on first call. Mind, that you should
 // not call Configure() again, because the created resources will not be invalidated.
@@ -20,6 +26,7 @@ type OSClient struct {
 	networkV2   *gophercloud.ServiceClient
 	computeV2   *gophercloud.ServiceClient
 	ini         []byte
+	overwrite   OSClientOverwrite
 	timeout     time.Duration
 	promCounter *prometheus.CounterVec
 }
@@ -36,10 +43,11 @@ type OSClient struct {
 //	username="itmyuser"
 //	password="suupersecret"
 //	region="eu01"
-func (r *OSClient) Configure(iniBytes []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error {
+func (r *OSClient) Configure(iniBytes []byte, overwrite OSClientOverwrite, timeout time.Duration, promCounter *prometheus.CounterVec) error {
 	r.ini = iniBytes
 	r.timeout = timeout
 	r.promCounter = promCounter
+	r.overwrite = overwrite
 	return nil
 }
 
@@ -48,7 +56,7 @@ func (r *OSClient) Configure(iniBytes []byte, timeout time.Duration, promCounter
 func (r *OSClient) FipClient(ctx context.Context) (FipClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +72,7 @@ func (r *OSClient) FipClient(ctx context.Context) (FipClient, error) {
 func (r *OSClient) PortClient(ctx context.Context) (PortClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +88,7 @@ func (r *OSClient) PortClient(ctx context.Context) (PortClient, error) {
 func (r *OSClient) GroupClient(ctx context.Context) (GroupClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +104,7 @@ func (r *OSClient) GroupClient(ctx context.Context) (GroupClient, error) {
 func (r *OSClient) RuleClient(ctx context.Context) (RuleClient, error) {
 	if r.networkV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createNetworkV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createNetworkV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +120,7 @@ func (r *OSClient) RuleClient(ctx context.Context) (RuleClient, error) {
 func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 	if r.computeV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +136,7 @@ func (r *OSClient) ServerClient(ctx context.Context) (ServerClient, error) {
 func (r *OSClient) ServerGroupClient(ctx context.Context) (ServerGroupClient, error) {
 	if r.computeV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +152,7 @@ func (r *OSClient) ServerGroupClient(ctx context.Context) (ServerGroupClient, er
 func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {
 	if r.computeV2 == nil {
 		var sc *gophercloud.ServiceClient
-		sc, err := createComputeV2FromIni(ctx, r.ini, r.timeout)
+		sc, err := createComputeV2FromIni(ctx, r.ini, r.overwrite, r.timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -155,8 +163,8 @@ func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {
 	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
 }
 
-func createNetworkV2FromIni(ctx context.Context, iniData []byte, timeout time.Duration) (*gophercloud.ServiceClient, error) {
-	provider, opts, err := getProvider(ctx, iniData, timeout)
+func createNetworkV2FromIni(ctx context.Context, iniData []byte, overwrite OSClientOverwrite, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+	provider, opts, err := getProvider(ctx, iniData, overwrite, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +177,8 @@ func createNetworkV2FromIni(ctx context.Context, iniData []byte, timeout time.Du
 	return client, nil
 }
 
-func createComputeV2FromIni(ctx context.Context, iniData []byte, timeout time.Duration) (*gophercloud.ServiceClient, error) {
-	provider, opts, err := getProvider(ctx, iniData, timeout)
+func createComputeV2FromIni(ctx context.Context, iniData []byte, overwrite OSClientOverwrite, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+	provider, opts, err := getProvider(ctx, iniData, overwrite, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +194,7 @@ func createComputeV2FromIni(ctx context.Context, iniData []byte, timeout time.Du
 func getProvider(
 	ctx context.Context,
 	iniData []byte,
+	overwrite OSClientOverwrite,
 	timeout time.Duration,
 ) (*gophercloud.ProviderClient, *gophercloud.EndpointOpts, error) {
 	cfg, err := ini.Load(iniData)
@@ -193,23 +202,24 @@ func getProvider(
 		return nil, nil, err
 	}
 
-	var authURL, username, password, domainName, projectName, region string
-	authURL = strings.TrimSpace(cfg.Section("Global").Key("auth-url").String())
-	username = strings.TrimSpace(cfg.Section("Global").Key("username").String())
-	password = strings.TrimSpace(cfg.Section("Global").Key("password").String())
-	domainName = strings.TrimSpace(cfg.Section("Global").Key("domain-name").String())
-	projectName = strings.TrimSpace(cfg.Section("Global").Key("tenant-name").String())
-	region = strings.TrimSpace(cfg.Section("Global").Key("region").String())
+	var authInfo clientconfig.AuthInfo
+
+	authURL := strings.TrimSpace(cfg.Section("Global").Key("auth-url").String())
+	authInfo.AuthURL = authURL
+	authInfo.Username = strings.TrimSpace(cfg.Section("Global").Key("username").String())
+	authInfo.Password = strings.TrimSpace(cfg.Section("Global").Key("password").String())
+	authInfo.DomainName = strings.TrimSpace(cfg.Section("Global").Key("domain-name").String())
+	authInfo.ProjectName = strings.TrimSpace(cfg.Section("Global").Key("tenant-name").String())
+
+	region := strings.TrimSpace(cfg.Section("Global").Key("region").String())
+
+	if overwrite.ProjectID != nil {
+		authInfo.ProjectName = ""
+		authInfo.ProjectID = *overwrite.ProjectID
+	}
 
 	clientOpts := new(clientconfig.ClientOpts)
-	authInfo := &clientconfig.AuthInfo{
-		AuthURL:     authURL,
-		Username:    username,
-		Password:    password,
-		DomainName:  domainName,
-		ProjectName: projectName,
-	}
-	clientOpts.AuthInfo = authInfo
+	clientOpts.AuthInfo = &authInfo
 
 	ao, err := clientconfig.AuthOptions(clientOpts)
 	if err != nil {

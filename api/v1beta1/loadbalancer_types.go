@@ -15,6 +15,9 @@ const (
 	// If this is set to a different network ID than defined as default in the yawol-cloud-controller
 	// the default from the yawol-cloud-controller will be added to the additionalNetworks
 	ServiceDefaultNetworkID = "yawol.stackit.cloud/defaultNetworkID"
+	// ServiceDefaultProjectID overwrites the projectID which is set by the secret.
+	// If not set the settings from the secret binding will be used.
+	ServiceDefaultProjectID = "yawol.stackit.cloud/projectID"
 	// ServiceFloatingNetworkID overwrites the openstack floating network for the loadbalancer
 	ServiceFloatingNetworkID = "yawol.stackit.cloud/floatingNetworkID"
 	// ServiceAvailabilityZone set availability zone for specific service
@@ -194,6 +197,10 @@ type LoadBalancerInfrastructure struct {
 	AvailabilityZone string `json:"availabilityZone"`
 	// AuthSecretRef defines a secretRef for the openstack secret.
 	AuthSecretRef corev1.SecretReference `json:"authSecretRef"`
+	// ProjectID defines an openstack project ID which will be used instead of the project from the secret ref.
+	// If not set the project from the secret ref will be used.
+	// +optional
+	ProjectID *string `json:"projectID"`
 }
 
 // LoadBalancerAdditionalNetwork defines additional networks for the LoadBalancer

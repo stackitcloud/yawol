@@ -45,7 +45,7 @@ type Reconciler struct {
 	skipReconciles    bool
 	skipAllButNN      *types.NamespacedName
 	Metrics           *helpermetrics.LoadBalancerMetricList
-	getOsClientForIni func(iniData []byte) (openstack.Client, error)
+	getOsClientForIni openstack.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
 }
@@ -73,7 +73,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// get OpenStack Client for LoadBalancer
-	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
+	osClient, err := openstackhelper.GetOpenStackClientForInfrastructure(ctx, r.Client, lb.Spec.Infrastructure, r.getOsClientForIni)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -114,9 +114,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
-		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		r.getOsClientForIni = func(iniData []byte, overwrite openstack.OSClientOverwrite) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
+			err := osClient.Configure(iniData, overwrite, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -471,6 +471,7 @@ func (r *Reconciler) reconcilePort(
 	var err error
 
 	portClient, err = osClient.PortClient(ctx)
+
 	if err != nil {
 		return false, err
 	}
@@ -515,7 +516,11 @@ func (r *Reconciler) reconcilePort(
 			networkID = lb.Spec.Infrastructure.DefaultNetwork.NetworkID
 		}
 
-		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, networkID)
+		port, err = openstackhelper.CreatePort(
+			ctx,
+			portClient,
+			*lb.Status.PortName,
+			networkID)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)

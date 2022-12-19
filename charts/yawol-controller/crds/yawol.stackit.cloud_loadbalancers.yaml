@@ -215,6 +215,11 @@ spec:
                     description: 'Deprecated: use defaultNetwork instead NetworkID
                       defines a openstack ID for the network.'
                     type: string
+                  projectID:
+                    description: ProjectID defines an openstack project ID which will
+                      be used instead of the project from the secret ref. If not set
+                      the project from the secret ref will be used.
+                    type: string
                 required:
                 - authSecretRef
                 type: object
@@ -413,6 +418,9 @@ spec:
                 type: string
               portID:
                 description: PortID is the current openstack ID from the virtual Port.
+                type: string
+              portIP:
+                description: PortIP is the IP from the openstack virtual Port.
                 type: string
               portName:
                 description: PortName is the current openstack name from the virtual

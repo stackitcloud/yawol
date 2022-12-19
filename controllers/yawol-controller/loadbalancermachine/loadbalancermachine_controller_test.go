@@ -72,7 +72,7 @@ var _ = Describe("load balancer machine", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		loadBalancerMachineReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		loadBalancerMachineReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
 			return client, nil
 		}
 	})

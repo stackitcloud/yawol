@@ -206,6 +206,7 @@ func (r *ServiceReconciler) createLoadBalancer(
 				Flavor:             infraConfig.FlavorRef,
 				Image:              infraConfig.ImageRef,
 				AvailabilityZone:   *infraConfig.AvailabilityZone,
+				ProjectID:          getProjectID(svc),
 				AuthSecretRef: coreV1.SecretReference{
 					Name:      *infraConfig.AuthSecretName,
 					Namespace: *infraConfig.Namespace,
@@ -231,11 +232,17 @@ func (r *ServiceReconciler) reconcileInfrastructure(
 		Flavor:             infraConfig.FlavorRef,
 		Image:              infraConfig.ImageRef,
 		AvailabilityZone:   *infraConfig.AvailabilityZone,
+		ProjectID:          getProjectID(svc),
 		AuthSecretRef: coreV1.SecretReference{
 			Name:      *infraConfig.AuthSecretName,
 			Namespace: *infraConfig.Namespace,
 		},
 	}
+
+	if !reflect.DeepEqual(newInfra.ProjectID, lb.Spec.Infrastructure.ProjectID) {
+		return helper.ErrProjectIsImmutable
+	}
+
 	if !reflect.DeepEqual(newInfra, lb.Spec.Infrastructure) {
 		newInfraJSON, err := json.Marshal(newInfra)
 		if err != nil {
@@ -648,6 +655,13 @@ func getDefaultNetwork(
 		floatingNetID := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]
 		defaultNetwork.FloatingNetID = &floatingNetID
 	}
-
 	return defaultNetwork
+}
+
+func getProjectID(svc *coreV1.Service) *string {
+	if _, ok := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]; ok {
+		projectID := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]
+		return &projectID
+	}
+	return nil
 }

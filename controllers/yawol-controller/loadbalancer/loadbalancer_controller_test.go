@@ -54,7 +54,7 @@ var _ = Describe("loadbalancer controller", func() {
 		lb = getMockLB(lbNN)
 
 		client = testing.GetFakeClient()
-		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		loadBalancerReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
 			return client, nil
 		}
 	})

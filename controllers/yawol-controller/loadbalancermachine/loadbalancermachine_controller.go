@@ -56,7 +56,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	RecorderLB        record.EventRecorder
 	APIEndpoint       string
 	Metrics           *helpermetrics.LoadBalancerMachineMetricList
-	getOsClientForIni func(iniData []byte) (os.Client, error)
+	getOsClientForIni os.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
 }
@@ -78,10 +78,10 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 	var err error
 	var osClient os.Client
 
-	osClient, err = openstackhelper.GetOpenStackClientForAuthRef(
+	osClient, err = openstackhelper.GetOpenStackClientForInfrastructure(
 		ctx,
 		r.Client,
-		loadBalancerMachine.Spec.Infrastructure.AuthSecretRef,
+		loadBalancerMachine.Spec.Infrastructure,
 		r.getOsClientForIni,
 	)
 	if err != nil {
@@ -199,9 +199,9 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
-		r.getOsClientForIni = func(iniData []byte) (os.Client, error) {
+		r.getOsClientForIni = func(iniData []byte, overwrite os.OSClientOverwrite) (os.Client, error) {
 			osClient := os.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
+			err := osClient.Configure(iniData, overwrite, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -415,7 +415,11 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 
 		// create port
 		if port == nil {
-			port, err = openstackhelper.CreatePort(ctx, portClient, *lbm.Status.DefaultPortName, networkID)
+			port, err = openstackhelper.CreatePort(
+				ctx,
+				portClient,
+				*lbm.Status.DefaultPortName,
+				networkID)
 			if err != nil {
 				r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
 				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lbm)

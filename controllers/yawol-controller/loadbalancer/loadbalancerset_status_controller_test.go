@@ -144,7 +144,7 @@ var _ = Describe("LB Status update", func() {
 
 		By("Setup - Mocks")
 
-		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		loadBalancerReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
 			return testing.GetFakeClient(), nil
 		}
 

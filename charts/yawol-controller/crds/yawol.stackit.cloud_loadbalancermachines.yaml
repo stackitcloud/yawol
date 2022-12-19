@@ -184,6 +184,11 @@ spec:
                     description: 'Deprecated: use defaultNetwork instead NetworkID
                       defines a openstack ID for the network.'
                     type: string
+                  projectID:
+                    description: ProjectID defines an openstack project ID which will
+                      be used instead of the project from the secret ref. If not set
+                      the project from the secret ref will be used.
+                    type: string
                 required:
                 - authSecretRef
                 type: object
