@@ -476,6 +476,16 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 		return helper.ErrFailedToCreatePortForLBM
 	}
 
+	// Patch defaultPortIP to status
+	if len(port.FixedIPs) >= 1 &&
+		(lbm.Status.DefaultPortIP == nil || *lbm.Status.DefaultPortIP != port.FixedIPs[0].IPAddress) {
+		if err := helper.PatchLBMStatus(ctx, r.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
+			DefaultPortIP: &port.FixedIPs[0].IPAddress,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -808,6 +818,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
+				_ = helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "defaultPortIP")
 				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
 					return false, err
 				}

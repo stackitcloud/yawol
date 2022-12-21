@@ -266,8 +266,12 @@ spec:
                 description: DefaultPortID contains the default openstack port ID
                   for a LoadBalancerMachine.
                 type: string
+              defaultPortIP:
+                description: DefaultPortIP contains the default openstack port IP
+                  for a LoadBalancerMachine.
+                type: string
               defaultPortName:
-                description: DefaultPortID contains the default openstack port ID
+                description: DefaultPortName contains the default openstack port Name
                   for a LoadBalancerMachine.
                 type: string
               lastOpenstackReconcile:

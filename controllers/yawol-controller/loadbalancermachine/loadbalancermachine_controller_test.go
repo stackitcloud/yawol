@@ -262,9 +262,14 @@ var _ = Describe("load balancer machine", func() {
 				g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
 
 				g.Expect(actual.Status.DefaultPortName).ToNot(BeNil())
+				g.Expect(actual.Status.DefaultPortIP).ToNot(BeNil())
+				g.Expect(actual.Status.DefaultPortID).ToNot(BeNil())
 				port, err := client.PortClientObj.Get(ctx, *actual.Status.DefaultPortID)
 				g.Expect(err).To(Succeed())
 				g.Expect(len(port.AllowedAddressPairs)).To(Equal(1))
+				g.Expect(len(port.AllowedAddressPairs)).To(Equal(1))
+				g.Expect(len(port.FixedIPs)).To(Equal(1))
+				g.Expect(port.FixedIPs[0].IPAddress).To(Equal(*actual.Status.DefaultPortIP))
 
 				var actualLB yawolv1beta1.LoadBalancer
 				g.Expect(k8sClient.Get(ctx, lbNN, &actualLB)).To(Succeed())

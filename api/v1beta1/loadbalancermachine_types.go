@@ -75,9 +75,12 @@ type LoadBalancerMachineStatus struct {
 	// DefaultPortID contains the default openstack port ID for a LoadBalancerMachine.
 	// +optional
 	DefaultPortID *string `json:"defaultPortID,omitempty"`
-	// DefaultPortID contains the default openstack port ID for a LoadBalancerMachine.
+	// DefaultPortName contains the default openstack port Name for a LoadBalancerMachine.
 	// +optional
 	DefaultPortName *string `json:"defaultPortName,omitempty"`
+	// DefaultPortIP contains the default openstack port IP for a LoadBalancerMachine.
+	// +optional
+	DefaultPortIP *string `json:"defaultPortIP,omitempty"`
 	// ServiceAccountName contains the namespacedName from the ServiceAccount for a LoadBalancerMachine.
 	// +optional
 	ServiceAccountName *string `json:"serviceAccountName,omitempty"`

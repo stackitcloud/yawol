@@ -342,6 +342,11 @@ func (in *LoadBalancerMachineStatus) DeepCopyInto(out *LoadBalancerMachineStatus
 		*out = new(string)
 		**out = **in
 	}
+	if in.DefaultPortIP != nil {
+		in, out := &in.DefaultPortIP, &out.DefaultPortIP
+		*out = new(string)
+		**out = **in
+	}
 	if in.ServiceAccountName != nil {
 		in, out := &in.ServiceAccountName, &out.ServiceAccountName
 		*out = new(string)
