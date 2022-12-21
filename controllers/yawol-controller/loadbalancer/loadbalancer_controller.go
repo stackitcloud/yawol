@@ -459,7 +459,7 @@ func (r *Reconciler) assignOrCreateFIP(
 	return nil
 }
 
-func (r *Reconciler) reconcilePort(
+func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
@@ -1191,7 +1191,6 @@ func (r *Reconciler) deletePorts(
 
 	var requeue bool
 
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID != nil {
 		port, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
@@ -1217,6 +1216,7 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
@@ -1306,6 +1306,7 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	// clean up orphan secgroups
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupName != nil {
 		secGroupName := *lb.Status.SecurityGroupName
 		var secGroupList []groups.SecGroup

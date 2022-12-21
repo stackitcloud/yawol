@@ -3,6 +3,7 @@ package openstack
 import (
 	"context"
 	"fmt"
+
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 
 	"github.com/stackitcloud/yawol/internal/openstack"

@@ -194,6 +194,13 @@ metadata:
     # If this is set to a different network ID than defined as default in the yawol-cloud-controller
     # the default from the yawol-cloud-controller will be added to the additionalNetworks.
     yawol.stackit.cloud/defaultNetworkID: "OS-networkID"
+    # If set to true it do not add the default network ID from
+    # the yawol-cloud-controller to the additionalNetworks.
+    yawol.stackit.cloud/skipCloudControllerDefaultNetworkID: "false"
+    # Overwrites the projectID which is set by the secret.
+    # If not set the settings from the secret binding will be used.
+    # This field is immutable and can not be changed after the service is created.
+    yawol.stackit.cloud/projectID: "OS-ProjectID"
     # Overwrites the openstack floating network for the loadbalancer.
     yawol.stackit.cloud/floatingNetworkID: "OS-floatingNetID"
     # Override the default OpenStack availability zone.

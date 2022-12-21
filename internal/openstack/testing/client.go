@@ -39,7 +39,7 @@ type MockClient struct {
 	ServerGroupClientObj openstack.ServerGroupClient
 }
 
-func (r *MockClient) Configure(ini []byte, overwrite openstack.OSClientOverwrite, timeout time.Duration, promCounter *prometheus.CounterVec) error {
+func (r *MockClient) Configure(_ []byte, _ openstack.OSClientOverwrite, _ time.Duration, _ *prometheus.CounterVec) error {
 	r.StoredValues = make(map[string]interface{})
 	return nil
 }

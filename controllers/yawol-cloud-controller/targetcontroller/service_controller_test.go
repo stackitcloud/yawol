@@ -2108,5 +2108,159 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				return fmt.Errorf("additionalNetwork are still set %v", lb.Spec.Infrastructure.AdditionalNetworks)
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
+
+		It("should update the skipCloudControllerDefaultNetworkID field", func() {
+			By("creating a service without skipCloudControllerDefaultNetworkID")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test31",
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceDefaultNetworkID: "default-networkID",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31031,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that defaultNetworkID is in additional networks")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test31", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 1 &&
+					lb.Spec.Infrastructure.AdditionalNetworks[0].NetworkID == *testInfraDefaults.NetworkID {
+					return nil
+				}
+				return fmt.Errorf("additionalNetwork is not set with defaultNetwork %v", lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to add skipCloudControllerDefaultNetworkID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceDefaultNetworkID:                    "default-networkID",
+				yawolv1beta1.ServiceSkipCloudControllerDefaultNetworkID: "true",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if default network is not present in additionalNetworks")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test31", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 0 {
+					return nil
+				}
+				return fmt.Errorf("additionalNetworks are not correct %v", lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to disable skipCloudControllerDefaultNetworkID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceDefaultNetworkID: "default-networkID",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("checking that defaultNetworkID is in additional networks")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test31", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if len(lb.Spec.Infrastructure.AdditionalNetworks) == 1 &&
+					lb.Spec.Infrastructure.AdditionalNetworks[0].NetworkID == *testInfraDefaults.NetworkID {
+					return nil
+				}
+				return fmt.Errorf("additionalNetwork is not set with defaultNetwork %v", lb.Spec.Infrastructure.AdditionalNetworks)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("should be possible to add a project - but it is immutable", func() {
+			By("creating a service with different project")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test32",
+					Namespace: "default",
+					Annotations: map[string]string{
+						yawolv1beta1.ServiceDefaultProjectID: "otherProject",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31032,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that projectID is set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test32", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.ProjectID != nil &&
+					*lb.Spec.Infrastructure.ProjectID == "otherProject" {
+					return nil
+				}
+				return fmt.Errorf("projectID is not set in infrastructure %v", lb.Spec.Infrastructure.ProjectID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc with other project - should not work")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceDefaultProjectID: "otherProject2",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check for error event")
+			Eventually(func() error {
+				eventList := v1.EventList{}
+				err := k8sClient.List(ctx, &eventList)
+				if err != nil {
+					return err
+				}
+				for _, event := range eventList.Items {
+					if event.InvolvedObject.Name == "service-test32" &&
+						event.InvolvedObject.Kind == "Service" &&
+						event.Type == v1.EventTypeWarning &&
+						strings.Contains(event.Message, helper.ErrProjectIsImmutable.Error()) {
+						return nil
+					}
+				}
+				return helper.ErrNoEventFound
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("checking that projectID is still the ID from the creation")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test32", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.ProjectID != nil &&
+					*lb.Spec.Infrastructure.ProjectID == "otherProject" {
+					return nil
+				}
+				return fmt.Errorf("projectID is not correctly set in infrastructure %v", lb.Spec.Infrastructure.ProjectID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
 	})
 })

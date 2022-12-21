@@ -341,7 +341,7 @@ func (r *LoadBalancerMachineReconciler) reconcileRoleBinding(
 	return nil
 }
 
-func (r *LoadBalancerMachineReconciler) reconcilePort(
+func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
 	ctx context.Context,
 	osClient os.Client,
 	req ctrl.Request,

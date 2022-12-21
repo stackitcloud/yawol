@@ -240,7 +240,7 @@ func (r *ServiceReconciler) reconcileInfrastructure(
 	}
 
 	if !reflect.DeepEqual(newInfra.ProjectID, lb.Spec.Infrastructure.ProjectID) {
-		return helper.ErrProjectIsImmutable
+		return kubernetes.SendErrorAsEvent(r.Recorder, helper.ErrProjectIsImmutable, svc)
 	}
 
 	if !reflect.DeepEqual(newInfra, lb.Spec.Infrastructure) {

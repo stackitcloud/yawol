@@ -43,7 +43,12 @@ type OSClient struct {
 //	username="itmyuser"
 //	password="suupersecret"
 //	region="eu01"
-func (r *OSClient) Configure(iniBytes []byte, overwrite OSClientOverwrite, timeout time.Duration, promCounter *prometheus.CounterVec) error {
+func (r *OSClient) Configure(
+	iniBytes []byte,
+	overwrite OSClientOverwrite,
+	timeout time.Duration,
+	promCounter *prometheus.CounterVec,
+) error {
 	r.ini = iniBytes
 	r.timeout = timeout
 	r.promCounter = promCounter
@@ -163,7 +168,12 @@ func (r *OSClient) KeyPairClient(ctx context.Context) (KeyPairClient, error) {
 	return client.Configure(r.computeV2, r.timeout, r.promCounter), nil
 }
 
-func createNetworkV2FromIni(ctx context.Context, iniData []byte, overwrite OSClientOverwrite, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+func createNetworkV2FromIni(
+	ctx context.Context,
+	iniData []byte,
+	overwrite OSClientOverwrite,
+	timeout time.Duration,
+) (*gophercloud.ServiceClient, error) {
 	provider, opts, err := getProvider(ctx, iniData, overwrite, timeout)
 	if err != nil {
 		return nil, err
@@ -177,7 +187,12 @@ func createNetworkV2FromIni(ctx context.Context, iniData []byte, overwrite OSCli
 	return client, nil
 }
 
-func createComputeV2FromIni(ctx context.Context, iniData []byte, overwrite OSClientOverwrite, timeout time.Duration) (*gophercloud.ServiceClient, error) {
+func createComputeV2FromIni(
+	ctx context.Context,
+	iniData []byte,
+	overwrite OSClientOverwrite,
+	timeout time.Duration,
+) (*gophercloud.ServiceClient, error) {
 	provider, opts, err := getProvider(ctx, iniData, overwrite, timeout)
 	if err != nil {
 		return nil, err

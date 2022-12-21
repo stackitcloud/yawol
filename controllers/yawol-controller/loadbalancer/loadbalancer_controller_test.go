@@ -103,12 +103,14 @@ var _ = Describe("loadbalancer controller", func() {
 				g.Expect(act.Status.PortID).ToNot(BeNil())
 				g.Expect(act.Status.PortName).ToNot(BeNil())
 
+				g.Expect(act.Status.PortIP).ToNot(BeNil())
+				g.Expect(*act.Status.PortIP).ToNot(Equal(""))
+
 				g.Expect(act.Status.FloatingID).To(BeNil())
 				g.Expect(act.Status.FloatingName).To(BeNil())
 
 				g.Expect(act.Status.ExternalIP).ToNot(BeNil())
 				g.Expect(*act.Status.ExternalIP).ToNot(Equal(""))
-
 				return nil
 			})
 		})
@@ -118,11 +120,17 @@ var _ = Describe("loadbalancer controller", func() {
 		It("should swap to an internal lb", func() {
 			By("checking that the lb gets created with an public ip")
 			hopefully(lbNN, func(g Gomega, act LB) error {
+				g.Expect(act.Status.PortID).ToNot(BeNil())
+				g.Expect(act.Status.PortName).ToNot(BeNil())
+
+				g.Expect(act.Status.PortIP).ToNot(BeNil())
+				g.Expect(*act.Status.PortIP).ToNot(Equal(""))
+
 				g.Expect(act.Status.FloatingID).ToNot(BeNil())
 				g.Expect(act.Status.FloatingName).ToNot(BeNil())
 
 				g.Expect(act.Status.ExternalIP).ToNot(BeNil())
-
+				g.Expect(*act.Status.ExternalIP).ToNot(Equal(""))
 				return nil
 			})
 
