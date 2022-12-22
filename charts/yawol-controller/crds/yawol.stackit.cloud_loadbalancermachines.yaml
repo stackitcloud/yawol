@@ -80,15 +80,31 @@ spec:
                       Uses a default if not defined.
                     properties:
                       flavor_id:
+                        description: 'Deprecated: used for migration FlavorID is the
+                          flavor ID used for requesting virtual machines.'
+                        type: string
+                      flavor_name:
+                        description: 'Deprecated: used for migration FlavorName is
+                          the name of the flavor used for requesting virtual machines.
+                          FlavorName is only used if FlavorID is not defined.'
+                        type: string
+                      flavor_search:
+                        description: 'Deprecated: used for migration FlavorSearch
+                          is a search string to find the flavor used for requesting
+                          virtual machines. Search will be performed in metadata of
+                          the flavors. FlavorSearch is only used if FlavorName and
+                          FlavorID are not defined.'
+                        type: string
+                      flavorID:
                         description: FlavorID is the flavor ID used for requesting
                           virtual machines.
                         type: string
-                      flavor_name:
+                      flavorName:
                         description: FlavorName is the name of the flavor used for
                           requesting virtual machines. FlavorName is only used if
                           FlavorID is not defined.
                         type: string
-                      flavor_search:
+                      flavorSearch:
                         description: FlavorSearch is a search string to find the flavor
                           used for requesting virtual machines. Search will be performed
                           in metadata of the flavors. FlavorSearch is only used if
@@ -103,15 +119,31 @@ spec:
                       Uses a default if not defined.
                     properties:
                       image_id:
+                        description: 'Deprecated: used for migration ImageID is the
+                          image ID used for requesting virtual machines.'
+                        type: string
+                      image_name:
+                        description: 'Deprecated: used for migration ImageName is
+                          the name of the image used for requesting virtual machines.
+                          ImageName is only used if ImageID is not defined.'
+                        type: string
+                      image_search:
+                        description: 'Deprecated: used for migration ImageSearch is
+                          a search string to find the image used for requesting virtual
+                          machines. Search will be performed in metadata of the images.
+                          ImageSearch is only used if ImageName and ImageID are not
+                          defined.'
+                        type: string
+                      imageID:
                         description: ImageID is the image ID used for requesting virtual
                           machines.
                         type: string
-                      image_name:
+                      imageName:
                         description: ImageName is the name of the image used for requesting
                           virtual machines. ImageName is only used if ImageID is not
                           defined.
                         type: string
-                      image_search:
+                      imageSearch:
                         description: ImageSearch is a search string to find the image
                           used for requesting virtual machines. Search will be performed
                           in metadata of the images. ImageSearch is only used if ImageName

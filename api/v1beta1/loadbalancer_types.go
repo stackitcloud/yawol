@@ -182,16 +182,26 @@ type LoadBalancerInfrastructure struct {
 type OpenstackImageRef struct {
 	// ImageID is the image ID used for requesting virtual machines.
 	// +optional
-	ImageID *string `json:"image_id,omitempty"`
+	ImageID *string `json:"imageID,omitempty"`
 	// ImageName is the name of the image used for requesting virtual machines.
 	// ImageName is only used if ImageID is not defined.
 	// +optional
-	ImageName *string `json:"image_name,omitempty"`
+	ImageName *string `json:"imageName,omitempty"`
 	// ImageSearch is a search string to find the image used for requesting virtual machines.
 	// Search will be performed in metadata of the images.
 	// ImageSearch is only used if ImageName and ImageID are not defined.
 	// +optional
-	ImageSearch *string `json:"image_search,omitempty"`
+	ImageSearch *string `json:"imageSearch,omitempty"`
+
+	// Deprecated: use imageID instead.
+	// +optional
+	ImageIDOld *string `json:"image_id,omitempty"`
+	// Deprecated: use imageName instead.
+	// +optional
+	ImageNameOld *string `json:"image_name,omitempty"`
+	// Deprecated: use imageSearch instead.
+	// +optional
+	ImageSearchOld *string `json:"image_search,omitempty"`
 }
 
 // OpenstackFlavorRef defines a reference to a Openstack flavor.
@@ -199,16 +209,26 @@ type OpenstackImageRef struct {
 type OpenstackFlavorRef struct {
 	// FlavorID is the flavor ID used for requesting virtual machines.
 	// +optional
-	FlavorID *string `json:"flavor_id,omitempty"`
+	FlavorID *string `json:"flavorID,omitempty"`
 	// FlavorName is the name of the flavor used for requesting virtual machines.
 	// FlavorName is only used if FlavorID is not defined.
 	// +optional
-	FlavorName *string `json:"flavor_name,omitempty"`
+	FlavorName *string `json:"flavorName,omitempty"`
 	// FlavorSearch is a search string to find the flavor used for requesting virtual machines.
 	// Search will be performed in metadata of the flavors.
 	// FlavorSearch is only used if FlavorName and FlavorID are not defined.
 	// +optional
-	FlavorSearch *string `json:"flavor_search,omitempty"`
+	FlavorSearch *string `json:"flavorSearch,omitempty"`
+
+	// Deprecated: use flavorID instead.
+	// +optional
+	FlavorIDOld *string `json:"flavor_id,omitempty"`
+	// Deprecated: use flavorName instead.
+	// +optional
+	FlavorNameOld *string `json:"flavor_name,omitempty"`
+	// Deprecated: use flavorSearch instead.
+	// +optional
+	FlavorSearchOld *string `json:"flavor_search,omitempty"`
 }
 
 // LoadBalancerRef defines a reference to a LoadBalancer object.
@@ -250,10 +270,16 @@ type LoadBalancerStatus struct {
 	ServerGroupName *string `json:"serverGroupName,omitempty"`
 	// SecurityGroupID is the current security group ID mapped to the port
 	// +optional
-	SecurityGroupID *string `json:"security_group_id,omitempty"`
+	SecurityGroupID *string `json:"securityGroupID,omitempty"`
 	// SecurityGroupName is the current security group name mapped to the port
 	// +optional
-	SecurityGroupName *string `json:"security_group_name,omitempty"`
+	SecurityGroupName *string `json:"securityGroupName,omitempty"`
+	// Deprecated: use securityGroupID instead.
+	// +optional
+	SecurityGroupIDOld *string `json:"security_group_id,omitempty"`
+	// Deprecated: use securityGroupName instead.
+	// +optional
+	SecurityGroupNameOld *string `json:"security_group_name,omitempty"`
 	// LastOpenstackReconcile contains the timestamp of the last openstack reconciliation.
 	// +optional
 	LastOpenstackReconcile *metav1.Time `json:"lastOpenstackReconcile,omitempty"`

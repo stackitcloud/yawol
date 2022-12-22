@@ -393,23 +393,29 @@ var _ = Describe("loadbalancer controller", func() {
 			})
 
 			By("updating source ranges and udp")
-			ports := []v1.ServicePort{
-				{Protocol: v1.ProtocolTCP, Port: 8083},
-				{Protocol: v1.ProtocolUDP, Port: 8084},
+			// use functions here to avoid pointer override
+			getPorts := func() []v1.ServicePort {
+				return []v1.ServicePort{
+					{Protocol: v1.ProtocolTCP, Port: 8083},
+					{Protocol: v1.ProtocolUDP, Port: 8084},
+				}
 			}
-			ranges := []string{
-				"192.168.1.1/24",
-				"192.168.2.1/24",
-				"192.168.3.1/24",
+			getRanges := func() []string {
+				return []string{
+					"192.168.1.1/24",
+					"192.168.2.1/24",
+					"192.168.3.1/24",
+				}
 			}
+
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				updateLB(lbNN, func(a *LB) {
-					a.Spec.Ports = ports
-					a.Spec.Options.LoadBalancerSourceRanges = ranges
+					a.Spec.Ports = getPorts()
+					a.Spec.Options.LoadBalancerSourceRanges = getRanges()
 				})
 
-				g.Expect(act.Spec.Ports).To(Equal(ports))
-				g.Expect(act.Spec.Options.LoadBalancerSourceRanges).To(Equal(ranges))
+				g.Expect(act.Spec.Ports).To(Equal(getPorts()))
+				g.Expect(act.Spec.Options.LoadBalancerSourceRanges).To(Equal(getRanges()))
 
 				return nil
 			})
@@ -422,15 +428,8 @@ var _ = Describe("loadbalancer controller", func() {
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
 
-				if err != nil {
-					return err
-				}
-
-				// default rules + len(ports) * len(sourceRanges)
-				if len(rls) != len(getDesiredSecGroups(*act.Status.SecurityGroupID))+6 {
-					return fmt.Errorf("no additional sec group rules were applied %v/%v",
-						len(rls), len(getDesiredSecGroups(*act.Status.SecurityGroupID))+6)
-				}
+				g.Expect(err).To(BeNil())
+				g.Expect(len(rls)).To(Equal(len(getDesiredSecGroups(*act.Status.SecurityGroupID)) + 6))
 
 				// test if not all traffic is allowed
 				for _, rule := range rls {

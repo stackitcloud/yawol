@@ -1,6 +1,7 @@
 # Run YAWOL Controllers
-export CLUSTER_NAMESPACE=yawol-test
-export API_ENDPOINT="https://<IP/URL to KubeAPI>"
+# NOTE: set the following environment variales
+#export CLUSTER_NAMESPACE=yawol-test
+#export API_ENDPOINT="https://<IP/URL to KubeAPI>"
 
 go run ./cmd/yawol-controller/main.go \
 --enable-loadbalancer-controller --metrics-addr-lb=":8081" \
