@@ -137,38 +137,31 @@ spec:
                     type: object
                   flavor:
                     description: Flavor defines openstack flavor for the LoadBalancer.
-                      Uses a default if not defined.
                     properties:
                       flavor_id:
-                        description: 'Deprecated: used for migration FlavorID is the
-                          flavor ID used for requesting virtual machines.'
+                        description: 'Deprecated: use flavorID instead.'
                         type: string
                       flavor_name:
-                        description: 'Deprecated: used for migration FlavorName is
-                          the name of the flavor used for requesting virtual machines.
-                          FlavorName is only used if FlavorID is not defined.'
+                        description: 'Deprecated: use flavorName instead.'
                         type: string
                       flavor_search:
-                        description: 'Deprecated: used for migration FlavorSearch
-                          is a search string to find the flavor used for requesting
-                          virtual machines. Search will be performed in metadata of
-                          the flavors. FlavorSearch is only used if FlavorName and
-                          FlavorID are not defined.'
+                        description: 'Deprecated: use flavorSearch instead.'
                         type: string
                       flavorID:
                         description: FlavorID is the flavor ID used for requesting
                           virtual machines.
                         type: string
                       flavorName:
-                        description: FlavorName is the name of the flavor used for
-                          requesting virtual machines. FlavorName is only used if
-                          FlavorID is not defined.
+                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorName
+                          is the name of the flavor used for requesting virtual machines.
+                          FlavorName is only used if FlavorID is not defined.
                         type: string
                       flavorSearch:
-                        description: FlavorSearch is a search string to find the flavor
-                          used for requesting virtual machines. Search will be performed
-                          in metadata of the flavors. FlavorSearch is only used if
-                          FlavorName and FlavorID are not defined.
+                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorSearch
+                          is a search string to find the flavor used for requesting
+                          virtual machines. Search will be performed in metadata of
+                          the flavors. FlavorSearch is only used if FlavorName and
+                          FlavorID are not defined.
                         type: string
                     type: object
                   floatingNetID:
@@ -177,38 +170,31 @@ spec:
                     type: string
                   image:
                     description: Image defines openstack image for the LoadBalancer.
-                      Uses a default if not defined.
                     properties:
                       image_id:
-                        description: 'Deprecated: used for migration ImageID is the
-                          image ID used for requesting virtual machines.'
+                        description: 'Deprecated: use imageID instead.'
                         type: string
                       image_name:
-                        description: 'Deprecated: used for migration ImageName is
-                          the name of the image used for requesting virtual machines.
-                          ImageName is only used if ImageID is not defined.'
+                        description: 'Deprecated: use imageName instead.'
                         type: string
                       image_search:
-                        description: 'Deprecated: used for migration ImageSearch is
-                          a search string to find the image used for requesting virtual
-                          machines. Search will be performed in metadata of the images.
-                          ImageSearch is only used if ImageName and ImageID are not
-                          defined.'
+                        description: 'Deprecated: use imageSearch instead.'
                         type: string
                       imageID:
                         description: ImageID is the image ID used for requesting virtual
                           machines.
                         type: string
                       imageName:
-                        description: ImageName is the name of the image used for requesting
-                          virtual machines. ImageName is only used if ImageID is not
-                          defined.
+                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageName
+                          is the name of the image used for requesting virtual machines.
+                          ImageName is only used if ImageID is not defined.
                         type: string
                       imageSearch:
-                        description: ImageSearch is a search string to find the image
-                          used for requesting virtual machines. Search will be performed
-                          in metadata of the images. ImageSearch is only used if ImageName
-                          and ImageID are not defined.
+                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageSearch
+                          is a search string to find the image used for requesting
+                          virtual machines. Search will be performed in metadata of
+                          the images. ImageSearch is only used if ImageName and ImageID
+                          are not defined.
                         type: string
                     type: object
                   networkID:
@@ -222,6 +208,8 @@ spec:
                     type: string
                 required:
                 - authSecretRef
+                - flavor
+                - image
                 type: object
               options:
                 description: Options for additional LoadBalancer settings
@@ -434,12 +422,10 @@ spec:
                   deployment
                 type: integer
               security_group_id:
-                description: 'Deprecated: used for migration SecurityGroupID is the
-                  current security group ID mapped to the port'
+                description: 'Deprecated: use securityGroupID instead.'
                 type: string
               security_group_name:
-                description: 'Deprecated: used for migration SecurityGroupName is
-                  the current security group name mapped to the port'
+                description: 'Deprecated: use securityGroupName instead.'
                 type: string
               securityGroupID:
                 description: SecurityGroupID is the current security group ID mapped

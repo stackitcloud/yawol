@@ -122,16 +122,8 @@ func (in *LoadBalancerInfrastructure) DeepCopyInto(out *LoadBalancerInfrastructu
 		*out = make([]LoadBalancerAdditionalNetwork, len(*in))
 		copy(*out, *in)
 	}
-	if in.Flavor != nil {
-		in, out := &in.Flavor, &out.Flavor
-		*out = new(OpenstackFlavorRef)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(OpenstackImageRef)
-		(*in).DeepCopyInto(*out)
-	}
+	in.Flavor.DeepCopyInto(&out.Flavor)
+	in.Image.DeepCopyInto(&out.Image)
 	out.AuthSecretRef = in.AuthSecretRef
 	if in.ProjectID != nil {
 		in, out := &in.ProjectID, &out.ProjectID

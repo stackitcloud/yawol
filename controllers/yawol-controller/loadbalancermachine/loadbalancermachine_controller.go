@@ -653,13 +653,13 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	var err error
 
 	var imageID string
-	imageID, err = helper.GetImageID(*loadBalancerMachine.Spec.Infrastructure.Image)
+	imageID, err = helper.GetImageID(loadBalancerMachine.Spec.Infrastructure.Image)
 	if err != nil {
 		return nil, err
 	}
 
 	var flavorID string
-	flavorID, err = helper.GetFlavorID(*loadBalancerMachine.Spec.Infrastructure.Flavor)
+	flavorID, err = helper.GetFlavorID(loadBalancerMachine.Spec.Infrastructure.Flavor)
 	if err != nil {
 		return nil, err
 	}

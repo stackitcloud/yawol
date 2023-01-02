@@ -418,10 +418,10 @@ func getMockLB() *LB {
 					FloatingNetID: pointer.String("floatingnetid"),
 					NetworkID:     "networkid",
 				},
-				Flavor: &yawolv1beta1.OpenstackFlavorRef{
+				Flavor: yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},
-				Image: &yawolv1beta1.OpenstackImageRef{
+				Image: yawolv1beta1.OpenstackImageRef{
 					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
@@ -451,10 +451,10 @@ func getMockLBM(lb *LB) *LBM {
 					FloatingNetID: pointer.String("floatingnetid"),
 					NetworkID:     "networkid",
 				},
-				Flavor: &yawolv1beta1.OpenstackFlavorRef{
+				Flavor: yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},
-				Image: &yawolv1beta1.OpenstackImageRef{
+				Image: yawolv1beta1.OpenstackImageRef{
 					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{

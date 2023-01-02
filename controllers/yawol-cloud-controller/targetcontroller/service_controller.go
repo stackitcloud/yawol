@@ -203,8 +203,8 @@ func (r *ServiceReconciler) createLoadBalancer(
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				DefaultNetwork:     getDefaultNetwork(svc, infraConfig),
 				AdditionalNetworks: getAdditionalNetworks(svc, infraConfig),
-				Flavor:             infraConfig.FlavorRef,
-				Image:              infraConfig.ImageRef,
+				Flavor:             *infraConfig.FlavorRef,
+				Image:              *infraConfig.ImageRef,
 				AvailabilityZone:   *infraConfig.AvailabilityZone,
 				ProjectID:          getProjectID(svc),
 				AuthSecretRef: coreV1.SecretReference{
@@ -229,8 +229,8 @@ func (r *ServiceReconciler) reconcileInfrastructure(
 	newInfra := yawolv1beta1.LoadBalancerInfrastructure{
 		DefaultNetwork:     getDefaultNetwork(svc, infraConfig),
 		AdditionalNetworks: getAdditionalNetworks(svc, infraConfig),
-		Flavor:             infraConfig.FlavorRef,
-		Image:              infraConfig.ImageRef,
+		Flavor:             *infraConfig.FlavorRef,
+		Image:              *infraConfig.ImageRef,
 		AvailabilityZone:   *infraConfig.AvailabilityZone,
 		ProjectID:          getProjectID(svc),
 		AuthSecretRef: coreV1.SecretReference{

@@ -71,10 +71,10 @@ var _ = Describe("LB Status update", func() {
 						FloatingNetID: pointer.String("floatingnetid"),
 						NetworkID:     "networkid",
 					},
-					Flavor: &yawolv1beta1.OpenstackFlavorRef{
+					Flavor: yawolv1beta1.OpenstackFlavorRef{
 						FlavorID: pointer.String("mycool-openstack-flavor-id"),
 					},
-					Image: &yawolv1beta1.OpenstackImageRef{
+					Image: yawolv1beta1.OpenstackImageRef{
 						ImageID: pointer.String("mycool-openstack-image-id"),
 					},
 					AuthSecretRef: v1.SecretReference{

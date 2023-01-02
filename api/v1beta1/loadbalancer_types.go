@@ -189,12 +189,10 @@ type LoadBalancerInfrastructure struct {
 	// AdditionalNetworks defines additional networks that will be added to the LoadBalancerMachines.
 	// +optional
 	AdditionalNetworks []LoadBalancerAdditionalNetwork `json:"additionalNetworks"`
-	// Flavor defines openstack flavor for the LoadBalancer. Uses a default if not defined.
-	// +optional
-	Flavor *OpenstackFlavorRef `json:"flavor"`
-	// Image defines openstack image for the LoadBalancer. Uses a default if not defined.
-	// +optional
-	Image *OpenstackImageRef `json:"image"`
+	// Flavor defines openstack flavor for the LoadBalancer.
+	Flavor OpenstackFlavorRef `json:"flavor"`
+	// Image defines openstack image for the LoadBalancer.
+	Image OpenstackImageRef `json:"image"`
 	// AvailabilityZone defines the openstack availability zone for the LoadBalancer.
 	// +optional
 	AvailabilityZone string `json:"availabilityZone"`
@@ -226,10 +224,12 @@ type OpenstackImageRef struct {
 	// ImageID is the image ID used for requesting virtual machines.
 	// +optional
 	ImageID *string `json:"imageID,omitempty"`
+	// NOT IMPLEMENTED ONLY ImageID is supported.
 	// ImageName is the name of the image used for requesting virtual machines.
 	// ImageName is only used if ImageID is not defined.
 	// +optional
 	ImageName *string `json:"imageName,omitempty"`
+	// NOT IMPLEMENTED ONLY ImageID is supported.
 	// ImageSearch is a search string to find the image used for requesting virtual machines.
 	// Search will be performed in metadata of the images.
 	// ImageSearch is only used if ImageName and ImageID are not defined.
@@ -253,10 +253,12 @@ type OpenstackFlavorRef struct {
 	// FlavorID is the flavor ID used for requesting virtual machines.
 	// +optional
 	FlavorID *string `json:"flavorID,omitempty"`
+	// NOT IMPLEMENTED ONLY FlavorID is supported.
 	// FlavorName is the name of the flavor used for requesting virtual machines.
 	// FlavorName is only used if FlavorID is not defined.
 	// +optional
 	FlavorName *string `json:"flavorName,omitempty"`
+	// NOT IMPLEMENTED ONLY FlavorID is supported.
 	// FlavorSearch is a search string to find the flavor used for requesting virtual machines.
 	// Search will be performed in metadata of the flavors.
 	// FlavorSearch is only used if FlavorName and FlavorID are not defined.

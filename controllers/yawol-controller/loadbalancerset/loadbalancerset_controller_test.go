@@ -63,10 +63,10 @@ var _ = Describe("LoadBalancerSet controller", func() {
 							FloatingNetID: pointer.String(FloatingNetID),
 							NetworkID:     NetworkID,
 						},
-						Flavor: &yawolv1beta1.OpenstackFlavorRef{
+						Flavor: yawolv1beta1.OpenstackFlavorRef{
 							FlavorID: pointer.String(FlavorID),
 						},
-						Image: &yawolv1beta1.OpenstackImageRef{
+						Image: yawolv1beta1.OpenstackImageRef{
 							ImageID: pointer.String(ImageID),
 						},
 						AuthSecretRef: v1.SecretReference{
