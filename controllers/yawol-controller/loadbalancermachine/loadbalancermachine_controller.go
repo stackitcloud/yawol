@@ -187,7 +187,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if err := helper.PatchLBMStatus(ctx, r.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+	if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
 		LastOpenstackReconcile: &metav1.Time{Time: time.Now()},
 	}); err != nil {
 		return ctrl.Result{}, err
@@ -360,11 +360,13 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 		); err != nil {
 			return err
 		}
-		if lbm.Status.PortID != nil && lbm.Status.DefaultPortID != nil && //nolint: staticcheck // needed to be backwards compatible
-			*lbm.Status.PortID == *lbm.Status.DefaultPortID { //nolint: staticcheck // needed to be backwards compatible
-			if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
-				return err
-			}
+	}
+
+	// TODO cleanup after removing deprecated fields
+	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID != nil && //nolint: staticcheck // needed to be backwards compatible
+		*lbm.Status.PortID == *lbm.Status.DefaultPortID { //nolint: staticcheck // needed to be backwards compatible
+		if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
+			return err
 		}
 	}
 
@@ -479,7 +481,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 	// Patch defaultPortIP to status
 	if len(port.FixedIPs) >= 1 &&
 		(lbm.Status.DefaultPortIP == nil || *lbm.Status.DefaultPortIP != port.FixedIPs[0].IPAddress) {
-		if err := helper.PatchLBMStatus(ctx, r.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
+		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
 			DefaultPortIP: &port.FixedIPs[0].IPAddress,
 		}); err != nil {
 			return err
@@ -794,7 +796,7 @@ func (r *LoadBalancerMachineReconciler) deleteServer(
 		}
 	}
 
-	if err := helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serverID"); err != nil {
+	if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serverID"); err != nil {
 		return err
 	}
 
@@ -818,7 +820,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
-				_ = helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "defaultPortIP")
+				_ = helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortIP")
 				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
 					return false, err
 				}
@@ -867,7 +869,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 			}
 			requeue = true
 		} else {
-			if err := helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "defaultPortName"); err != nil {
+			if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortName"); err != nil {
 				return false, err
 			}
 		}
@@ -890,7 +892,7 @@ func (r *LoadBalancerMachineReconciler) deleteSA(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serviceAccountName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serviceAccountName")
 }
 
 func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
@@ -907,7 +909,7 @@ func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "roleBindingName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleBindingName")
 }
 
 func (r *LoadBalancerMachineReconciler) deleteRole(
@@ -924,7 +926,7 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "roleName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleName")
 }
 
 func (r *LoadBalancerMachineReconciler) waitForServerStatus(

@@ -618,14 +618,14 @@ func getAdditionalNetworks(
 	// use struct to make sure there are no duplicates
 	networkIDs := make(map[string]struct{})
 
-	if _, ok := svc.Annotations[yawolv1beta1.ServiceAdditionalNetworks]; ok {
-		for _, networkID := range strings.Split(svc.Annotations[yawolv1beta1.ServiceAdditionalNetworks], ",") {
+	if networks, ok := svc.Annotations[yawolv1beta1.ServiceAdditionalNetworks]; ok {
+		for _, networkID := range strings.Split(networks, ",") {
 			networkIDs[networkID] = struct{}{}
 		}
 	}
 
-	if _, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
-		if svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID] != *infraConfig.NetworkID {
+	if networkID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
+		if networkID != *infraConfig.NetworkID {
 			if skip, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceSkipCloudControllerDefaultNetworkID]); !skip {
 				networkIDs[*infraConfig.NetworkID] = struct{}{}
 			}
@@ -649,20 +649,18 @@ func getDefaultNetwork(
 		NetworkID:     *infraConfig.NetworkID,
 	}
 
-	if _, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
-		defaultNetwork.NetworkID = svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]
+	if networkID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
+		defaultNetwork.NetworkID = networkID
 	}
 
-	if _, ok := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]; ok {
-		floatingNetID := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]
-		defaultNetwork.FloatingNetID = &floatingNetID
+	if floatingID, ok := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]; ok {
+		defaultNetwork.FloatingNetID = &floatingID
 	}
 	return defaultNetwork
 }
 
 func getProjectID(svc *coreV1.Service) *string {
-	if _, ok := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]; ok {
-		projectID := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]
+	if projectID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]; ok {
 		return &projectID
 	}
 	return nil

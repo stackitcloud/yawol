@@ -520,7 +520,8 @@ func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity 
 			ctx,
 			portClient,
 			*lb.Status.PortName,
-			networkID)
+			networkID,
+		)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
