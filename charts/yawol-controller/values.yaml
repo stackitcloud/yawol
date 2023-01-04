@@ -17,27 +17,8 @@ yawolCloudController:
   clusterRoleEnabled: true
   additionalArguments:
     - -target-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-  additionalVolumes:
-    - name: kubeconfig
-      projected:
-        defaultMode: 420
-        sources:
-        - secret:
-            items:
-            - key: kubeconfig
-              path: kubeconfig
-            name: generic-token-kubeconfig
-            optional: false
-        - secret:
-            items:
-            - key: token
-              path: token
-            name: shoot-access-cloud-controller-manager
-            optional: false
-  additionalVolumeMounts:
-    - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
-      name: kubeconfig
-      readOnly: true
+  additionalVolumes: []
+  additionalVolumeMounts: []
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
     tag: latest
@@ -117,3 +98,5 @@ yawolAvailabilityZone: ""
 
 # URL/IP of the Kubernetes API server that contains the LoadBalancer resources
 yawolAPIHost:
+
+genericTokenKubeconfigSecretName: generic-token-kubeconfig

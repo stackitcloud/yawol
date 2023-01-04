@@ -77,8 +77,11 @@ spec:
         resources:
 {{ toYaml .Values.resources.yawolCloudController | indent 10 }}
         {{- end }}
-{{- if .Values.yawolCloudController.additionalVolumeMounts }}
         volumeMounts:
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig
+          readOnly: true
+{{- if .Values.yawolCloudController.additionalVolumeMounts }}
 {{ toYaml .Values.yawolCloudController.additionalVolumeMounts | indent 8 }}
 {{- end }}
         securityContext:
@@ -89,8 +92,24 @@ spec:
               - ALL
       dnsPolicy: ClusterFirst
       restartPolicy: Always
-{{- if .Values.yawolCloudController.additionalVolumes }}
       volumes:
+      - name: kubeconfig
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+              - key: kubeconfig
+                path: kubeconfig
+              name: {{ .Values.genericTokenKubeconfigSecretName }}
+              optional: false
+          - secret:
+              items:
+              - key: token
+                path: token
+              name: shoot-access-cloud-controller-manager
+              optional: false
+{{- if .Values.yawolCloudController.additionalVolumes }}
 {{ toYaml .Values.yawolCloudController.additionalVolumes | indent 6 }}
 {{- end }}
 {{- end }}
