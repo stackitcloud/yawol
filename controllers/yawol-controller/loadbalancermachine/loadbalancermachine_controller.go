@@ -56,7 +56,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	RecorderLB        record.EventRecorder
 	APIEndpoint       string
 	Metrics           *helpermetrics.LoadBalancerMachineMetricList
-	getOsClientForIni func(iniData []byte) (os.Client, error)
+	getOsClientForIni os.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
 }
@@ -78,10 +78,10 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 	var err error
 	var osClient os.Client
 
-	osClient, err = openstackhelper.GetOpenStackClientForAuthRef(
+	osClient, err = openstackhelper.GetOpenStackClientForInfrastructure(
 		ctx,
 		r.Client,
-		loadBalancerMachine.Spec.Infrastructure.AuthSecretRef,
+		loadBalancerMachine.Spec.Infrastructure,
 		r.getOsClientForIni,
 	)
 	if err != nil {
@@ -95,8 +95,12 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		if err := r.deleteServer(ctx, osClient, loadBalancerMachine); err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := r.deletePort(ctx, osClient, req, loadBalancerMachine); err != nil {
+		requeue, err := r.deletePort(ctx, osClient, loadBalancerMachine)
+		if err != nil {
 			return ctrl.Result{}, err
+		}
+		if requeue {
+			return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 		}
 
 		// delete k8s resources
@@ -183,7 +187,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if err := helper.PatchLBMStatus(ctx, r.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+	if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
 		LastOpenstackReconcile: &metav1.Time{Time: time.Now()},
 	}); err != nil {
 		return ctrl.Result{}, err
@@ -195,9 +199,9 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
-		r.getOsClientForIni = func(iniData []byte) (os.Client, error) {
+		r.getOsClientForIni = func(iniData []byte, overwrite os.OSClientOverwrite) (os.Client, error) {
 			osClient := os.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
+			err := osClient.Configure(iniData, overwrite, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -337,7 +341,7 @@ func (r *LoadBalancerMachineReconciler) reconcileRoleBinding(
 	return nil
 }
 
-func (r *LoadBalancerMachineReconciler) reconcilePort(
+func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
 	ctx context.Context,
 	osClient os.Client,
 	req ctrl.Request,
@@ -346,7 +350,36 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 ) error {
 	var err error
 
-	if lbm.Spec.Infrastructure.NetworkID == "" {
+	// TODO cleanup after removing deprecated fields
+	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID == nil { //nolint: staticcheck // needed to be backwards compatible
+		if err := helper.PatchLBMStatus(
+			ctx,
+			r.Client.Status(),
+			lbm,
+			yawolv1beta1.LoadBalancerMachineStatus{DefaultPortID: lbm.Status.PortID}, //nolint: staticcheck // needed to be backwards compatible
+		); err != nil {
+			return err
+		}
+	}
+
+	// TODO cleanup after removing deprecated fields
+	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID != nil && //nolint: staticcheck // needed to be backwards compatible
+		*lbm.Status.PortID == *lbm.Status.DefaultPortID { //nolint: staticcheck // needed to be backwards compatible
+		if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
+			return err
+		}
+	}
+
+	// TODO cleanup after removing deprecated fields
+	var networkID string
+	if lbm.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
+		networkID = lbm.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+	}
+	if lbm.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
+		networkID = lbm.Spec.Infrastructure.DefaultNetwork.NetworkID
+	}
+
+	if networkID == "" {
 		return helper.ErrNoNetworkID
 	}
 
@@ -356,20 +389,39 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 		return err
 	}
 
-	portName := req.NamespacedName.String()
+	if lbm.Status.DefaultPortName == nil {
+		portName := req.NamespacedName.String()
+		if err := helper.PatchLBMStatus(
+			ctx,
+			r.Client.Status(),
+			lbm,
+			yawolv1beta1.LoadBalancerMachineStatus{DefaultPortName: &portName},
+		); err != nil {
+			return err
+		}
+	}
+
+	if lbm.Status.DefaultPortName == nil {
+		return helper.ErrPortNameEmpty
+	}
+
 	var port *ports.Port
 
 	// find or create port
-	if lbm.Status.PortID == nil {
+	if lbm.Status.DefaultPortID == nil {
 		// try to find port by name
-		port, err = openstackhelper.GetPortByName(ctx, portClient, portName)
+		port, err = openstackhelper.GetPortByName(ctx, portClient, *lbm.Status.DefaultPortName)
 		if err != nil {
 			return err
 		}
 
 		// create port
 		if port == nil {
-			port, err = openstackhelper.CreatePort(ctx, portClient, portName, lbm.Spec.Infrastructure.NetworkID)
+			port, err = openstackhelper.CreatePort(
+				ctx,
+				portClient,
+				*lbm.Status.DefaultPortName,
+				networkID)
 			if err != nil {
 				r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
 				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lbm)
@@ -398,20 +450,20 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 			ctx,
 			r.Client.Status(),
 			lbm,
-			yawolv1beta1.LoadBalancerMachineStatus{PortID: &port.ID},
+			yawolv1beta1.LoadBalancerMachineStatus{DefaultPortID: &port.ID},
 		); err != nil {
 			return err
 		}
 	}
 
 	// Check if port still exists properly
-	if lbm.Status.PortID != nil {
-		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.PortID); err != nil {
+	if lbm.Status.DefaultPortID != nil {
+		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
-				r.Log.Info("lbm port not found in openstack", "portID", *lbm.Status.PortID)
+				r.Log.Info("lbm port not found in openstack", "defaultPortID", *lbm.Status.DefaultPortID)
 				// remove port from LB status so a new one gets created next reconcile
-				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
+				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
 					return err
 				}
 				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
@@ -424,6 +476,16 @@ func (r *LoadBalancerMachineReconciler) reconcilePort(
 
 	if port == nil {
 		return helper.ErrFailedToCreatePortForLBM
+	}
+
+	// Patch defaultPortIP to status
+	if len(port.FixedIPs) >= 1 &&
+		(lbm.Status.DefaultPortIP == nil || *lbm.Status.DefaultPortIP != port.FixedIPs[0].IPAddress) {
+		if err := helper.PatchLBMStatus(ctx, r.Client.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
+			DefaultPortIP: &port.FixedIPs[0].IPAddress,
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -443,12 +505,12 @@ func (r *LoadBalancerMachineReconciler) reconcilePortAddressPair(
 		return "", err
 	}
 
-	if lbm.Status.PortID == nil {
+	if lbm.Status.DefaultPortID == nil {
 		r.Log.Info(helper.ErrLBMPortNotSet.Error(), "lbm", lbm.Name)
 		return "", helper.ErrLBMPortNotSet
 	}
 
-	portLBM, err := openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.PortID)
+	portLBM, err := openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.DefaultPortID)
 	if err != nil {
 		return "", kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
 	}
@@ -543,7 +605,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		return r.Client.Delete(ctx, loadBalancerMachine)
 	}
 
-	if loadBalancerMachine.Status.PortID == nil {
+	if loadBalancerMachine.Status.DefaultPortID == nil {
 		return helper.ErrPortIDEmpty
 	}
 
@@ -593,19 +655,37 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	var err error
 
 	var imageID string
-	imageID, err = helper.GetImageID(*loadBalancerMachine.Spec.Infrastructure.Image)
+	imageID, err = helper.GetImageID(loadBalancerMachine.Spec.Infrastructure.Image)
 	if err != nil {
 		return nil, err
 	}
 
 	var flavorID string
-	flavorID, err = helper.GetFlavorID(*loadBalancerMachine.Spec.Infrastructure.Flavor)
+	flavorID, err = helper.GetFlavorID(loadBalancerMachine.Spec.Infrastructure.Flavor)
 	if err != nil {
 		return nil, err
 	}
 
-	if loadBalancerMachine.Spec.Infrastructure.NetworkID == "" {
+	// TODO cleanup after removing deprecated fields
+	var networkID string
+
+	if loadBalancerMachine.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
+		networkID = loadBalancerMachine.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+	}
+	if loadBalancerMachine.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
+		networkID = loadBalancerMachine.Spec.Infrastructure.DefaultNetwork.NetworkID
+	}
+
+	if networkID == "" {
 		return nil, helper.ErrNoNetworkID
+	}
+	var serverNetworks []servers.Network
+	serverNetworks = append(serverNetworks, servers.Network{UUID: networkID, Port: *loadBalancerMachine.Status.DefaultPortID})
+
+	for i := range loadBalancerMachine.Spec.Infrastructure.AdditionalNetworks {
+		// we don't test for overlapping networks because this can be a valid use case,
+		// and it is hard to validate over multiple openstack objects.
+		serverNetworks = append(serverNetworks, servers.Network{UUID: loadBalancerMachine.Spec.Infrastructure.AdditionalNetworks[i].NetworkID})
 	}
 
 	var createOpts servers.CreateOptsBuilder
@@ -616,7 +696,7 @@ func (r *LoadBalancerMachineReconciler) createServer(
 		SecurityGroups:   nil,
 		UserData:         []byte(userdata),
 		AvailabilityZone: loadBalancerMachine.Spec.Infrastructure.AvailabilityZone,
-		Networks:         []servers.Network{{UUID: loadBalancerMachine.Spec.Infrastructure.NetworkID, Port: *loadBalancerMachine.Status.PortID}},
+		Networks:         serverNetworks,
 		Metadata:         nil,
 	}
 
@@ -716,7 +796,7 @@ func (r *LoadBalancerMachineReconciler) deleteServer(
 		}
 	}
 
-	if err := helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serverID"); err != nil {
+	if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serverID"); err != nil {
 		return err
 	}
 
@@ -726,55 +806,76 @@ func (r *LoadBalancerMachineReconciler) deleteServer(
 func (r *LoadBalancerMachineReconciler) deletePort(
 	ctx context.Context,
 	osClient os.Client,
-	req ctrl.Request,
 	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
+) (bool, error) {
 	var err error
+	var requeue bool
 	var portClient os.PortClient
 	portClient, err = osClient.PortClient(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if lbm.Status.PortID != nil {
+	if lbm.Status.DefaultPortID != nil {
+		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
+			switch err.(type) {
+			case gophercloud.ErrDefault404:
+				_ = helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortIP")
+				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
+					return false, err
+				}
+			default:
+				r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
+				return false, kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			}
+		}
+		requeue = true
+	}
+
+	// TODO cleanup after removing deprecated fields
+	if lbm.Status.PortID != nil { //nolint: staticcheck // needed to be backwards compatible
+		//nolint: staticcheck // needed to be backwards compatible
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.PortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
-				r.Log.Info("error deleting port, already deleted", "lbm", lbm.Name)
+				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
+					return false, err
+				}
 			default:
 				r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
-				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+				return false, kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+			}
+		}
+		requeue = true
+	}
+
+	if requeue {
+		return true, nil
+	}
+
+	if lbm.Status.DefaultPortName != nil {
+		port, err := openstackhelper.GetPortByName(ctx, portClient, *lbm.Status.DefaultPortName)
+		if err != nil {
+			return false, err
+		}
+		if port != nil && port.ID != "" {
+			if err = openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
+				switch err.(type) {
+				case gophercloud.ErrDefault404:
+				default:
+					r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
+					return false, kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
+				}
+			}
+			requeue = true
+		} else {
+			if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortName"); err != nil {
+				return false, err
 			}
 		}
 	}
 
-	// delete orphan ports
-	portName := req.NamespacedName.String()
-	var portList []ports.Port
-	portList, err = portClient.List(ctx, ports.ListOpts{Name: portName})
-	if err != nil {
-		return err
-	}
-
-	for i := range portList {
-		port := &portList[i]
-		// double check
-		if port.ID == "" || port.Name != portName {
-			continue
-		}
-
-		if err = openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
-			switch err.(type) {
-			case gophercloud.ErrDefault404:
-				r.Log.Info("error deleting port, already deleted", "lbm", lbm.Name)
-			default:
-				r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
-				return kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
-			}
-		}
-	}
-
-	return nil
+	return requeue, nil
 }
 
 func (r *LoadBalancerMachineReconciler) deleteSA(
@@ -791,7 +892,7 @@ func (r *LoadBalancerMachineReconciler) deleteSA(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "serviceAccountName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serviceAccountName")
 }
 
 func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
@@ -808,7 +909,7 @@ func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "roleBindingName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleBindingName")
 }
 
 func (r *LoadBalancerMachineReconciler) deleteRole(
@@ -825,7 +926,7 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 		return err
 	}
 
-	return helper.RemoveFromLBMStatus(ctx, r.Status(), lbm, "roleName")
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleName")
 }
 
 func (r *LoadBalancerMachineReconciler) waitForServerStatus(

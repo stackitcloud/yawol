@@ -11,7 +11,19 @@ const (
 	ServiceImageID = "yawol.stackit.cloud/imageId"
 	// ServiceFlavorID overwrite default flavorID
 	ServiceFlavorID = "yawol.stackit.cloud/flavorId"
-	// AvailabilityZoneID set availability zone for specific service
+	// ServiceDefaultNetworkID overwrites the default openstack network for the loadbalancer
+	// If this is set to a different network ID than defined as default in the yawol-cloud-controller
+	// the default from the yawol-cloud-controller will be added to the additionalNetworks
+	ServiceDefaultNetworkID = "yawol.stackit.cloud/defaultNetworkID"
+	// ServiceSkipCloudControllerDefaultNetworkID if set to true it do not add the default network ID from
+	// the yawol-cloud-controller to the additionalNetworks
+	ServiceSkipCloudControllerDefaultNetworkID = "yawol.stackit.cloud/skipCloudControllerDefaultNetworkID"
+	// ServiceDefaultProjectID overwrites the projectID which is set by the secret.
+	// If not set the settings from the secret binding will be used.
+	ServiceDefaultProjectID = "yawol.stackit.cloud/projectID"
+	// ServiceFloatingNetworkID overwrites the openstack floating network for the loadbalancer
+	ServiceFloatingNetworkID = "yawol.stackit.cloud/floatingNetworkID"
+	// ServiceAvailabilityZone set availability zone for specific service
 	ServiceAvailabilityZone = "yawol.stackit.cloud/availabilityZone"
 	// ServiceInternalLoadbalancer sets the internal flag in LB objects
 	ServiceInternalLoadbalancer = "yawol.stackit.cloud/internalLB"
@@ -39,6 +51,8 @@ const (
 	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
 	// ServiceServerGroupPolicy set openstack server group policy for a LoadBalancer
 	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
+	// ServiceAdditionalNetworks adds additional openstack networks for the loadbalancer (comma separated list)
+	ServiceAdditionalNetworks = "yawol.stackit.cloud/additionalNetworks"
 )
 
 // +kubebuilder:object:root=true
@@ -160,22 +174,49 @@ type LoadBalancerEndpoint struct {
 
 // LoadBalancerInfrastructure defines infrastructure defaults for the LoadBalancer
 type LoadBalancerInfrastructure struct {
+	// Deprecated: use defaultNetwork instead
 	// FloatingNetID defines a openstack ID for the floatingNet.
 	// +optional
 	FloatingNetID *string `json:"floatingNetID,omitempty"`
+	// Deprecated: use defaultNetwork instead
 	// NetworkID defines a openstack ID for the network.
-	NetworkID string `json:"networkID"`
-	// Flavor defines openstack flavor for the LoadBalancer. Uses a default if not defined.
 	// +optional
-	Flavor *OpenstackFlavorRef `json:"flavor,omitempty"`
-	// Image defines openstack image for the LoadBalancer. Uses a default if not defined.
+	NetworkID string `json:"networkID,omitempty"`
+	// DefaultNetwork defines the default/listener network for the Loadbalancer.
 	// +optional
-	Image *OpenstackImageRef `json:"image,omitempty"`
+	// TODO Remove optional when Deprecations are removed
+	DefaultNetwork LoadBalancerDefaultNetwork `json:"defaultNetwork"`
+	// AdditionalNetworks defines additional networks that will be added to the LoadBalancerMachines.
+	// +optional
+	AdditionalNetworks []LoadBalancerAdditionalNetwork `json:"additionalNetworks"`
+	// Flavor defines openstack flavor for the LoadBalancer.
+	Flavor OpenstackFlavorRef `json:"flavor"`
+	// Image defines openstack image for the LoadBalancer.
+	Image OpenstackImageRef `json:"image"`
 	// AvailabilityZone defines the openstack availability zone for the LoadBalancer.
 	// +optional
 	AvailabilityZone string `json:"availabilityZone"`
 	// AuthSecretRef defines a secretRef for the openstack secret.
 	AuthSecretRef corev1.SecretReference `json:"authSecretRef"`
+	// ProjectID defines an openstack project ID which will be used instead of the project from the secret ref.
+	// If not set the project from the secret ref will be used.
+	// +optional
+	ProjectID *string `json:"projectID"`
+}
+
+// LoadBalancerAdditionalNetwork defines additional networks for the LoadBalancer
+type LoadBalancerAdditionalNetwork struct {
+	// NetworkID defines an openstack ID for the network.
+	NetworkID string `json:"networkID"`
+}
+
+// LoadBalancerDefaultNetwork defines the default/listener network for the Loadbalancer
+type LoadBalancerDefaultNetwork struct {
+	// FloatingNetID defines an openstack ID for the floatingNet.
+	// +optional
+	FloatingNetID *string `json:"floatingNetID,omitempty"`
+	// NetworkID defines an openstack ID for the network.
+	NetworkID string `json:"networkID"`
 }
 
 // OpenstackImageRef defines a reference to a Openstack image.
@@ -183,10 +224,12 @@ type OpenstackImageRef struct {
 	// ImageID is the image ID used for requesting virtual machines.
 	// +optional
 	ImageID *string `json:"imageID,omitempty"`
+	// NOT IMPLEMENTED ONLY ImageID is supported.
 	// ImageName is the name of the image used for requesting virtual machines.
 	// ImageName is only used if ImageID is not defined.
 	// +optional
 	ImageName *string `json:"imageName,omitempty"`
+	// NOT IMPLEMENTED ONLY ImageID is supported.
 	// ImageSearch is a search string to find the image used for requesting virtual machines.
 	// Search will be performed in metadata of the images.
 	// ImageSearch is only used if ImageName and ImageID are not defined.
@@ -210,10 +253,12 @@ type OpenstackFlavorRef struct {
 	// FlavorID is the flavor ID used for requesting virtual machines.
 	// +optional
 	FlavorID *string `json:"flavorID,omitempty"`
+	// NOT IMPLEMENTED ONLY FlavorID is supported.
 	// FlavorName is the name of the flavor used for requesting virtual machines.
 	// FlavorName is only used if FlavorID is not defined.
 	// +optional
 	FlavorName *string `json:"flavorName,omitempty"`
+	// NOT IMPLEMENTED ONLY FlavorID is supported.
 	// FlavorSearch is a search string to find the flavor used for requesting virtual machines.
 	// Search will be performed in metadata of the flavors.
 	// FlavorSearch is only used if FlavorName and FlavorID are not defined.
@@ -262,6 +307,9 @@ type LoadBalancerStatus struct {
 	// PortName is the current openstack name from the virtual Port.
 	// +optional
 	PortName *string `json:"portName,omitempty"`
+	// PortIP is the IP from the openstack virtual Port.
+	// +optional
+	PortIP *string `json:"portIP,omitempty"`
 	// ServerGroupID is the current sever group ID
 	// +optional
 	ServerGroupID *string `json:"serverGroupID,omitempty"`

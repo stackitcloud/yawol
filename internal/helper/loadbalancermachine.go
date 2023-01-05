@@ -126,8 +126,8 @@ func parseLoadBalancerMachineOpenstackInfoMetrics(
 		"serverID":  "nil",
 	}
 
-	if loadBalancerMachine.Status.PortID != nil {
-		labels["portID"] = *loadBalancerMachine.Status.PortID
+	if loadBalancerMachine.Status.DefaultPortID != nil {
+		labels["portID"] = *loadBalancerMachine.Status.DefaultPortID
 	}
 
 	if loadBalancerMachine.Status.ServerID != nil {

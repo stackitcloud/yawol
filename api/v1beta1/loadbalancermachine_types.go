@@ -38,6 +38,7 @@ type LoadBalancerMachineSpec struct {
 	// PortID defines the openstack ID of the port attached to the FloatingIP.
 	PortID string `json:"portID"`
 	// ServerGroupID defines the openstack ID of the openstack server group.
+	// +optional
 	ServerGroupID string `json:"serverGroupID"`
 	// LoadBalancerRef defines a reference to the LoadBalancer Object.
 	LoadBalancerRef LoadBalancerRef `json:"loadBalancerRef"`
@@ -68,9 +69,19 @@ type LoadBalancerMachineStatus struct {
 	// ServerID contains the openstack server ID for a LoadBalancerMachine.
 	// +optional
 	ServerID *string `json:"serverID,omitempty"`
+	// Deprecated: use defaultPortID instead
 	// PortID contains the openstack port ID for a LoadBalancerMachine.
 	// +optional
 	PortID *string `json:"portID,omitempty"`
+	// DefaultPortID contains the default openstack port ID for a LoadBalancerMachine.
+	// +optional
+	DefaultPortID *string `json:"defaultPortID,omitempty"`
+	// DefaultPortName contains the default openstack port Name for a LoadBalancerMachine.
+	// +optional
+	DefaultPortName *string `json:"defaultPortName,omitempty"`
+	// DefaultPortIP contains the default openstack port IP for a LoadBalancerMachine.
+	// +optional
+	DefaultPortIP *string `json:"defaultPortIP,omitempty"`
 	// ServiceAccountName contains the namespacedName from the ServiceAccount for a LoadBalancerMachine.
 	// +optional
 	ServiceAccountName *string `json:"serviceAccountName,omitempty"`

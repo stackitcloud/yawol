@@ -3,7 +3,6 @@ package targetcontroller
 import (
 	"context"
 	"crypto/sha256"
-
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
@@ -147,7 +146,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	err = r.reconcileInfrastructure(ctx, loadBalancer, infraDefaults)
+	err = r.reconcileInfrastructure(ctx, loadBalancer, svc, infraDefaults)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -202,11 +201,12 @@ func (r *ServiceReconciler) createLoadBalancer(
 			},
 			ExistingFloatingIP: helper.GetExistingFloatingIPFromAnnotation(svc),
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID:    infraConfig.FloatingNetworkID,
-				NetworkID:        *infraConfig.NetworkID,
-				Flavor:           infraConfig.FlavorRef,
-				Image:            infraConfig.ImageRef,
-				AvailabilityZone: *infraConfig.AvailabilityZone,
+				DefaultNetwork:     getDefaultNetwork(svc, infraConfig),
+				AdditionalNetworks: getAdditionalNetworks(svc, infraConfig),
+				Flavor:             *infraConfig.FlavorRef,
+				Image:              *infraConfig.ImageRef,
+				AvailabilityZone:   *infraConfig.AvailabilityZone,
+				ProjectID:          getProjectID(svc),
 				AuthSecretRef: coreV1.SecretReference{
 					Name:      *infraConfig.AuthSecretName,
 					Namespace: *infraConfig.Namespace,
@@ -223,19 +223,26 @@ func (r *ServiceReconciler) createLoadBalancer(
 func (r *ServiceReconciler) reconcileInfrastructure(
 	ctx context.Context,
 	lb *yawolv1beta1.LoadBalancer,
+	svc *coreV1.Service,
 	infraConfig InfrastructureDefaults,
 ) error {
 	newInfra := yawolv1beta1.LoadBalancerInfrastructure{
-		FloatingNetID:    infraConfig.FloatingNetworkID,
-		NetworkID:        *infraConfig.NetworkID,
-		Flavor:           infraConfig.FlavorRef,
-		Image:            infraConfig.ImageRef,
-		AvailabilityZone: *infraConfig.AvailabilityZone,
+		DefaultNetwork:     getDefaultNetwork(svc, infraConfig),
+		AdditionalNetworks: getAdditionalNetworks(svc, infraConfig),
+		Flavor:             *infraConfig.FlavorRef,
+		Image:              *infraConfig.ImageRef,
+		AvailabilityZone:   *infraConfig.AvailabilityZone,
+		ProjectID:          getProjectID(svc),
 		AuthSecretRef: coreV1.SecretReference{
 			Name:      *infraConfig.AuthSecretName,
 			Namespace: *infraConfig.Namespace,
 		},
 	}
+
+	if !reflect.DeepEqual(newInfra.ProjectID, lb.Spec.Infrastructure.ProjectID) {
+		return kubernetes.SendErrorAsEvent(r.Recorder, helper.ErrProjectIsImmutable, svc)
+	}
+
 	if !reflect.DeepEqual(newInfra, lb.Spec.Infrastructure) {
 		newInfraJSON, err := json.Marshal(newInfra)
 		if err != nil {
@@ -255,6 +262,23 @@ func (r *ServiceReconciler) reconcileInfrastructure(
 			return err
 		}
 	}
+
+	// TODO remove after remove deprecation
+	if lb.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
+		patch := []byte(`{"spec":{"infrastructure": { "networkID": "" }}}`)
+		err := r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+		if err != nil {
+			return err
+		}
+	}
+	if lb.Spec.Infrastructure.FloatingNetID != nil { //nolint: staticcheck // needed to be backwards compatible
+		patch := []byte(`{"spec":{"infrastructure": { "floatingNetID": null }}}`)
+		err := r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -582,4 +606,62 @@ func (r *ServiceReconciler) addAnnotation(
 	}
 	patch := []byte(`{"metadata": {"annotations": {` + string(keyJSON) + `: ` + string(valueJSON) + `}}}`)
 	return r.ControlClient.Patch(ctx, lb, client.RawPatch(types.MergePatchType, patch))
+}
+
+// getAdditionalNetworks returns LoadBalancerAdditionalNetwork based on the ServiceAdditionalNetworks annotation
+// If the default network is overwritten with the ServiceDefaultNetworkID annotation it will add the
+// networkID from the InfrastructureDefaults
+func getAdditionalNetworks(
+	svc *coreV1.Service,
+	infraConfig InfrastructureDefaults,
+) []yawolv1beta1.LoadBalancerAdditionalNetwork {
+	// use struct to make sure there are no duplicates
+	networkIDs := make(map[string]struct{})
+
+	if networks, ok := svc.Annotations[yawolv1beta1.ServiceAdditionalNetworks]; ok {
+		for _, networkID := range strings.Split(networks, ",") {
+			networkIDs[networkID] = struct{}{}
+		}
+	}
+
+	if networkID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
+		if networkID != *infraConfig.NetworkID {
+			if skip, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceSkipCloudControllerDefaultNetworkID]); !skip {
+				networkIDs[*infraConfig.NetworkID] = struct{}{}
+			}
+		}
+	}
+
+	var additionalNetworks []yawolv1beta1.LoadBalancerAdditionalNetwork
+	for networkID := range networkIDs {
+		additionalNetworks = append(additionalNetworks, yawolv1beta1.LoadBalancerAdditionalNetwork{NetworkID: networkID})
+	}
+
+	return additionalNetworks
+}
+
+func getDefaultNetwork(
+	svc *coreV1.Service,
+	infraConfig InfrastructureDefaults,
+) yawolv1beta1.LoadBalancerDefaultNetwork {
+	defaultNetwork := yawolv1beta1.LoadBalancerDefaultNetwork{
+		FloatingNetID: infraConfig.FloatingNetworkID,
+		NetworkID:     *infraConfig.NetworkID,
+	}
+
+	if networkID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
+		defaultNetwork.NetworkID = networkID
+	}
+
+	if floatingID, ok := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]; ok {
+		defaultNetwork.FloatingNetID = &floatingID
+	}
+	return defaultNetwork
+}
+
+func getProjectID(svc *coreV1.Service) *string {
+	if projectID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultProjectID]; ok {
+		return &projectID
+	}
+	return nil
 }

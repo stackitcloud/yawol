@@ -39,10 +39,11 @@ func CreatePort(
 	portName string,
 	networkID string,
 ) (*ports.Port, error) {
-	port, err := portClient.Create(ctx, ports.CreateOpts{
+	opts := ports.CreateOpts{
 		Name:      portName,
 		NetworkID: networkID,
-	})
+	}
+	port, err := portClient.Create(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

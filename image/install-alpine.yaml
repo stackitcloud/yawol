@@ -7,6 +7,22 @@
     - name: update alpine
       command: "apk upgrade --update-cache --available"
 
+    # use dhcpcd instead of udhcpd (for ipv6)
+    - name: install dhcpcd
+      command: "apk add dhcpcd"
+
+    - name:
+      ansible.builtin.lineinfile:
+        path: /etc/dhcpcd.conf
+        search_string: 'slaac private'
+        line: '#slaac private'
+
+    - name:
+      ansible.builtin.lineinfile:
+        path: /etc/dhcpcd.conf
+        search_string: 'slaac hwaddr'
+        line: 'slaac hwaddr'
+
     # keepalived
     - name: install keepalived
       command: "apk add keepalived"
