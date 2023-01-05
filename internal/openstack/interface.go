@@ -44,7 +44,7 @@ import (
 // Client provides a interface to configure and use different OpenStack clients.
 type Client interface {
 	// Takes the content of an ini-file, to configure the openstack client
-	Configure(ini []byte, timeout time.Duration, promCounter *prometheus.CounterVec) error
+	Configure(ini []byte, overwrite OSClientOverwrite, timeout time.Duration, promCounter *prometheus.CounterVec) error
 	// Returns the FipClient created from the configured ini
 	FipClient(ctx context.Context) (FipClient, error)
 	// Returns the PortClient created from the configured ini

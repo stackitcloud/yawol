@@ -117,6 +117,21 @@ spec:
                       infrastructure:
                         description: Infrastructure defines parameters for the Infrastructure.
                         properties:
+                          additionalNetworks:
+                            description: AdditionalNetworks defines additional networks
+                              that will be added to the LoadBalancerMachines.
+                            items:
+                              description: LoadBalancerAdditionalNetwork defines additional
+                                networks for the LoadBalancer
+                              properties:
+                                networkID:
+                                  description: NetworkID defines an openstack ID for
+                                    the network.
+                                  type: string
+                              required:
+                              - networkID
+                              type: object
+                            type: array
                           authSecretRef:
                             description: AuthSecretRef defines a secretRef for the
                               openstack secret.
@@ -135,93 +150,101 @@ spec:
                             description: AvailabilityZone defines the openstack availability
                               zone for the LoadBalancer.
                             type: string
+                          defaultNetwork:
+                            description: DefaultNetwork defines the default/listener
+                              network for the Loadbalancer. TODO Remove optional when
+                              Deprecations are removed
+                            properties:
+                              floatingNetID:
+                                description: FloatingNetID defines an openstack ID
+                                  for the floatingNet.
+                                type: string
+                              networkID:
+                                description: NetworkID defines an openstack ID for
+                                  the network.
+                                type: string
+                            required:
+                            - networkID
+                            type: object
                           flavor:
                             description: Flavor defines openstack flavor for the LoadBalancer.
-                              Uses a default if not defined.
                             properties:
                               flavor_id:
-                                description: 'Deprecated: used for migration FlavorID
-                                  is the flavor ID used for requesting virtual machines.'
+                                description: 'Deprecated: use flavorID instead.'
                                 type: string
                               flavor_name:
-                                description: 'Deprecated: used for migration FlavorName
-                                  is the name of the flavor used for requesting virtual
-                                  machines. FlavorName is only used if FlavorID is
-                                  not defined.'
+                                description: 'Deprecated: use flavorName instead.'
                                 type: string
                               flavor_search:
-                                description: 'Deprecated: used for migration FlavorSearch
-                                  is a search string to find the flavor used for requesting
-                                  virtual machines. Search will be performed in metadata
-                                  of the flavors. FlavorSearch is only used if FlavorName
-                                  and FlavorID are not defined.'
+                                description: 'Deprecated: use flavorSearch instead.'
                                 type: string
                               flavorID:
                                 description: FlavorID is the flavor ID used for requesting
                                   virtual machines.
                                 type: string
                               flavorName:
-                                description: FlavorName is the name of the flavor
-                                  used for requesting virtual machines. FlavorName
-                                  is only used if FlavorID is not defined.
+                                description: NOT IMPLEMENTED ONLY FlavorID is supported.
+                                  FlavorName is the name of the flavor used for requesting
+                                  virtual machines. FlavorName is only used if FlavorID
+                                  is not defined.
                                 type: string
                               flavorSearch:
-                                description: FlavorSearch is a search string to find
-                                  the flavor used for requesting virtual machines.
-                                  Search will be performed in metadata of the flavors.
-                                  FlavorSearch is only used if FlavorName and FlavorID
-                                  are not defined.
+                                description: NOT IMPLEMENTED ONLY FlavorID is supported.
+                                  FlavorSearch is a search string to find the flavor
+                                  used for requesting virtual machines. Search will
+                                  be performed in metadata of the flavors. FlavorSearch
+                                  is only used if FlavorName and FlavorID are not
+                                  defined.
                                 type: string
                             type: object
                           floatingNetID:
-                            description: FloatingNetID defines a openstack ID for
-                              the floatingNet.
+                            description: 'Deprecated: use defaultNetwork instead FloatingNetID
+                              defines a openstack ID for the floatingNet.'
                             type: string
                           image:
                             description: Image defines openstack image for the LoadBalancer.
-                              Uses a default if not defined.
                             properties:
                               image_id:
-                                description: 'Deprecated: used for migration ImageID
-                                  is the image ID used for requesting virtual machines.'
+                                description: 'Deprecated: use imageID instead.'
                                 type: string
                               image_name:
-                                description: 'Deprecated: used for migration ImageName
-                                  is the name of the image used for requesting virtual
-                                  machines. ImageName is only used if ImageID is not
-                                  defined.'
+                                description: 'Deprecated: use imageName instead.'
                                 type: string
                               image_search:
-                                description: 'Deprecated: used for migration ImageSearch
-                                  is a search string to find the image used for requesting
-                                  virtual machines. Search will be performed in metadata
-                                  of the images. ImageSearch is only used if ImageName
-                                  and ImageID are not defined.'
+                                description: 'Deprecated: use imageSearch instead.'
                                 type: string
                               imageID:
                                 description: ImageID is the image ID used for requesting
                                   virtual machines.
                                 type: string
                               imageName:
-                                description: ImageName is the name of the image used
-                                  for requesting virtual machines. ImageName is only
-                                  used if ImageID is not defined.
+                                description: NOT IMPLEMENTED ONLY ImageID is supported.
+                                  ImageName is the name of the image used for requesting
+                                  virtual machines. ImageName is only used if ImageID
+                                  is not defined.
                                 type: string
                               imageSearch:
-                                description: ImageSearch is a search string to find
-                                  the image used for requesting virtual machines.
-                                  Search will be performed in metadata of the images.
-                                  ImageSearch is only used if ImageName and ImageID
-                                  are not defined.
+                                description: NOT IMPLEMENTED ONLY ImageID is supported.
+                                  ImageSearch is a search string to find the image
+                                  used for requesting virtual machines. Search will
+                                  be performed in metadata of the images. ImageSearch
+                                  is only used if ImageName and ImageID are not defined.
                                 type: string
                             type: object
                           networkID:
-                            description: NetworkID defines a openstack ID for the
-                              network.
+                            description: 'Deprecated: use defaultNetwork instead NetworkID
+                              defines a openstack ID for the network.'
+                            type: string
+                          projectID:
+                            description: ProjectID defines an openstack project ID
+                              which will be used instead of the project from the secret
+                              ref. If not set the project from the secret ref will
+                              be used.
                             type: string
                         required:
                         - authSecretRef
-                        - networkID
+                        - flavor
+                        - image
                         type: object
                       loadBalancerRef:
                         description: LoadBalancerRef defines a reference to the LoadBalancer
@@ -251,7 +274,6 @@ spec:
                     - infrastructure
                     - loadBalancerRef
                     - portID
-                    - serverGroupID
                     type: object
                 required:
                 - labels

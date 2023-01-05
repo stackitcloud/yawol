@@ -54,7 +54,7 @@ var _ = Describe("loadbalancer controller", func() {
 		lb = getMockLB(lbNN)
 
 		client = testing.GetFakeClient()
-		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		loadBalancerReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
 			return client, nil
 		}
 	})
@@ -103,12 +103,14 @@ var _ = Describe("loadbalancer controller", func() {
 				g.Expect(act.Status.PortID).ToNot(BeNil())
 				g.Expect(act.Status.PortName).ToNot(BeNil())
 
+				g.Expect(act.Status.PortIP).ToNot(BeNil())
+				g.Expect(*act.Status.PortIP).ToNot(Equal(""))
+
 				g.Expect(act.Status.FloatingID).To(BeNil())
 				g.Expect(act.Status.FloatingName).To(BeNil())
 
 				g.Expect(act.Status.ExternalIP).ToNot(BeNil())
 				g.Expect(*act.Status.ExternalIP).ToNot(Equal(""))
-
 				return nil
 			})
 		})
@@ -118,11 +120,17 @@ var _ = Describe("loadbalancer controller", func() {
 		It("should swap to an internal lb", func() {
 			By("checking that the lb gets created with an public ip")
 			hopefully(lbNN, func(g Gomega, act LB) error {
+				g.Expect(act.Status.PortID).ToNot(BeNil())
+				g.Expect(act.Status.PortName).ToNot(BeNil())
+
+				g.Expect(act.Status.PortIP).ToNot(BeNil())
+				g.Expect(*act.Status.PortIP).ToNot(Equal(""))
+
 				g.Expect(act.Status.FloatingID).ToNot(BeNil())
 				g.Expect(act.Status.FloatingName).ToNot(BeNil())
 
 				g.Expect(act.Status.ExternalIP).ToNot(BeNil())
-
+				g.Expect(*act.Status.ExternalIP).ToNot(Equal(""))
 				return nil
 			})
 
@@ -211,7 +219,7 @@ var _ = Describe("loadbalancer controller", func() {
 
 			By("changing flavorid")
 			updateLB(lbNN, func(act *LB) {
-				act.Spec.Infrastructure.Flavor = &yawolv1beta1.OpenstackFlavorRef{
+				act.Spec.Infrastructure.Flavor = yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("somenewid"),
 				}
 			})
@@ -680,12 +688,14 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 			Ports:              nil,
 			ExistingFloatingIP: nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-				FloatingNetID: pointer.String("floatingnet-id"),
-				NetworkID:     "network-id",
-				Flavor: &yawolv1beta1.OpenstackFlavorRef{
+				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+					FloatingNetID: pointer.String("floatingnet-id"),
+					NetworkID:     "network-id",
+				},
+				Flavor: yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: pointer.String("flavor-id"),
 				},
-				Image: &yawolv1beta1.OpenstackImageRef{
+				Image: yawolv1beta1.OpenstackImageRef{
 					ImageID: pointer.String("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{

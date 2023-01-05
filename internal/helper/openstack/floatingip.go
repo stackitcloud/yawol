@@ -16,9 +16,18 @@ func CreateFIP(
 	fipClient openstack.FipClient,
 	lb *yawolv1beta1.LoadBalancer,
 ) (*floatingips.FloatingIP, error) {
+	// TODO cleanup after removing deprecated fields
+	var floatingNetID string
+	if lb.Spec.Infrastructure.FloatingNetID != nil { //nolint: staticcheck // needed to be backwards compatible
+		floatingNetID = *lb.Spec.Infrastructure.FloatingNetID //nolint: staticcheck // needed to be backwards compatible
+	}
+	if lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID != nil {
+		floatingNetID = *lb.Spec.Infrastructure.DefaultNetwork.FloatingNetID
+	}
+
 	fip, err := fipClient.Create(ctx, floatingips.CreateOpts{
 		Description:       *lb.Status.FloatingName,
-		FloatingNetworkID: *lb.Spec.Infrastructure.FloatingNetID,
+		FloatingNetworkID: floatingNetID,
 	})
 	if err != nil {
 		return nil, err

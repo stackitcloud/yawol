@@ -67,12 +67,14 @@ var _ = Describe("LB Status update", func() {
 				Endpoints: nil,
 				Ports:     nil,
 				Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
-					FloatingNetID: pointer.String("floatingnetid"),
-					NetworkID:     "networkid",
-					Flavor: &yawolv1beta1.OpenstackFlavorRef{
+					DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
+						FloatingNetID: pointer.String("floatingnetid"),
+						NetworkID:     "networkid",
+					},
+					Flavor: yawolv1beta1.OpenstackFlavorRef{
 						FlavorID: pointer.String("mycool-openstack-flavor-id"),
 					},
-					Image: &yawolv1beta1.OpenstackImageRef{
+					Image: yawolv1beta1.OpenstackImageRef{
 						ImageID: pointer.String("mycool-openstack-image-id"),
 					},
 					AuthSecretRef: v1.SecretReference{
@@ -142,7 +144,7 @@ var _ = Describe("LB Status update", func() {
 
 		By("Setup - Mocks")
 
-		loadBalancerReconciler.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		loadBalancerReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
 			return testing.GetFakeClient(), nil
 		}
 

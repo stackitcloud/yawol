@@ -45,7 +45,7 @@ type Reconciler struct {
 	skipReconciles    bool
 	skipAllButNN      *types.NamespacedName
 	Metrics           *helpermetrics.LoadBalancerMetricList
-	getOsClientForIni func(iniData []byte) (openstack.Client, error)
+	getOsClientForIni openstack.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
 }
@@ -73,7 +73,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// get OpenStack Client for LoadBalancer
-	osClient, err := openstackhelper.GetOpenStackClientForAuthRef(ctx, r.Client, lb.Spec.Infrastructure.AuthSecretRef, r.getOsClientForIni)
+	osClient, err := openstackhelper.GetOpenStackClientForInfrastructure(ctx, r.Client, lb.Spec.Infrastructure, r.getOsClientForIni)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -114,9 +114,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.getOsClientForIni == nil {
-		r.getOsClientForIni = func(iniData []byte) (openstack.Client, error) {
+		r.getOsClientForIni = func(iniData []byte, overwrite openstack.OSClientOverwrite) (openstack.Client, error) {
 			osClient := openstack.OSClient{}
-			err := osClient.Configure(iniData, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
+			err := osClient.Configure(iniData, overwrite, r.OpenstackTimeout, r.Metrics.OpenstackMetrics)
 			if err != nil {
 				return nil, err
 			}
@@ -459,7 +459,7 @@ func (r *Reconciler) assignOrCreateFIP(
 	return nil
 }
 
-func (r *Reconciler) reconcilePort(
+func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
 	ctx context.Context,
 	req ctrl.Request,
 	lb *yawolv1beta1.LoadBalancer,
@@ -471,6 +471,7 @@ func (r *Reconciler) reconcilePort(
 	var err error
 
 	portClient, err = osClient.PortClient(ctx)
+
 	if err != nil {
 		return false, err
 	}
@@ -503,10 +504,24 @@ func (r *Reconciler) reconcilePort(
 	}
 
 	// Create Port
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID == nil {
 		r.Log.Info("Create Port", "lb", lb.Name)
-		port, err = openstackhelper.CreatePort(ctx, portClient, *lb.Status.PortName, lb.Spec.Infrastructure.NetworkID)
+
+		// TODO cleanup after removing deprecated fields
+		var networkID string
+		if lb.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
+			networkID = lb.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+		}
+		if lb.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
+			networkID = lb.Spec.Infrastructure.DefaultNetwork.NetworkID
+		}
+
+		port, err = openstackhelper.CreatePort(
+			ctx,
+			portClient,
+			*lb.Status.PortName,
+			networkID,
+		)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -571,6 +586,17 @@ func (r *Reconciler) reconcilePort(
 
 	if port == nil {
 		return true, nil
+	}
+
+	// Patch PortIP to status
+	if len(port.FixedIPs) >= 1 &&
+		(lb.Status.PortIP == nil || *lb.Status.PortIP != port.FixedIPs[0].IPAddress) {
+		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
+			PortIP: &port.FixedIPs[0].IPAddress,
+		}); err != nil {
+			return false, err
+		}
+		requeue = true
 	}
 
 	// If internal LB, use first port ip as external ip
@@ -740,7 +766,6 @@ func (r *Reconciler) reconcileServerGroup(
 	}
 
 	// Create server group
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.ServerGroupID == nil {
 		r.Log.Info("Create ServerGroup", "lb", lb.Name)
 		serverGroup, err = openstackhelper.CreateServerGroup(
@@ -1167,7 +1192,6 @@ func (r *Reconciler) deletePorts(
 
 	var requeue bool
 
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortID != nil {
 		port, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
@@ -1175,6 +1199,7 @@ func (r *Reconciler) deletePorts(
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				// requeue true to clean orphan ports in the next run
+				_ = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portIP")
 				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID")
 			default:
 				r.Log.Info("an unexpected error occurred retrieving port", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
@@ -1192,6 +1217,7 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
@@ -1281,6 +1307,7 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	// clean up orphan secgroups
+	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupName != nil {
 		secGroupName := *lb.Status.SecurityGroupName
 		var secGroupList []groups.SecGroup

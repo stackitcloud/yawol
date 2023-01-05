@@ -253,7 +253,7 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 				ClusterName: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
 				Endpoints:   endpoints,
 			},
-			DnsLookupFamily:               envoycluster.Cluster_V4_ONLY,
+			DnsLookupFamily:               envoycluster.Cluster_AUTO,
 			HealthChecks:                  healthChecks,
 			TransportSocket:               transportSocket,
 			PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32Kib
