@@ -208,7 +208,6 @@ spec:
             - infrastructure
             - loadBalancerRef
             - portID
-            - serverGroupID
             type: object
           status:
             description: LoadBalancerMachineStatus defines the observed state of LoadBalancerMachine.

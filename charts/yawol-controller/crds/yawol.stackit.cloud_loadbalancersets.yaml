@@ -274,7 +274,6 @@ spec:
                     - infrastructure
                     - loadBalancerRef
                     - portID
-                    - serverGroupID
                     type: object
                 required:
                 - labels
