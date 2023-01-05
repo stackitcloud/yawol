@@ -45,6 +45,11 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	if len(loadBalancers.Items) == 0 {
+		// skip of no LBs are present
+		return ctrl.Result{}, nil
+	}
+
 	var nodes coreV1.NodeList
 	if err := r.TargetClient.List(ctx, &nodes, &client.ListOptions{}); err != nil {
 		return ctrl.Result{}, err
