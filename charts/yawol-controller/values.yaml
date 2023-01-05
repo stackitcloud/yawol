@@ -15,29 +15,6 @@ yawolCloudController:
   enabled: true
   gardenerMonitoringEnabled: false
   clusterRoleEnabled: true
-  additionalArguments:
-    - -target-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
-  additionalVolumes:
-    - name: kubeconfig
-      projected:
-        defaultMode: 420
-        sources:
-        - secret:
-            items:
-            - key: kubeconfig
-              path: kubeconfig
-            name: generic-token-kubeconfig
-            optional: false
-        - secret:
-            items:
-            - key: token
-              path: token
-            name: shoot-access-cloud-controller-manager
-            optional: false
-  additionalVolumeMounts:
-    - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
-      name: kubeconfig
-      readOnly: true
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
     tag: latest
