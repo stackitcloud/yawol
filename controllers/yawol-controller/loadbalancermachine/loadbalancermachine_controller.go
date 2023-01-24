@@ -238,7 +238,7 @@ func (r *LoadBalancerMachineReconciler) reconcileSA(
 		},
 	}
 
-	err := r.Client.Get(ctx, client.ObjectKey{Name: sa.Name, Namespace: sa.Namespace}, &sa)
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(&sa), &sa)
 	if err != nil {
 		if errors2.IsNotFound(err) {
 			if err = r.Client.Create(ctx, &sa); err != nil {
