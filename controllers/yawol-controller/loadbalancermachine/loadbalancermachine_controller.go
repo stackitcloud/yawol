@@ -38,8 +38,9 @@ import (
 
 const (
 	// ServiceFinalizer Name of finalizer for controller4
-	ServiceFinalizer   = "yawol.stackit.cloud/controller4"
-	DefaultRequeueTime = 10 * time.Millisecond
+	ServiceFinalizer             = "yawol.stackit.cloud/controller4"
+	DefaultRequeueTime           = 10 * time.Millisecond
+	ServiceAccountNameAnnotation = "kubernetes.io/service-account.name"
 )
 
 var ipv4Regex = `^(((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4})`
@@ -154,6 +155,12 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return res, err
 	}
 
+	if r.KubernetesVersion.Major >= 1 && r.KubernetesVersion.Minor >= 24 {
+		if err := r.reconcileSecret(ctx, loadBalancerMachine, sa); err != nil {
+			return res, err
+		}
+	}
+
 	// Reconcile Role for yawollet access
 	if err := r.reconcileRole(ctx, loadBalancerMachine, loadbalancer); err != nil {
 		return ctrl.Result{}, err
@@ -253,6 +260,51 @@ func (r *LoadBalancerMachineReconciler) reconcileSA(
 	}
 
 	return sa, nil
+}
+
+func (r *LoadBalancerMachineReconciler) reconcileSecret(
+	ctx context.Context,
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	sa v1.ServiceAccount,
+) error {
+	r.Log.Info("Check Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      loadBalancerMachine.Name,
+			Namespace: loadBalancerMachine.Namespace,
+		},
+	}
+
+	updateSecret := func(s *v1.Secret) {
+		s.Annotations = map[string]string{
+			ServiceAccountNameAnnotation: sa.Name,
+		}
+		s.Type = v1.SecretTypeServiceAccountToken
+	}
+
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(&secret), &secret)
+	if errors2.IsNotFound(err) {
+		r.Log.Info("Create Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+		updateSecret(&secret)
+		return r.Client.Create(ctx, &secret)
+	}
+
+	if err != nil {
+		// kubernetes error happened
+		return err
+	}
+
+	v, ok := secret.Annotations[ServiceAccountNameAnnotation]
+	if ok && v == sa.Name && secret.Type == v1.SecretTypeServiceAccountToken {
+		// secret is valid
+		return nil
+	}
+
+	// set correct sa reference
+	updateSecret(&secret)
+	r.Log.Info("Update Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+	return r.Client.Update(ctx, &secret)
 }
 
 func (r *LoadBalancerMachineReconciler) reconcileRole(
