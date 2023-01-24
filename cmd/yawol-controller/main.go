@@ -9,6 +9,7 @@ import (
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancer"
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancermachine"
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancerset"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -122,10 +123,11 @@ func main() {
 	var loadBalancerMgr manager.Manager
 	var loadBalancerSetMgr manager.Manager
 	var loadBalancerMachineMgr manager.Manager
+	cfg := ctrl.GetConfigOrDie()
 
 	// Controller 2
 	if lbController {
-		loadBalancerMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLb,
 			Port:                       9443,
@@ -168,7 +170,7 @@ func main() {
 
 	// Controller 3
 	if lbSetController {
-		loadBalancerSetMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLbs,
 			Port:                       9444,
@@ -214,7 +216,12 @@ func main() {
 			panic("could not read env " + EnvAPIEndpoint)
 		}
 
-		loadBalancerMachineMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		kubernetesVersion, err := kubernetes.GetVersion(cfg)
+		if err != nil {
+			panic("unable to determine kubernetes server version: " + err.Error())
+		}
+
+		loadBalancerMachineMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLbm,
 			Port:                       9445,
@@ -232,17 +239,18 @@ func main() {
 		}
 
 		if err = (&loadbalancermachine.LoadBalancerMachineReconciler{
-			Client:           loadBalancerMachineMgr.GetClient(),
-			WorkerCount:      concurrentWorkersPerReconciler,
-			APIHost:          loadBalancerMachineMgr.GetConfig().Host,
-			CACert:           loadBalancerMachineMgr.GetConfig().CAData,
-			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
-			Recorder:         loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
-			RecorderLB:       loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
-			Scheme:           loadBalancerMachineMgr.GetScheme(),
-			APIEndpoint:      apiEndpoint,
-			Metrics:          &helpermetrics.LoadBalancerMachineMetrics,
-			OpenstackTimeout: openstackTimeout,
+			Client:            loadBalancerMachineMgr.GetClient(),
+			WorkerCount:       concurrentWorkersPerReconciler,
+			APIHost:           loadBalancerMachineMgr.GetConfig().Host,
+			CACert:            loadBalancerMachineMgr.GetConfig().CAData,
+			Log:               ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
+			Recorder:          loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
+			RecorderLB:        loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
+			Scheme:            loadBalancerMachineMgr.GetScheme(),
+			APIEndpoint:       apiEndpoint,
+			Metrics:           &helpermetrics.LoadBalancerMachineMetrics,
+			OpenstackTimeout:  openstackTimeout,
+			KubernetesVersion: *kubernetesVersion,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)

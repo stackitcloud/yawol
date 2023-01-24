@@ -59,6 +59,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	getOsClientForIni os.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
+	KubernetesVersion kubernetes.Version
 }
 
 // Reconcile Reconciles a LoadBalancerMachine
