@@ -100,14 +100,19 @@ var _ = Describe("load balancer machine", func() {
 			Eventually(func(g Gomega) {
 				var actualRole rbac.Role
 				g.Expect(k8sClient.Get(ctx, lbmNN, &actualRole)).To(Succeed())
-
-				// TODO somehow the arrays are not equal even though they are
 				g.Expect(len(actualRole.Rules)).To(Equal(len(getPolicyRules(lb, lbm))))
 			}, timeout, interval).Should(Succeed())
 
-			By("checking sa secret")
+			By("checking service account")
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, lbmNN, &v1.ServiceAccount{})).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			By("checking secret")
+			Eventually(func(g Gomega) {
+				secret := &v1.Secret{}
+				g.Expect(k8sClient.Get(ctx, lbmNN, secret)).To(Succeed())
+				g.Expect(secret.Annotations).To(HaveKeyWithValue(ServiceAccountNameAnnotation, lbmNN.Name))
 			}, timeout, interval).Should(Succeed())
 
 			By("checking rolebinding")
