@@ -129,6 +129,19 @@ var _ = Describe("load balancer machine", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 
+		It("should update lbm status", func() {
+			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+			By("checking that the rbac role gets created")
+			Eventually(func(g Gomega) {
+				var updatedLBM LBM
+				g.Expect(k8sClient.Get(ctx, lbmNN, &updatedLBM)).To(Succeed())
+				g.Expect(updatedLBM.Status.SecretName).ToNot(BeNil())
+				g.Expect(updatedLBM.Status.ServiceAccountName).ToNot(BeNil())
+				g.Expect(updatedLBM.Status.RoleName).ToNot(BeNil())
+			}, timeout, interval).Should(Succeed())
+		})
+
 		It("should create openstack resources", func() {
 			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
 

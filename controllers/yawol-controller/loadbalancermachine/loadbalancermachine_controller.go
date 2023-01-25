@@ -159,6 +159,13 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		if err := r.reconcileSecret(ctx, loadBalancerMachine, sa); err != nil {
 			return res, err
 		}
+	} else {
+		// save pre 1.24 created secret into status
+		if loadBalancerMachine.Status.SecretName == nil && len(sa.Secrets) > 0 {
+			if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	// Reconcile Role for yawollet access
@@ -276,6 +283,17 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 		},
 	}
 
+	// use secret referenced in status if possible
+	if loadBalancerMachine.Status.SecretName != nil {
+		splittedNN := strings.Split(*loadBalancerMachine.Status.SecretName, string(types.Separator))
+		if len(splittedNN) != 2 {
+			return helper.ErrSecretNameSplit
+		}
+
+		secret.Name = splittedNN[0]
+		secret.Namespace = splittedNN[1]
+	}
+
 	updateSecret := func(s *v1.Secret) {
 		s.Annotations = map[string]string{
 			ServiceAccountNameAnnotation: sa.Name,
@@ -287,11 +305,19 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 	if errors2.IsNotFound(err) {
 		r.Log.Info("Create Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
 		updateSecret(&secret)
-		return r.Client.Create(ctx, &secret)
+		if err := r.Client.Create(ctx, &secret); err != nil {
+			return err
+		}
+
+		if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	if err != nil {
-		// kubernetes error happened
+		// kubernetes error
 		return err
 	}
 
@@ -304,7 +330,15 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 	// set correct sa reference
 	updateSecret(&secret)
 	r.Log.Info("Update Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
-	return r.Client.Update(ctx, &secret)
+	if err := r.Client.Update(ctx, &secret); err != nil {
+		return err
+	}
+
+	if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *LoadBalancerMachineReconciler) reconcileRole(
@@ -980,6 +1014,21 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 	}
 
 	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleName")
+}
+
+func (r *LoadBalancerMachineReconciler) patchSecretNameStatus(
+	ctx context.Context,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	sa *v1.ServiceAccount,
+) error {
+	namespacedName := types.NamespacedName{
+		Name:      sa.Secrets[0].Name,
+		Namespace: sa.Secrets[0].Namespace,
+	}.String()
+
+	return helper.PatchLBMStatus(ctx, r.Client.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
+		SecretName: &namespacedName,
+	})
 }
 
 func (r *LoadBalancerMachineReconciler) waitForServerStatus(

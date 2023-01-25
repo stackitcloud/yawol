@@ -344,6 +344,11 @@ func (in *LoadBalancerMachineStatus) DeepCopyInto(out *LoadBalancerMachineStatus
 		*out = new(string)
 		**out = **in
 	}
+	if in.SecretName != nil {
+		in, out := &in.SecretName, &out.SecretName
+		*out = new(string)
+		**out = **in
+	}
 	if in.RoleName != nil {
 		in, out := &in.RoleName, &out.RoleName
 		*out = new(string)

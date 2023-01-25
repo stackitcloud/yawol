@@ -85,6 +85,9 @@ type LoadBalancerMachineStatus struct {
 	// ServiceAccountName contains the namespacedName from the ServiceAccount for a LoadBalancerMachine.
 	// +optional
 	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
+	// SecretName contains the namespacedName from the Secret which belongs to the Serviceaccount.
+	// +optional
+	SecretName *string `json:"secretName,omitempty"`
 	// RoleName contains the namespacedName from the Role for a LoadBalancerMachine.
 	// +optional
 	RoleName *string `json:"roleName,omitempty"`

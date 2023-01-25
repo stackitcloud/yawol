@@ -300,6 +300,10 @@ spec:
                 description: RoleName contains the namespacedName from the Role for
                   a LoadBalancerMachine.
                 type: string
+              secretName:
+                description: SecretName contains the namespacedName from the Secret
+                  which belongs to the Serviceaccount.
+                type: string
               serverID:
                 description: ServerID contains the openstack server ID for a LoadBalancerMachine.
                 type: string
