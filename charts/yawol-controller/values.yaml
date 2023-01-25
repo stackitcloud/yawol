@@ -5,7 +5,7 @@ featureGates: {}
 proxy: {}
 namespace: kube-system
 vpa:
-  enabled: true
+  enabled: false
   yawolCloudController:
     mode: Auto
   yawolController:
