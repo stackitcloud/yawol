@@ -17,13 +17,11 @@ yawolCloudController:
   clusterRoleEnabled: true
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
-    tag: latest
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
-    tag: latest
 
 resources:
   yawolCloudController:
