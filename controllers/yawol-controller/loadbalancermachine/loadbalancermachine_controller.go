@@ -162,7 +162,16 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 	} else {
 		// save pre 1.24 created secret into status
 		if loadBalancerMachine.Status.SecretName == nil && len(sa.Secrets) > 0 {
-			if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
+			namespacedName := types.NamespacedName{
+				Name: sa.Secrets[0].Name,
+				// the referenced secret has no namespace
+				// since it is the same as the service account
+				Namespace: sa.Namespace,
+			}.String()
+
+			if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+				SecretName: &namespacedName,
+			}); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -198,7 +207,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileServer(ctx, osClient, loadbalancer, loadBalancerMachine, sa, vip); err != nil {
+	if err := r.reconcileServer(ctx, osClient, loadbalancer, loadBalancerMachine, vip); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -269,13 +278,11 @@ func (r *LoadBalancerMachineReconciler) reconcileSA(
 	return sa, nil
 }
 
-func (r *LoadBalancerMachineReconciler) reconcileSecret(
+func (r *LoadBalancerMachineReconciler) createOrUpdateSecret(
 	ctx context.Context,
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	sa v1.ServiceAccount,
-) error {
-	r.Log.Info("Check Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
-
+) (*v1.Secret, error) {
 	secret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      loadBalancerMachine.Name,
@@ -285,13 +292,13 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 
 	// use secret referenced in status if possible
 	if loadBalancerMachine.Status.SecretName != nil {
-		splittedNN := strings.Split(*loadBalancerMachine.Status.SecretName, string(types.Separator))
-		if len(splittedNN) != 2 {
-			return helper.ErrSecretNameSplit
+		nn, err := kubernetes.ToNamespacedName(*loadBalancerMachine.Status.SecretName)
+		if err != nil {
+			return nil, err
 		}
 
-		secret.Name = splittedNN[0]
-		secret.Namespace = splittedNN[1]
+		secret.Name = nn.Name
+		secret.Namespace = nn.Namespace
 	}
 
 	updateSecret := func(s *v1.Secret) {
@@ -302,43 +309,64 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 	}
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(&secret), &secret)
+	if client.IgnoreNotFound(err) != nil {
+		// kubernetes error
+		return nil, err
+	}
+
 	if errors2.IsNotFound(err) {
+		// create secret
 		r.Log.Info("Create Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
 		updateSecret(&secret)
 		if err := r.Client.Create(ctx, &secret); err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	if err != nil {
-		// kubernetes error
-		return err
+		return &secret, nil
 	}
 
 	v, ok := secret.Annotations[ServiceAccountNameAnnotation]
 	if ok && v == sa.Name && secret.Type == v1.SecretTypeServiceAccountToken {
 		// secret is valid
-		return nil
+		return &secret, nil
 	}
 
-	// set correct sa reference
+	// update secret
 	updateSecret(&secret)
 	r.Log.Info("Update Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
 	if err := r.Client.Update(ctx, &secret); err != nil {
+		return nil, err
+	}
+
+	return &secret, nil
+}
+
+func (r *LoadBalancerMachineReconciler) reconcileSecret(
+	ctx context.Context,
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	sa v1.ServiceAccount,
+) error {
+	r.Log.Info("Check Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+
+	secret, err := r.createOrUpdateSecret(ctx, loadBalancerMachine, sa)
+	if err != nil {
 		return err
 	}
 
-	if err := r.patchSecretNameStatus(ctx, loadBalancerMachine, &sa); err != nil {
-		return err
+	namespacedNameString := types.NamespacedName{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	}.String()
+
+	if loadBalancerMachine.Status.SecretName != nil && *loadBalancerMachine.Status.SecretName != namespacedNameString {
+		// status already updated
+		return nil
 	}
 
-	return nil
+	// patch secretName in status
+	return helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+		SecretName: &namespacedNameString,
+	})
 }
 
 func (r *LoadBalancerMachineReconciler) reconcileRole(
@@ -655,7 +683,6 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 	osClient os.Client,
 	loadbalancer *yawolv1beta1.LoadBalancer,
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
-	serviceAccount v1.ServiceAccount,
 	vip string,
 ) error {
 	var srvClient os.ServerClient
@@ -668,7 +695,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 
 	// get kubeconfig which will be passed to VM user-data for yawollet access
 	var kubeconfig string
-	if kubeconfig, err = r.getKubeConfigForServiceAccount(ctx, loadBalancerMachine.Namespace, serviceAccount); err != nil {
+	if kubeconfig, err = r.getKubeConfigForServiceAccount(ctx, loadBalancerMachine.Status.SecretName); err != nil {
 		return err
 	}
 
@@ -1016,21 +1043,6 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "roleName")
 }
 
-func (r *LoadBalancerMachineReconciler) patchSecretNameStatus(
-	ctx context.Context,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-	sa *v1.ServiceAccount,
-) error {
-	namespacedName := types.NamespacedName{
-		Name:      sa.Secrets[0].Name,
-		Namespace: sa.Secrets[0].Namespace,
-	}.String()
-
-	return helper.PatchLBMStatus(ctx, r.Client.Status(), lbm, yawolv1beta1.LoadBalancerMachineStatus{
-		SecretName: &namespacedName,
-	})
-}
-
 func (r *LoadBalancerMachineReconciler) waitForServerStatus(
 	ctx context.Context,
 	serverClient os.ServerClient,
@@ -1069,17 +1081,20 @@ func (r *LoadBalancerMachineReconciler) waitForServerStatus(
 
 func (r *LoadBalancerMachineReconciler) getKubeConfigForServiceAccount(
 	ctx context.Context,
-	namespace string,
-	sa v1.ServiceAccount,
+	namespacedName *string,
 ) (string, error) {
-	if len(sa.Secrets) < 1 {
-		return "", fmt.Errorf("%w for serviceAccount %s", helper.ErrSecretNotFound, sa.Name)
+	if namespacedName == nil {
+		return "", fmt.Errorf("%w NamespacedName is nil", helper.ErrSecretNotFound)
 	}
 
 	sec := v1.Secret{}
-	var err error
-	if err = r.Client.Get(ctx, types.NamespacedName{Name: sa.Secrets[0].Name, Namespace: namespace}, &sec); err != nil {
-		return "", fmt.Errorf("%w cloud not getting %s", helper.ErrSecretNotFound, sec.Name)
+	nn, err := kubernetes.ToNamespacedName(*namespacedName)
+	if err != nil {
+		return "", err
+	}
+
+	if err := r.Client.Get(ctx, nn, &sec); err != nil {
+		return "", fmt.Errorf("%w could not get %s", helper.ErrSecretNotFound, nn.String())
 	}
 
 	var token, ca []byte
@@ -1107,7 +1122,7 @@ func (r *LoadBalancerMachineReconciler) getKubeConfigForServiceAccount(
 		Contexts: map[string]*api.Context{"context": {
 			Cluster:   "default-cluster",
 			AuthInfo:  "user",
-			Namespace: namespace,
+			Namespace: nn.Namespace,
 		}},
 		CurrentContext: "context",
 	}

@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -96,13 +97,14 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
-		APIEndpoint: "https://lala.com",
-		Client:      k8sManager.GetClient(),
-		Log:         ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
-		Scheme:      k8sManager.GetScheme(),
-		Recorder:    k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
-		RecorderLB:  k8sManager.GetEventRecorderFor("yawol-service"),
-		Metrics:     &helpermetrics.LoadBalancerMachineMetrics,
+		APIEndpoint:       "https://lala.com",
+		Client:            k8sManager.GetClient(),
+		Log:               ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
+		Scheme:            k8sManager.GetScheme(),
+		Recorder:          k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
+		RecorderLB:        k8sManager.GetEventRecorderFor("yawol-service"),
+		Metrics:           &helpermetrics.LoadBalancerMachineMetrics,
+		KubernetesVersion: kubernetes.Version{Major: 1, Minor: 24},
 	}
 
 	err = loadBalancerMachineReconciler.SetupWithManager(k8sManager)

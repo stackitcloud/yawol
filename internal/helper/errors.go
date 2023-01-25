@@ -66,5 +66,4 @@ var (
 	ErrListingChildLBMs                      = errors.New("unable to list child loadbalancerMachines")
 	ErrUnsupportedProtocol                   = errors.New("unsupported protocol used (TCP and UDP is supported)")
 	ErrProjectIsImmutable                    = errors.New("project id is immutable, cant be changed after initial creation")
-	ErrSecretNameSplit                       = errors.New("unable to decode SecretName in LoadBalancerMachine.Status")
 )
