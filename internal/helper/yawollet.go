@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +36,7 @@ import (
 	envoyendpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	envoylistener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	envoyrbacconfig "github.com/envoyproxy/go-control-plane/envoy/config/rbac/v3"
+	envoyconnection "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/connection_limit/v3"
 	envoyrbac "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/rbac/v3"
 	envoytcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	envoyudp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/udp/udp_proxy/v3"
@@ -305,6 +307,16 @@ func createEnvoyTCPListener(
 		idleTimeout = durationpb.New(lb.Spec.Options.TCPIdleTimeout.Duration)
 	}
 
+	connectionLimit, err := anypb.New(&envoyconnection.ConnectionLimit{
+		StatPrefix: "envoyconnectionlimit",
+		// this is limited by the number of available ports on the machine
+		MaxConnections: wrapperspb.UInt64(60000),
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
 	listenPort, err := anypb.New(&envoytcp.TcpProxy{
 		StatPrefix:       "envoytcp",
 		ClusterSpecifier: &envoytcp.TcpProxy_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
@@ -344,17 +356,25 @@ func createEnvoyTCPListener(
 			},
 		},
 		FilterChains: []*envoylistener.FilterChain{{
-			// proxy filter has to be the last in the chain
-			Filters: append(filters, &envoylistener.Filter{
-				Name: envoywellknown.TCPProxy,
-				ConfigType: &envoylistener.Filter_TypedConfig{
-					TypedConfig: listenPort,
+			Filters: append(filters,
+				&envoylistener.Filter{
+					// NOTE: this is not present in envoywellknown
+					Name: "extensions.filters.network.connection_limit",
+					ConfigType: &envoylistener.Filter_TypedConfig{
+						TypedConfig: connectionLimit,
+					},
 				},
-			}),
+				// proxy filter has to be the last in the chain
+				&envoylistener.Filter{
+					Name: envoywellknown.TCPProxy,
+					ConfigType: &envoylistener.Filter_TypedConfig{
+						TypedConfig: listenPort,
+					},
+				}),
 		}},
-		Freebind:                      &wrappers.BoolValue{Value: true},
-		EnableReusePort:               &wrappers.BoolValue{Value: true},
-		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+		Freebind:                      wrapperspb.Bool(true),
+		EnableReusePort:               wrapperspb.Bool(true),
+		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32768), // 32 Kib
 	}
 }
 
