@@ -17,11 +17,15 @@ yawolCloudController:
   clusterRoleEnabled: true
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
+    # -- Allows you to override the cortex version in this chart. Use at your own risk.
+    tag: ""
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
+    # -- Allows you to override the cortex version in this chart. Use at your own risk.
+    tag: ""
 
 resources:
   yawolCloudController:
