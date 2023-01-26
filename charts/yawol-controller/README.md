@@ -43,10 +43,10 @@ Helm chart for yawol-controller
 | yawolCloudController.enabled | bool | `true` |  |
 | yawolCloudController.gardenerMonitoringEnabled | bool | `false` |  |
 | yawolCloudController.image.repository | string | `"ghcr.io/stackitcloud/yawol/yawol-cloud-controller"` |  |
-| yawolCloudController.image.tag | string | `""` | Allows you to override the cortex version in this chart. Use at your own risk. |
+| yawolCloudController.image.tag | string | `""` | Allows you to override the yawol version in this chart. Use at your own risk. |
 | yawolController.gardenerMonitoringEnabled | bool | `false` |  |
 | yawolController.image.repository | string | `"ghcr.io/stackitcloud/yawol/yawol-controller"` |  |
-| yawolController.image.tag | string | `""` | Allows you to override the cortex version in this chart. Use at your own risk. |
+| yawolController.image.tag | string | `""` | Allows you to override the yawol version in this chart. Use at your own risk. |
 | yawolFlavorID | string | `nil` |  |
 | yawolFloatingID | string | `nil` |  |
 | yawolImageID | string | `nil` |  |
