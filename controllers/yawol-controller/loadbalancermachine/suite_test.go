@@ -97,7 +97,7 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
-		APIEndpoint:       "https://lala.com",
+		APIEndpoint:       "https://example.com",
 		Client:            k8sManager.GetClient(),
 		Log:               ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
 		Scheme:            k8sManager.GetScheme(),
