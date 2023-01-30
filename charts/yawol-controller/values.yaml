@@ -17,13 +17,15 @@ yawolCloudController:
   clusterRoleEnabled: true
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
-    tag: latest
+    # -- Allows you to override the yawol version in this chart. Use at your own risk.
+    tag: ""
 
 yawolController:
   gardenerMonitoringEnabled: false
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
-    tag: latest
+    # -- Allows you to override the yawol version in this chart. Use at your own risk.
+    tag: ""
 
 resources:
   yawolCloudController:

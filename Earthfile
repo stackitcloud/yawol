@@ -23,6 +23,14 @@ deps:
     SAVE ARTIFACT go.mod AS LOCAL go.mod
     SAVE ARTIFACT go.sum AS LOCAL go.sum
 
+helm-docs:
+    FROM +deps
+    COPY --dir charts/ .
+    ENV GO111MODULE=on
+    RUN GO111MODULE=on go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.11.0
+    RUN helm-docs charts/yawol-controller/
+    SAVE ARTIFACT charts/yawol-controller/README.md AS LOCAL charts/yawol-controller/README.md
+
 build:
     FROM +deps
     COPY --dir controllers/ internal/ cmd/ api/ .
