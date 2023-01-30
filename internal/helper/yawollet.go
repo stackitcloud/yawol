@@ -58,6 +58,12 @@ type LoadbalancerConditionStatus string
 // LoadbalancerMetric metric name for lbm
 type LoadbalancerMetric string
 
+// TODO: replace with constants from envoywellknown when available
+const (
+	FilterConnectionLimit string = "extensions.filters.network.connection_limit"
+	FilterUDPProxy        string = "envoy.filters.udp_listener.udp_proxy"
+)
+
 // Condition status const
 const (
 	ConditionTrue  LoadbalancerConditionStatus = "True"
@@ -358,8 +364,7 @@ func createEnvoyTCPListener(
 		FilterChains: []*envoylistener.FilterChain{{
 			Filters: append(filters,
 				&envoylistener.Filter{
-					// NOTE: this is not present in envoywellknown
-					Name: "extensions.filters.network.connection_limit",
+					Name: FilterConnectionLimit,
 					ConfigType: &envoylistener.Filter_TypedConfig{
 						TypedConfig: connectionLimit,
 					},
@@ -433,8 +438,7 @@ func createEnvoyUDPListener(
 		},
 		ListenerFilters: []*envoylistener.ListenerFilter{
 			{
-				// TODO this is not in envoywellknown
-				Name: "envoy.filters.udp_listener.udp_proxy",
+				Name: FilterUDPProxy,
 				ConfigType: &envoylistener.ListenerFilter_TypedConfig{
 					TypedConfig: listenPort,
 				},
