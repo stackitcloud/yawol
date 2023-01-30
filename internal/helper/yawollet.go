@@ -313,16 +313,6 @@ func createEnvoyTCPListener(
 		idleTimeout = durationpb.New(lb.Spec.Options.TCPIdleTimeout.Duration)
 	}
 
-	connectionLimit, err := anypb.New(&envoyconnection.ConnectionLimit{
-		StatPrefix: "envoyconnectionlimit",
-		// this is limited by the number of available ports on the machine
-		MaxConnections: wrapperspb.UInt64(60000),
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
 	listenPort, err := anypb.New(&envoytcp.TcpProxy{
 		StatPrefix:       "envoytcp",
 		ClusterSpecifier: &envoytcp.TcpProxy_Cluster{Cluster: fmt.Sprintf("%v-%v", port.Protocol, port.Port)},
@@ -348,6 +338,23 @@ func createEnvoyTCPListener(
 		}
 	}
 
+	connectionLimit, err := anypb.New(&envoyconnection.ConnectionLimit{
+		StatPrefix: "envoyconnectionlimit",
+		// this is limited by the number of available ports on the machine
+		MaxConnections: wrapperspb.UInt64(60000),
+	})
+
+	if err == nil {
+		filters = append(filters, &envoylistener.Filter{
+			Name: FilterConnectionLimit,
+			ConfigType: &envoylistener.Filter_TypedConfig{
+				TypedConfig: connectionLimit,
+			},
+		})
+	} else {
+		_ = kubernetes.SendErrorAsEvent(r, ErrCouldNotMarshalConnectionLimit, lb)
+	}
+
 	return &envoylistener.Listener{
 		Name: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
 		Address: &envoycore.Address{
@@ -362,20 +369,13 @@ func createEnvoyTCPListener(
 			},
 		},
 		FilterChains: []*envoylistener.FilterChain{{
-			Filters: append(filters,
-				&envoylistener.Filter{
-					Name: FilterConnectionLimit,
-					ConfigType: &envoylistener.Filter_TypedConfig{
-						TypedConfig: connectionLimit,
-					},
-				},
+			Filters: append(filters, &envoylistener.Filter{
 				// proxy filter has to be the last in the chain
-				&envoylistener.Filter{
-					Name: envoywellknown.TCPProxy,
-					ConfigType: &envoylistener.Filter_TypedConfig{
-						TypedConfig: listenPort,
-					},
-				}),
+				Name: envoywellknown.TCPProxy,
+				ConfigType: &envoylistener.Filter_TypedConfig{
+					TypedConfig: listenPort,
+				},
+			}),
 		}},
 		Freebind:                      wrapperspb.Bool(true),
 		EnableReusePort:               wrapperspb.Bool(true),
@@ -495,13 +495,13 @@ func createEnvoyRBACRules(
 		split := strings.Split(sourceRange, "/")
 
 		if err != nil || len(split) != 2 {
-			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRange: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
 			continue
 		}
 
 		prefix, err := strconv.ParseUint(split[1], 10, 32)
 		if err != nil {
-			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRange: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
 			continue
 		}
 
