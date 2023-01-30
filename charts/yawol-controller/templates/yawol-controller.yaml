@@ -29,7 +29,7 @@ spec:
       serviceAccountName: yawol-controller
       containers:
       - name: yawol-controller-loadbalancer
-        image: "{{ .Values.yawolController.image.repository }}:{{ .Values.yawolController.image.tag }}"
+        image: "{{ .Values.yawolController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -56,7 +56,7 @@ spec:
             drop:
               - ALL
       - name: yawol-controller-loadbalancerset
-        image: "{{ .Values.yawolController.image.repository }}:{{ .Values.yawolController.image.tag }}"
+        image: "{{ .Values.yawolController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
         ports:
           - containerPort: 8081
@@ -83,7 +83,7 @@ spec:
             drop:
               - ALL
       - name: yawol-controller-loadbalancermachine
-        image: "{{ .Values.yawolController.image.repository }}:{{ .Values.yawolController.image.tag }}"
+        image: "{{ .Values.yawolController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
         ports:
           - containerPort: 8082
