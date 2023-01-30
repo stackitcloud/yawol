@@ -229,7 +229,6 @@ func getProvider(
 
 	legacyProjectName := strings.TrimSpace(cfg.Section("Global").Key("tenant-name").String())
 	projectName := strings.TrimSpace(cfg.Section("Global").Key("project-name").String())
-	authInfo.ProjectName = strings.TrimSpace(cfg.Section("Global").Key("project-name").String())
 	authInfo.ProjectID = strings.TrimSpace(cfg.Section("Global").Key("project-id").String())
 
 	// TODO: remove legacyProjectName once openstack-cloud-controller has dropped tenant-name support. Link to ccm args:
