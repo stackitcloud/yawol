@@ -96,6 +96,9 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
+	kubernetesVersion, err := kubernetes.GetVersion(cfg)
+	Expect(err).ToNot(HaveOccurred())
+
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
 		APIEndpoint:       "https://example.com",
 		Client:            k8sManager.GetClient(),
@@ -104,7 +107,7 @@ var _ = BeforeSuite(func() {
 		Recorder:          k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
 		RecorderLB:        k8sManager.GetEventRecorderFor("yawol-service"),
 		Metrics:           &helpermetrics.LoadBalancerMachineMetrics,
-		KubernetesVersion: kubernetes.Version{Major: 1, Minor: 24},
+		KubernetesVersion: *kubernetesVersion,
 	}
 
 	err = loadBalancerMachineReconciler.SetupWithManager(k8sManager)

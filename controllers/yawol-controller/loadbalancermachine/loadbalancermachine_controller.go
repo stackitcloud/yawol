@@ -161,7 +161,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	} else {
 		// save pre 1.24 created secret into status
-		if loadBalancerMachine.Status.SecretName == nil && len(sa.Secrets) > 0 {
+		if loadBalancerMachine.Status.ServiceAccountSecretName == nil && len(sa.Secrets) > 0 {
 			namespacedName := types.NamespacedName{
 				Name: sa.Secrets[0].Name,
 				// the referenced secret has no namespace
@@ -170,7 +170,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 			}.String()
 
 			if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
-				SecretName: &namespacedName,
+				ServiceAccountSecretName: &namespacedName,
 			}); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -291,8 +291,8 @@ func (r *LoadBalancerMachineReconciler) createOrUpdateSecret(
 	}
 
 	// use secret referenced in status if possible
-	if loadBalancerMachine.Status.SecretName != nil {
-		nn, err := kubernetes.ToNamespacedName(*loadBalancerMachine.Status.SecretName)
+	if loadBalancerMachine.Status.ServiceAccountSecretName != nil {
+		nn, err := kubernetes.ToNamespacedName(*loadBalancerMachine.Status.ServiceAccountSecretName)
 		if err != nil {
 			return nil, err
 		}
@@ -358,14 +358,15 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 		Namespace: secret.Namespace,
 	}.String()
 
-	if loadBalancerMachine.Status.SecretName != nil && *loadBalancerMachine.Status.SecretName != namespacedNameString {
+	if loadBalancerMachine.Status.ServiceAccountSecretName != nil &&
+		*loadBalancerMachine.Status.ServiceAccountSecretName != namespacedNameString {
 		// status already updated
 		return nil
 	}
 
 	// patch secretName in status
 	return helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
-		SecretName: &namespacedNameString,
+		ServiceAccountSecretName: &namespacedNameString,
 	})
 }
 
@@ -695,7 +696,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 
 	// get kubeconfig which will be passed to VM user-data for yawollet access
 	var kubeconfig string
-	if kubeconfig, err = r.getKubeConfigForServiceAccount(ctx, loadBalancerMachine.Status.SecretName); err != nil {
+	if kubeconfig, err = r.getKubeConfigForServiceAccount(ctx, loadBalancerMachine.Status.ServiceAccountSecretName); err != nil {
 		return err
 	}
 

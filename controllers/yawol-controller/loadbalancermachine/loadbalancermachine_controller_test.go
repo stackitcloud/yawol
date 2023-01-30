@@ -136,8 +136,8 @@ var _ = Describe("load balancer machine", func() {
 			Eventually(func(g Gomega) {
 				var updatedLBM LBM
 				g.Expect(k8sClient.Get(ctx, lbmNN, &updatedLBM)).To(Succeed())
-				g.Expect(updatedLBM.Status.SecretName).ToNot(BeNil())
 				g.Expect(updatedLBM.Status.ServiceAccountName).ToNot(BeNil())
+				g.Expect(updatedLBM.Status.ServiceAccountSecretName).ToNot(BeNil())
 				g.Expect(updatedLBM.Status.RoleName).ToNot(BeNil())
 			}, timeout, interval).Should(Succeed())
 		})
