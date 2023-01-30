@@ -31,7 +31,7 @@ spec:
       serviceAccountName: yawol-cloud-controller
       containers:
       - name: yawol-cloud-controller
-        image: "{{ .Values.yawolCloudController.image.repository }}:{{ .Values.yawolCloudController.image.tag }}"
+        image: "{{ .Values.yawolCloudController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolCloudController.image.tag }}"
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
