@@ -13,7 +13,10 @@ type Version struct {
 }
 
 func GetVersion(cfg *rest.Config) (*Version, error) {
-	client := discovery.NewDiscoveryClientForConfigOrDie(cfg)
+	client, err := discovery.NewDiscoveryClientForConfig(cfg)
+	err != nil {
+		return nil, err
+	}
 	version, err := client.ServerVersion()
 	if err != nil {
 		return nil, err
