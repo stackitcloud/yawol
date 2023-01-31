@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	discovery "k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
 )
 
 type Version struct {
@@ -12,12 +11,7 @@ type Version struct {
 	Minor int
 }
 
-func GetVersion(cfg *rest.Config) (*Version, error) {
-	client, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
+func GetVersion(client *discovery.DiscoveryClient) (*Version, error) {
 	version, err := client.ServerVersion()
 	if err != nil {
 		return nil, err

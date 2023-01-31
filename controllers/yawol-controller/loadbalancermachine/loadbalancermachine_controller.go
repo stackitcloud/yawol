@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/client-go/tools/record"
@@ -60,7 +61,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	getOsClientForIni os.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
-	KubernetesVersion kubernetes.Version
+	DiscoveryClient   *discovery.DiscoveryClient
 }
 
 // Reconcile Reconciles a LoadBalancerMachine
@@ -155,26 +156,9 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return res, err
 	}
 
-	if r.KubernetesVersion.Major >= 1 && r.KubernetesVersion.Minor >= 24 {
-		if err := r.reconcileSecret(ctx, loadBalancerMachine, sa); err != nil {
-			return res, err
-		}
-	} else {
-		// save pre 1.24 created secret into status
-		if loadBalancerMachine.Status.ServiceAccountSecretName == nil && len(sa.Secrets) > 0 {
-			namespacedName := types.NamespacedName{
-				Name: sa.Secrets[0].Name,
-				// the referenced secret has no namespace
-				// since it is the same as the service account
-				Namespace: sa.Namespace,
-			}.String()
-
-			if err := helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
-				ServiceAccountSecretName: &namespacedName,
-			}); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+	// Reconcile ServiceAccountSecret for yawollet access
+	if err := r.reconcileSecret(ctx, loadBalancerMachine, sa); err != nil {
+		return res, err
 	}
 
 	// Reconcile Role for yawollet access
@@ -278,78 +262,60 @@ func (r *LoadBalancerMachineReconciler) reconcileSA(
 	return sa, nil
 }
 
-func (r *LoadBalancerMachineReconciler) createOrUpdateSecret(
-	ctx context.Context,
-	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
-	sa v1.ServiceAccount,
-) (*v1.Secret, error) {
-	secret := v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      loadBalancerMachine.Name,
-			Namespace: loadBalancerMachine.Namespace,
-		},
-	}
-
-	// use secret referenced in status if possible
-	if loadBalancerMachine.Status.ServiceAccountSecretName != nil {
-		nn, err := kubernetes.ToNamespacedName(*loadBalancerMachine.Status.ServiceAccountSecretName)
-		if err != nil {
-			return nil, err
-		}
-
-		secret.Name = nn.Name
-		secret.Namespace = nn.Namespace
-	}
-
-	updateSecret := func(s *v1.Secret) {
-		s.Annotations = map[string]string{
-			ServiceAccountNameAnnotation: sa.Name,
-		}
-		s.Type = v1.SecretTypeServiceAccountToken
-	}
-
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(&secret), &secret)
-	if client.IgnoreNotFound(err) != nil {
-		// kubernetes error
-		return nil, err
-	}
-
-	if errors2.IsNotFound(err) {
-		// create secret
-		r.Log.Info("Create Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
-		updateSecret(&secret)
-		if err := r.Client.Create(ctx, &secret); err != nil {
-			return nil, err
-		}
-
-		return &secret, nil
-	}
-
-	v, ok := secret.Annotations[ServiceAccountNameAnnotation]
-	if ok && v == sa.Name && secret.Type == v1.SecretTypeServiceAccountToken {
-		// secret is valid
-		return &secret, nil
-	}
-
-	// update secret
-	updateSecret(&secret)
-	r.Log.Info("Update Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
-	if err := r.Client.Update(ctx, &secret); err != nil {
-		return nil, err
-	}
-
-	return &secret, nil
-}
-
 func (r *LoadBalancerMachineReconciler) reconcileSecret(
 	ctx context.Context,
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	sa v1.ServiceAccount,
 ) error {
 	r.Log.Info("Check Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+	if loadBalancerMachine.Status.ServiceAccountSecretName != nil {
+		// no need to check if the secret is still present
+		// on false secret, the machine will delete itself
+		return nil
+	}
 
-	secret, err := r.createOrUpdateSecret(ctx, loadBalancerMachine, sa)
+	// use pre 1.24 created secret
+	if len(sa.Secrets) > 0 {
+		r.Log.Info("Use Secret from ServiceAccount", "loadBalancerMachineName", loadBalancerMachine.Name)
+		namespacedName := types.NamespacedName{
+			Name: sa.Secrets[0].Name,
+			// the referenced secret has no namespace
+			// since it is the same as the service account
+			Namespace: sa.Namespace,
+		}.String()
+
+		// return since secret is already created
+		return helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
+			ServiceAccountSecretName: &namespacedName,
+		})
+	}
+
+	// check if kubernetes handles secret creation
+	version, err := kubernetes.GetVersion(r.DiscoveryClient)
 	if err != nil {
+		return err
+	}
+
+	if version.Major <= 1 && version.Minor < 24 {
+		// secret not created by kubernetes
+		// requeue until created
+		return helper.ErrSecretNotFound
+	}
+
+	r.Log.Info("Create Secret", "loadBalancerMachineName", loadBalancerMachine.Name)
+	// secret does not exist, create a new one
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      loadBalancerMachine.Name,
+			Namespace: loadBalancerMachine.Namespace,
+			Annotations: map[string]string{
+				ServiceAccountNameAnnotation: sa.Name,
+			},
+		},
+		Type: v1.SecretTypeServiceAccountToken,
+	}
+
+	if err := r.Client.Create(ctx, &secret); err != nil {
 		return err
 	}
 
@@ -357,12 +323,6 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 		Name:      secret.Name,
 		Namespace: secret.Namespace,
 	}.String()
-
-	if loadBalancerMachine.Status.ServiceAccountSecretName != nil &&
-		*loadBalancerMachine.Status.ServiceAccountSecretName != namespacedNameString {
-		// status already updated
-		return nil
-	}
 
 	// patch secretName in status
 	return helper.PatchLBMStatus(ctx, r.Client.Status(), loadBalancerMachine, yawolv1beta1.LoadBalancerMachineStatus{
