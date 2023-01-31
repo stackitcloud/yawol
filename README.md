@@ -93,6 +93,8 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
    the correct permission to be able to create instances and request floating
    IPs.
 
+**Note**: At most one of `domain-id` or `domain-name` and `project-id` or `project-name` must be provided.
+
    ```yaml
    apiVersion: v1
    kind: Secret
@@ -104,8 +106,11 @@ The in-cluster components of yawol (`yawol-cloud-controller` and
        [Global]
        auth-url="""
        domain-name=""
+       domain-id=""
+       # Deprecated (tenant-name): Please use project-name
        tenant-name=""
        project-name=""
+       project-id=""
        username=""
        password=""
        region=""
