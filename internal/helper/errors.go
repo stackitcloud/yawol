@@ -63,7 +63,6 @@ var (
 	ErrCANotFoundInSecret                    = errors.New("ca in secret not found")
 	ErrNoNetworkID                           = errors.New("cant get networkID for loadbalancer")
 	ErrCouldNotParseSourceRange              = errors.New("could not parse LoadBalancerSourceRange")
-	ErrCouldNotMarshalConnectionLimit        = errors.New("could not marshal ConnectionLimit")
 	ErrListingChildLBMs                      = errors.New("unable to list child loadbalancerMachines")
 	ErrUnsupportedProtocol                   = errors.New("unsupported protocol used (TCP and UDP is supported)")
 	ErrProjectIsImmutable                    = errors.New("project id is immutable, cant be changed after initial creation")
