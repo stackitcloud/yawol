@@ -223,8 +223,22 @@ func getProvider(
 	authInfo.AuthURL = authURL
 	authInfo.Username = strings.TrimSpace(cfg.Section("Global").Key("username").String())
 	authInfo.Password = strings.TrimSpace(cfg.Section("Global").Key("password").String())
+
 	authInfo.DomainName = strings.TrimSpace(cfg.Section("Global").Key("domain-name").String())
-	authInfo.ProjectName = strings.TrimSpace(cfg.Section("Global").Key("tenant-name").String())
+	authInfo.DomainID = strings.TrimSpace(cfg.Section("Global").Key("domain-id").String())
+
+	legacyProjectName := strings.TrimSpace(cfg.Section("Global").Key("tenant-name").String())
+	projectName := strings.TrimSpace(cfg.Section("Global").Key("project-name").String())
+	authInfo.ProjectID = strings.TrimSpace(cfg.Section("Global").Key("project-id").String())
+
+	// TODO: remove legacyProjectName once openstack-cloud-controller has dropped tenant-name support. Link to ccm args:
+	//nolint:lll // link
+	// https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
+	if projectName != "" {
+		authInfo.ProjectName = projectName
+	} else {
+		authInfo.ProjectName = legacyProjectName
+	}
 
 	region := strings.TrimSpace(cfg.Section("Global").Key("region").String())
 
