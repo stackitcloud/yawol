@@ -92,6 +92,8 @@ validate-yawollet-image:
       -var 'network_id=UNSET' \
       -var 'floating_network_id=UNSET' \
       -var 'security_group_id=UNSET' \
+      -var 'machine_flavor=UNSET' \
+      -var 'volume_type=UNSET' \
       -var 'image_visibility=private' \
       image/alpine-yawol.pkr.hcl
 
@@ -100,6 +102,9 @@ build-yawollet-image:
 
     ARG USEROS
     ARG USERARCH
+
+    ARG MACHINE_FLAVOR=c1.2
+    ARG VOLUME_TYPE=storage_premium_perf6
 
     ARG --required IMAGE_VISIBILITY
     ARG --required OS_SOURCE_IMAGE
@@ -131,6 +136,8 @@ build-yawollet-image:
       -var "network_id=$OS_NETWORK_ID" \
       -var "floating_network_id=$OS_FLOATING_NETWORK_ID" \
       -var "security_group_id=$OS_SECURITY_GROUP_ID" \
+      -var "machine_flavor=$MACHINE_FLAVOR" \
+      -var "volume_type=$VOLUME_TYPE" \
       -var "image_visibility=$IMAGE_VISIBILITY" \
       image/alpine-yawol.pkr.hcl
 
