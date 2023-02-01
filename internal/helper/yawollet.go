@@ -36,7 +36,6 @@ import (
 	envoyendpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	envoylistener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	envoyrbacconfig "github.com/envoyproxy/go-control-plane/envoy/config/rbac/v3"
-	envoyconnection "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/connection_limit/v3"
 	envoyrbac "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/rbac/v3"
 	envoytcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	envoyudp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/udp/udp_proxy/v3"
@@ -60,8 +59,7 @@ type LoadbalancerMetric string
 
 // TODO: replace with constants from envoywellknown when available
 const (
-	FilterConnectionLimit string = "extensions.filters.network.connection_limit"
-	FilterUDPProxy        string = "envoy.filters.udp_listener.udp_proxy"
+	FilterUDPProxy string = "envoy.filters.udp_listener.udp_proxy"
 )
 
 // Condition status const
@@ -264,14 +262,14 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 			DnsLookupFamily:               envoycluster.Cluster_AUTO,
 			HealthChecks:                  healthChecks,
 			TransportSocket:               transportSocket,
-			PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32Kib
+			PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 			CircuitBreakers: &envoycluster.CircuitBreakers{
 				Thresholds: []*envoycluster.CircuitBreakers_Thresholds{
 					{
 						Priority:           envoycore.RoutingPriority_DEFAULT,
-						MaxConnections:     &wrappers.UInt32Value{Value: 10000 * uint32(hostmetrics.GetCPUNum())},
-						MaxRequests:        &wrappers.UInt32Value{Value: 8000 * uint32(hostmetrics.GetCPUNum())},
-						MaxPendingRequests: &wrappers.UInt32Value{Value: 2000 * uint32(hostmetrics.GetCPUNum())},
+						MaxConnections:     wrapperspb.UInt32(uint32(10000 * hostmetrics.GetCPUNum())),
+						MaxRequests:        wrapperspb.UInt32(uint32(8000 * hostmetrics.GetCPUNum())),
+						MaxPendingRequests: wrapperspb.UInt32(uint32(2000 * hostmetrics.GetCPUNum())),
 					},
 				},
 			},
@@ -338,23 +336,6 @@ func createEnvoyTCPListener(
 		}
 	}
 
-	connectionLimit, err := anypb.New(&envoyconnection.ConnectionLimit{
-		StatPrefix: "envoyconnectionlimit",
-		// this is limited by the number of available ports on the machine
-		MaxConnections: wrapperspb.UInt64(60000),
-	})
-
-	if err == nil {
-		filters = append(filters, &envoylistener.Filter{
-			Name: FilterConnectionLimit,
-			ConfigType: &envoylistener.Filter_TypedConfig{
-				TypedConfig: connectionLimit,
-			},
-		})
-	} else {
-		_ = kubernetes.SendErrorAsEvent(r, ErrCouldNotMarshalConnectionLimit, lb)
-	}
-
 	return &envoylistener.Listener{
 		Name: fmt.Sprintf("%v-%v", port.Protocol, port.Port),
 		Address: &envoycore.Address{
@@ -379,7 +360,7 @@ func createEnvoyTCPListener(
 		}},
 		Freebind:                      wrapperspb.Bool(true),
 		EnableReusePort:               wrapperspb.Bool(true),
-		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32768), // 32 Kib
+		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 	}
 }
 
@@ -444,9 +425,9 @@ func createEnvoyUDPListener(
 				},
 			},
 		},
-		Freebind:                      &wrappers.BoolValue{Value: true},
-		EnableReusePort:               &wrappers.BoolValue{Value: true},
-		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+		Freebind:                      wrapperspb.Bool(true),
+		EnableReusePort:               wrapperspb.Bool(true),
+		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 	}
 }
 
