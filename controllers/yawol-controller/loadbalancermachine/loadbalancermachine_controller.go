@@ -296,7 +296,7 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 		return err
 	}
 
-	if version.Major <= 1 && version.Minor < 24 {
+	if version.IsLower(&kubernetes.Version{Major: 1, Minor: 24}) {
 		// secret not created by kubernetes
 		// requeue until created
 		return helper.ErrSecretNotFound
@@ -315,8 +315,15 @@ func (r *LoadBalancerMachineReconciler) reconcileSecret(
 		Type: v1.SecretTypeServiceAccountToken,
 	}
 
-	if err := r.Client.Create(ctx, &secret); err != nil {
+	err = r.Client.Get(ctx, client.ObjectKeyFromObject(&secret), &v1.Secret{})
+	if client.IgnoreNotFound(err) != nil {
 		return err
+	}
+
+	if errors2.IsNotFound(err) {
+		if err := r.Client.Create(ctx, &secret); err != nil {
+			return err
+		}
 	}
 
 	namespacedNameString := types.NamespacedName{

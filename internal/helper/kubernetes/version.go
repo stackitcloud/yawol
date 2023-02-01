@@ -29,3 +29,41 @@ func GetVersion(client *discovery.DiscoveryClient) (*Version, error) {
 
 	return &Version{Major: major, Minor: minor}, nil
 }
+
+func (v *Version) IsGreater(version *Version) bool {
+	if v.Major > version.Major {
+		return true
+	}
+
+	if v.Major < version.Major {
+		return false
+	}
+
+	if v.Minor > version.Minor {
+		return true
+	}
+
+	if v.Minor < version.Minor {
+		return false
+	}
+
+	// versions are equal
+	return false
+}
+
+func (v *Version) IsEqual(version *Version) bool {
+	return (v.Major == version.Major &&
+		v.Minor == version.Minor)
+}
+
+func (v *Version) IsLower(version *Version) bool {
+	if v.IsGreater(version) {
+		return false
+	}
+
+	if v.IsEqual(version) {
+		return false
+	}
+
+	return true
+}
