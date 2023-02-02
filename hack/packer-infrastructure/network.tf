@@ -4,10 +4,11 @@ resource "openstack_networking_network_v2" "packer" {
 }
 
 resource "openstack_networking_subnet_v2" "packer" {
-  name       = "packer"
-  network_id = openstack_networking_network_v2.packer.id
-  cidr       = "192.168.48.0/24"
-  ip_version = 4
+  name            = "packer"
+  network_id      = openstack_networking_network_v2.packer.id
+  cidr            = "192.168.48.0/24"
+  dns_nameservers = var.dns_servers
+  ip_version      = 4
 }
 
 resource "openstack_networking_router_v2" "packer" {

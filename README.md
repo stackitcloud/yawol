@@ -41,12 +41,48 @@ get yawol going, however, you need a yawol OpenStack VM image first.
 
 ### yawol OpenStack Image
 
+#### Create alpine base image
+
 We use an openstack alpine base image which can be created with this
 [packer file](https://github.com/stackitcloud/alpine-openstack-image).
 
+#### Preparation of packer environment
+
 To create the necessary environment to build the image, you can use the terraform code located within `hack/packer-infrastructure`.
-Run `terraform init && terraform apply` within that directory. The output should contain all openstack specific IDs required
-to build the image. After you are done, you can remove the build infrastructure via running `terraform destroy`
+
+You can run this terraform code with the `Earthly` step `+build-packer-environment`. To be able to log in to OpenStack make sure you source your OpenStack Credentials. The following OpenStack ENV variables are needed to build the image: `OS_AUTH_URL` `OS_PROJECT_ID` `OS_PROJECT_NAME` `OS_USER_DOMAIN_NAME` `OS_PASSWORD` `OS_USERNAME` `OS_REGION_NAME`
+
+To connect the OpenStack network with the internet, a floating IP is needed. You can specify the floating IP network with the `Earthly` argument `FLOATING_NETWORK_NAME` (default is `floating-net`).
+
+```shell
+earthly +build-packer-environment \
+   --OS_AUTH_URL="$OS_AUTH_URL" \
+   --OS_PROJECT_ID="$OS_PROJECT_ID" \
+   --OS_PROJECT_NAME="$OS_PROJECT_NAME" \
+   --OS_USER_DOMAIN_NAME="$OS_USER_DOMAIN_NAME" \
+   --OS_PASSWORD="$OS_PASSWORD" \
+   --OS_USERNAME="$OS_USERNAME" \
+   --OS_REGION_NAME="$OS_REGION_NAME"
+#  --FLOATING_NETWORK_NAME=floating-net
+```
+
+> Note that the terraform state is locally in the `hack/packer-infrastructure` folder.
+
+To clean up the resources the `Earthly` step `+destroy-packer-environment` can be used.
+
+```shell
+earthly +destroy-packer-environment \
+   --OS_AUTH_URL="$OS_AUTH_URL" \
+   --OS_PROJECT_ID="$OS_PROJECT_ID" \
+   --OS_PROJECT_NAME="$OS_PROJECT_NAME" \
+   --OS_USER_DOMAIN_NAME="$OS_USER_DOMAIN_NAME" \
+   --OS_PASSWORD="$OS_PASSWORD" \
+   --OS_USERNAME="$OS_USERNAME" \
+   --OS_REGION_NAME="$OS_REGION_NAME"
+#  --FLOATING_NETWORK_NAME=floating-net
+```
+
+#### Build yawol OpenStack Image
 
 Before running our `Earthly` targets, set the needed environment variables:
 
@@ -58,7 +94,7 @@ export OS_SOURCE_IMAGE=<from your openstack environment>
 export IMAGE_VISIBILITY=<private or public> 
 ```
 
-To be able to login to OpenStack make sure you source your OpenStack Credentials. The following OpenSTack ENV variables are needed to build the image: `OS_AUTH_URL` `OS_PROJECT_ID` `OS_PROJECT_NAME` `OS_USER_DOMAIN_NAME` `OS_PASSWORD` `OS_USERNAME` `OS_REGION_NAME`
+Like in the step above, to be able to log in to OpenStack make sure you source your OpenStack Credentials. To specify the machine flavor and volume type the `Earthly` arguments `MACHINE_FLAVOR` and `VOLUME_TYPE` can be used (default is `MACHINE_FLAVOR=c1.2` and `VOLUME_TYPE=storage_premium_perf6`).
 
 Then validate and build the image:
 
@@ -80,6 +116,8 @@ earthly +build-yawollet-image \
    --OS_PASSWORD="$OS_PASSWORD" \
    --OS_USERNAME="$OS_USERNAME" \
    --OS_REGION_NAME="$OS_REGION_NAME"
+#   --MACHINE_FLAVOR=c1.2
+#   --VOLUME_TYPE=storage_premium_perf6
 ```
 
 ### Cluster Installation

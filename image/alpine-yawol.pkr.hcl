@@ -35,8 +35,12 @@ variable "security_group_id" {
 
 variable "machine_flavor" {
   type        = string
-  default     = "c1.2"
   description = "The ID, name, or full URL for the desired flavor for the server to be created."
+}
+
+variable "volume_type" {
+  type        = string
+  description = "The ID, name, or full URL for the desired volume type for the server."
 }
 
 variable "source_image" {
@@ -65,7 +69,7 @@ source "openstack" "yawollet" {
   ssh_username            = "alpine"
   use_blockstorage_volume = true
   volume_size             = 1
-  volume_type             = "storage_premium_perf6"
+  volume_type             = "${var.volume_type}"
   ssh_timeout             = "10m"
   image_tags              = var.image_tags
 }
