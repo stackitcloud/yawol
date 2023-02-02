@@ -4,15 +4,15 @@ go 1.19
 
 require (
 	github.com/cncf/xds/go v0.0.0-20220314180256-7f1daf1720fc
-	github.com/envoyproxy/go-control-plane v0.10.3
+	github.com/envoyproxy/go-control-plane v0.11.0
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/protobuf v1.5.2
-	github.com/gophercloud/gophercloud v1.1.1
+	github.com/gophercloud/gophercloud v1.2.0
 	github.com/gophercloud/utils v0.0.0-20220927104426-4113af8d2663
 	github.com/onsi/ginkgo/v2 v2.8.0
 	github.com/onsi/gomega v1.26.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/shirou/gopsutil/v3 v3.22.12
+	github.com/shirou/gopsutil/v3 v3.23.1
 	google.golang.org/grpc v1.52.3
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/ini.v1 v1.67.0
@@ -46,11 +46,11 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
+	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
-	github.com/envoyproxy/protoc-gen-validate v0.6.7 // indirect
+	github.com/envoyproxy/protoc-gen-validate v0.9.1 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -85,7 +85,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cobra v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect

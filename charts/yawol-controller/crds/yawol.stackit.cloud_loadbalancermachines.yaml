@@ -307,6 +307,10 @@ spec:
                 description: ServiceAccountName contains the namespacedName from the
                   ServiceAccount for a LoadBalancerMachine.
                 type: string
+              serviceAccountSecretName:
+                description: SecretName contains the namespacedName from the Secret
+                  which belongs to the Serviceaccount.
+                type: string
             type: object
         type: object
     served: true
