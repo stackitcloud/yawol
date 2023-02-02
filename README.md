@@ -122,106 +122,103 @@ earthly +build-yawollet-image \
 
 ### Cluster Installation
 
-The in-cluster components of yawol (`yawol-cloud-controller` and
-`yawol-controller`) can now be installed.
+The in-cluster components of yawol (`yawol-cloud-controller` and`yawol-controller`) can now be installed.
 
-1. Make sure that `VerticalPodAutoscaler` is installed in the cluster.
-2. Create a Kubernetes `Secret` that contains the contents of an `.openrc`
-   file underneath the `cloudprovider.conf` key. The `.openrc` credentials need
-   the correct permission to be able to create instances and request floating
-   IPs.
+1. Optional: Install `VerticalPodAutoscaler`. If installed you can enable the `VerticalPodAutoscaler` resources in the helm values.
+   1. [VPA install guide](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler#installation)
+2. Create a Kubernetes `Secret` that contains the contents of an `.openrc` file underneath the `cloudprovider.conf` key. 
+   The `.openrc` credentials need the correct permission to be able to create instances and request floating IPs.
 
 **Note**: At most one of `domain-id` or `domain-name` and `project-id` or `project-name` must be provided.
 
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: cloud-provider-config
-   type: Opaque
-   stringData:
-     cloudprovider.conf: |-
-       [Global]
-       auth-url="""
-       domain-name=""
-       domain-id=""
-       # Deprecated (tenant-name): Please use project-name
-       tenant-name=""
-       project-name=""
-       project-id=""
-       username=""
-       password=""
-       region=""
-   ```
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloud-provider-config
+type: Opaque
+stringData:
+  cloudprovider.conf: |-
+    [Global]
+    auth-url="<OS_AUTH_URL>"
+    domain-name="<OS_USER_DOMAIN_NAME>"
+    domain-id="<OS_DOMAIN_ID>"
+    # Deprecated (tenant-name): Please use project-name, only used if project-name is not set.
+    tenant-name="<OS_PROJECT_NAME>"
+    project-name="<OS_PROJECT_NAME>"
+    project-id="<OS_PROJECT_ID>"
+    username="<OS_USERNAME>"
+    password="<OS_PASSWORD>"
+    region="<OS_REGION_NAME>"
+```
 
-   Assuming you saved the secret as `secret-cloud-provider-config.yaml`, apply
-   it with:
+Assuming you saved the secret as `secret-cloud-provider-config.yaml`, apply it with:
 
-   ```shell
-   kubectl apply -f secret-cloud-provider-config.yaml
-   ```
+```shell
+kubectl apply -f secret-cloud-provider-config.yaml
+```
 
-3. Configure the [Helm values](charts/yawol-controller/values.yaml) according to
-   your OpenStack environment:
+3. Configure the [Helm values](charts/yawol-controller/values.yaml) according to your OpenStack environment:
    
-   **Values for the yawol-cloud-controller**
+**Values for the yawol-cloud-controller**
 
-   ```yaml
-   # the name of the Kubernetes secret we created in the previous step
-   #
-   # Placed in LoadBalancer.spec.infrastructure.authSecretRef.name
-   yawolOSSecretName: cloud-provider-config
+```yaml
+# the name of the Kubernetes secret we created in the previous step
+#
+# Placed in LoadBalancer.spec.infrastructure.authSecretRef.name
+yawolOSSecretName: cloud-provider-config
 
-   # floating IP ID of the IP pool that yawol uses to request IPs
-   #
-   # Placed in LoadBalancer.spec.infrastructure.floatingNetID
-   yawolFloatingID: <floating-id>
+# floating IP ID of the IP pool that yawol uses to request IPs
+#
+# Placed in LoadBalancer.spec.infrastructure.floatingNetID
+yawolFloatingID: <floating-id>
 
-   # OpenStack network ID in which the Load Balancer is placed
-   #
-   # Placed in LoadBalancer.spec.infrastructure.networkID
-   yawolNetworkID: <network-id>
+# OpenStack network ID in which the Load Balancer is placed
+#
+# Placed in LoadBalancer.spec.infrastructure.networkID
+yawolNetworkID: <network-id>
 
-   # default value for flavor that yawol Load Balancer instances should use
-   # can be overridden by annotation
-   #
-   # Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
-   yawolFlavorID: <flavor-id>
+# default value for flavor that yawol Load Balancer instances should use
+# can be overridden by annotation
+#
+# Placed in LoadBalancer.spec.infrastructure.flavor.flavor_id
+yawolFlavorID: <flavor-id>
 
-   # default value for ID of the image used for the Load Balancer instance
-   # can be overridden by annotation
-   #
-   # Placed in LoadBalancer.spec.infrastructure.image.image_id
-   yawolImageID: <image-id>
+# default value for ID of the image used for the Load Balancer instance
+# can be overridden by annotation
+#
+# Placed in LoadBalancer.spec.infrastructure.image.image_id
+yawolImageID: <image-id>
 
-   # default value for the AZ used for the Load Balancer instance
-   # can be overridden by annotation. If not set, empty string is used.
-   #
-   # Placed in LoadBalancer.spec.infrastructure.availabilityZone
-   yawolAvailabilityZone: <availability-zone>
-   ```
+# default value for the AZ used for the Load Balancer instance
+# can be overridden by annotation. If not set, empty string is used.
+#
+# Placed in LoadBalancer.spec.infrastructure.availabilityZone
+yawolAvailabilityZone: <availability-zone>
+```
 
-   **Values for the yawol-controller**
+**Values for the yawol-controller**
 
-   ```yaml
-   # URL/IP of the Kubernetes API server that contains the LoadBalancer resources
-   yawolAPIHost: <api-host>
-   ```
+```yaml
+# URL/IP of the Kubernetes API server that contains the LoadBalancer resources
+yawolAPIHost: <api-host>
+```
 
-3. With the values correctly configured, you can now install the Helm chart.
+**To check out all available values have a look into the [Helm values](charts/yawol-controller/values.yaml)**
 
-   ```shell
-   helm install yawol ./charts/yawol-controller
-   ```
 
-   This will also install the CRDs needed by yawol.
+4. With the values correctly configured, you can now install the Helm chart.
 
-After successful installation, you can request `Services` of
-`type: LoadBalancer` and yawol will take care of creating an instance,
+```shell
+helm install yawol ./charts/yawol-controller
+```
+
+This will also install the CRDs needed by yawol.
+
+After successful installation, you can request `Services` of `type: LoadBalancer` and yawol will take care of creating an instance,
 allocating an IP, and updating the `Service` resource once the setup is ready.
 
-You can also specify custom annotations on the `Service` to further control the
-behavior of yawol.
+You can also specify custom annotations on the `Service` to further control the  behavior of yawol.
 
 ```yaml
 apiVersion: v1
@@ -282,8 +279,12 @@ metadata:
     yawol.stackit.cloud/additionalNetworks: "OS-networkID1,OS-networkID2"
 ```
 
-See [our example service](example-setup/yawol-cloud-controller/service.yaml)
-for an overview.
+To create a first LoadBalancer you can create a nginx deployment with a `Service` of type `LoadBalancer`:
+
+```shell
+kubectl create deploy --image nginx --port 80 nginx
+kubectl expose deployment nginx --port 80 --type LoadBalancer
+```
 
 ## Development
 
