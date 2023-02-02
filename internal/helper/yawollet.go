@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +56,11 @@ type LoadbalancerConditionStatus string
 
 // LoadbalancerMetric metric name for lbm
 type LoadbalancerMetric string
+
+// TODO: replace with constants from envoywellknown when available
+const (
+	FilterUDPProxy string = "envoy.filters.udp_listener.udp_proxy"
+)
 
 // Condition status const
 const (
@@ -256,14 +262,14 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 			DnsLookupFamily:               envoycluster.Cluster_AUTO,
 			HealthChecks:                  healthChecks,
 			TransportSocket:               transportSocket,
-			PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32Kib
+			PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 			CircuitBreakers: &envoycluster.CircuitBreakers{
 				Thresholds: []*envoycluster.CircuitBreakers_Thresholds{
 					{
 						Priority:           envoycore.RoutingPriority_DEFAULT,
-						MaxConnections:     &wrappers.UInt32Value{Value: 10000 * uint32(hostmetrics.GetCPUNum())},
-						MaxRequests:        &wrappers.UInt32Value{Value: 8000 * uint32(hostmetrics.GetCPUNum())},
-						MaxPendingRequests: &wrappers.UInt32Value{Value: 2000 * uint32(hostmetrics.GetCPUNum())},
+						MaxConnections:     wrapperspb.UInt32(uint32(10000 * hostmetrics.GetCPUNum())),
+						MaxRequests:        wrapperspb.UInt32(uint32(8000 * hostmetrics.GetCPUNum())),
+						MaxPendingRequests: wrapperspb.UInt32(uint32(2000 * hostmetrics.GetCPUNum())),
 					},
 				},
 			},
@@ -344,17 +350,17 @@ func createEnvoyTCPListener(
 			},
 		},
 		FilterChains: []*envoylistener.FilterChain{{
-			// proxy filter has to be the last in the chain
 			Filters: append(filters, &envoylistener.Filter{
+				// proxy filter has to be the last in the chain
 				Name: envoywellknown.TCPProxy,
 				ConfigType: &envoylistener.Filter_TypedConfig{
 					TypedConfig: listenPort,
 				},
 			}),
 		}},
-		Freebind:                      &wrappers.BoolValue{Value: true},
-		EnableReusePort:               &wrappers.BoolValue{Value: true},
-		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+		Freebind:                      wrapperspb.Bool(true),
+		EnableReusePort:               wrapperspb.Bool(true),
+		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 	}
 }
 
@@ -413,16 +419,15 @@ func createEnvoyUDPListener(
 		},
 		ListenerFilters: []*envoylistener.ListenerFilter{
 			{
-				// TODO this is not in envoywellknown
-				Name: "envoy.filters.udp_listener.udp_proxy",
+				Name: FilterUDPProxy,
 				ConfigType: &envoylistener.ListenerFilter_TypedConfig{
 					TypedConfig: listenPort,
 				},
 			},
 		},
-		Freebind:                      &wrappers.BoolValue{Value: true},
-		EnableReusePort:               &wrappers.BoolValue{Value: true},
-		PerConnectionBufferLimitBytes: &wrappers.UInt32Value{Value: 32768}, // 32 Kib
+		Freebind:                      wrapperspb.Bool(true),
+		EnableReusePort:               wrapperspb.Bool(true),
+		PerConnectionBufferLimitBytes: wrapperspb.UInt32(32 * 1024),
 	}
 }
 
@@ -471,13 +476,13 @@ func createEnvoyRBACRules(
 		split := strings.Split(sourceRange, "/")
 
 		if err != nil || len(split) != 2 {
-			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRange: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
 			continue
 		}
 
 		prefix, err := strconv.ParseUint(split[1], 10, 32)
 		if err != nil {
-			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRage: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
+			_ = kubernetes.SendErrorAsEvent(r, fmt.Errorf("%w: SourceRange: %s", ErrCouldNotParseSourceRange, sourceRange), lb)
 			continue
 		}
 

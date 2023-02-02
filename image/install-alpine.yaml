@@ -209,7 +209,7 @@
       lineinfile:
         path: /etc/rc.conf
         regexp: "rc_ulimit="
-        line: "rc_ulimit='-n 100000'"
+        line: "rc_ulimit='-n 130000'"
 
     - name: Set boot timout to 1
       lineinfile:
