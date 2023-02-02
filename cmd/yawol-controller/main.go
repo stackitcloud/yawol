@@ -19,6 +19,7 @@ import (
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	discovery "k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -122,10 +123,11 @@ func main() {
 	var loadBalancerMgr manager.Manager
 	var loadBalancerSetMgr manager.Manager
 	var loadBalancerMachineMgr manager.Manager
+	cfg := ctrl.GetConfigOrDie()
 
 	// Controller 2
 	if lbController {
-		loadBalancerMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLb,
 			Port:                       9443,
@@ -168,7 +170,7 @@ func main() {
 
 	// Controller 3
 	if lbSetController {
-		loadBalancerSetMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLbs,
 			Port:                       9444,
@@ -214,7 +216,9 @@ func main() {
 			panic("could not read env " + EnvAPIEndpoint)
 		}
 
-		loadBalancerMachineMgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		discoveryClient := discovery.NewDiscoveryClientForConfigOrDie(cfg)
+
+		loadBalancerMachineMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
 			MetricsBindAddress:         metricsAddrLbm,
 			Port:                       9445,
@@ -243,6 +247,7 @@ func main() {
 			APIEndpoint:      apiEndpoint,
 			Metrics:          &helpermetrics.LoadBalancerMachineMetrics,
 			OpenstackTimeout: openstackTimeout,
+			DiscoveryClient:  discoveryClient,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)

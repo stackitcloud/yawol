@@ -9,6 +9,7 @@ ARG PROMTAIL_VERSION=2.7.0
 ARG HELM_VERSION=3.8.1
 ARG GOLANGCI_LINT_VERSION=v1.50.1
 ARG PACKER_VERSION=1.8
+ARG TERRAFORM_VERSION=1.3.7
 
 local-setup:
     LOCALLY
@@ -91,6 +92,8 @@ validate-yawollet-image:
       -var 'network_id=UNSET' \
       -var 'floating_network_id=UNSET' \
       -var 'security_group_id=UNSET' \
+      -var 'machine_flavor=UNSET' \
+      -var 'volume_type=UNSET' \
       -var 'image_visibility=private' \
       image/alpine-yawol.pkr.hcl
 
@@ -99,6 +102,9 @@ build-yawollet-image:
 
     ARG USEROS
     ARG USERARCH
+
+    ARG MACHINE_FLAVOR=c1.2
+    ARG VOLUME_TYPE=storage_premium_perf6
 
     ARG --required IMAGE_VISIBILITY
     ARG --required OS_SOURCE_IMAGE
@@ -130,8 +136,59 @@ build-yawollet-image:
       -var "network_id=$OS_NETWORK_ID" \
       -var "floating_network_id=$OS_FLOATING_NETWORK_ID" \
       -var "security_group_id=$OS_SECURITY_GROUP_ID" \
+      -var "machine_flavor=$MACHINE_FLAVOR" \
+      -var "volume_type=$VOLUME_TYPE" \
       -var "image_visibility=$IMAGE_VISIBILITY" \
       image/alpine-yawol.pkr.hcl
+
+build-packer-environment:
+    FROM +terraform
+
+    ARG FLOATING_NETWORK_NAME=floating-net
+
+    ARG --required OS_AUTH_URL
+    ARG --required OS_PROJECT_ID
+    ARG --required OS_PROJECT_NAME
+    ARG --required OS_USER_DOMAIN_NAME
+    ARG --required OS_PASSWORD
+    ARG --required OS_USERNAME
+    ARG --required OS_REGION_NAME
+
+    COPY --dir hack/packer-infrastructure .
+
+    WORKDIR /packer-infrastructure
+
+    RUN terraform init
+    RUN terraform apply \
+      -var "floating_ip_network_name=$FLOATING_NETWORK_NAME" \
+      -auto-approve
+
+    SAVE ARTIFACT /packer-infrastructure/terraform.tfstate AS LOCAL hack/packer-infrastructure/terraform.tfstate
+
+destroy-packer-environment:
+    FROM +terraform
+
+    ARG FLOATING_NETWORK_NAME=floating-net
+
+    ARG --required OS_AUTH_URL
+    ARG --required OS_PROJECT_ID
+    ARG --required OS_PROJECT_NAME
+    ARG --required OS_USER_DOMAIN_NAME
+    ARG --required OS_PASSWORD
+    ARG --required OS_USERNAME
+    ARG --required OS_REGION_NAME
+
+    COPY --dir hack/packer-infrastructure .
+
+    WORKDIR /packer-infrastructure
+
+    RUN terraform init
+    RUN terraform destroy \
+      -var "floating_ip_network_name=$FLOATING_NETWORK_NAME" \
+      -auto-approve
+
+    SAVE ARTIFACT /packer-infrastructure/terraform.tfstate* AS LOCAL hack/packer-infrastructure/
+
 
 set-version:
     FROM alpine/git
@@ -258,6 +315,9 @@ packer:
     FROM hashicorp/packer:$PACKER_VERSION
     RUN apk add ansible
     RUN apk add openssh-client
+
+terraform:
+    FROM hashicorp/terraform:$TERRAFORM_VERSION
 
 envoy:
     FROM envoyproxy/envoy:$ENVOY_VERSION

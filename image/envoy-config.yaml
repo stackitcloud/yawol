@@ -2,6 +2,7 @@
 # https://www.envoyproxy.io/docs/envoy/latest/start/quick-start/configuration-dynamic-control-plane
 
 admin:
+  ignore_global_conn_limit: true
   address:
     socket_address:
       address: 127.0.0.1
@@ -51,4 +52,4 @@ layered_runtime:
     - name: static_layer_0
       static_layer:
         overload:
-          global_downstream_max_connections: 90000
+          global_downstream_max_connections: 60000
