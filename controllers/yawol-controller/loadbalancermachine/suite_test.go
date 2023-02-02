@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
+	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -95,14 +96,18 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(k8sClient.Create(context.Background(), &secret)).Should(Succeed())
 
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(cfg)
+	Expect(err).ToNot(HaveOccurred())
+
 	loadBalancerMachineReconciler = &LoadBalancerMachineReconciler{
-		APIEndpoint: "https://lala.com",
-		Client:      k8sManager.GetClient(),
-		Log:         ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
-		Scheme:      k8sManager.GetScheme(),
-		Recorder:    k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
-		RecorderLB:  k8sManager.GetEventRecorderFor("yawol-service"),
-		Metrics:     &helpermetrics.LoadBalancerMachineMetrics,
+		APIEndpoint:     "https://example.com",
+		Client:          k8sManager.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("LoadBalancerMachine"),
+		Scheme:          k8sManager.GetScheme(),
+		Recorder:        k8sManager.GetEventRecorderFor("LoadBalancerMachine"),
+		RecorderLB:      k8sManager.GetEventRecorderFor("yawol-service"),
+		Metrics:         &helpermetrics.LoadBalancerMachineMetrics,
+		DiscoveryClient: discoveryClient,
 	}
 
 	err = loadBalancerMachineReconciler.SetupWithManager(k8sManager)
