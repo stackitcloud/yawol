@@ -194,6 +194,13 @@ func GetDesiredSecGroupRulesForLoadBalancer(r record.EventRecorder, lb *yawolv1b
 	desiredSecGroups := []rules.SecGroupRule{}
 
 	for _, etherType := range []rules.RuleEtherType{rules.EtherType4, rules.EtherType6} {
+		// icmpProtocol is different in ipv6, openstack accept it, but change it to ipv6-icmp.
+		// It lets delete the rule each time, because it not pass the unused check.
+		icmpProtocol := rules.ProtocolICMP
+		if etherType == rules.EtherType6 {
+			icmpProtocol = rules.ProtocolIPv6ICMP
+		}
+
 		// Egress all
 		// VRRP for keepalived
 		// Ping for easy debugging
@@ -212,7 +219,7 @@ func GetDesiredSecGroupRulesForLoadBalancer(r record.EventRecorder, lb *yawolv1b
 			rules.SecGroupRule{
 				EtherType:    string(etherType),
 				Direction:    string(rules.DirIngress),
-				Protocol:     string(rules.ProtocolICMP),
+				Protocol:     string(icmpProtocol),
 				PortRangeMin: 1,
 				PortRangeMax: 8,
 			})
