@@ -15,7 +15,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.2
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.29.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.25.3
