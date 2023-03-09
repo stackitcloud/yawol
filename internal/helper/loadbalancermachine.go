@@ -288,6 +288,12 @@ func generateKeepalivedConfig(vip string) string {
 global_defs {
 	router_id envoy
 	max_auto_priority -1
+	vrrp_garp_master_repeat 5
+	vrrp_garp_interval 1
+	vrrp_garp_lower_prio_repeat 1
+	vrrp_garp_master_refresh 300
+	vrrp_garp_master_refresh_repeat 1
+	vrrp_higher_prio_send_advert true
 }
 
 vrrp_track_process envoy {
