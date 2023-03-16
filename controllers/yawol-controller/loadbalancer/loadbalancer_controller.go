@@ -27,6 +27,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
 const (
@@ -48,6 +49,7 @@ type Reconciler struct {
 	getOsClientForIni openstack.GetOSClientFunc
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
+	RateLimiter       ratelimiter.RateLimiter
 }
 
 // Reconcile function for LoadBalancer object
@@ -128,6 +130,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&yawolv1beta1.LoadBalancer{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
+			RateLimiter:             r.RateLimiter,
 		}).
 		Complete(r)
 }
