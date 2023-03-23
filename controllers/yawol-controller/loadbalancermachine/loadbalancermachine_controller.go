@@ -42,6 +42,7 @@ const (
 	// ServiceFinalizer Name of finalizer for controller4
 	ServiceFinalizer             = "yawol.stackit.cloud/controller4"
 	DefaultRequeueTime           = 10 * time.Millisecond
+	OpenstackRequeueTime         = 1 * time.Minute
 	ServiceAccountNameAnnotation = "kubernetes.io/service-account.name"
 )
 
@@ -174,7 +175,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// check if reconcile is needed
 	if !helper.LoadBalancerMachineOpenstackReconcileIsNeeded(loadBalancerMachine) {
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: OpenstackRequeueTime}, nil
 	}
 
 	if err := r.reconcilePort(ctx, osClient, req, loadBalancerMachine, loadbalancer); err != nil {
@@ -202,7 +203,7 @@ func (r *LoadBalancerMachineReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: OpenstackRequeueTime}, nil
 }
 
 // SetupWithManager is used by kubebuilder to init the controller loop
