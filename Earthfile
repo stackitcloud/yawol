@@ -52,6 +52,7 @@ local:
 build-local:
   BUILD +local --CONTROLLER=yawol-controller
   BUILD +local --CONTROLLER=yawol-cloud-controller
+  BUILD +local --CONTROLLER=yawollet
 
 build-test:
     FROM +deps

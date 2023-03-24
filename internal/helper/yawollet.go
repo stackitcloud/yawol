@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -780,4 +782,48 @@ func UpdateKeepalivedStatus(
 		KeepalivedStatsFile,
 		ConditionTrue,
 		"StatsUpToDate", "Keepalived stat file is newer than 5 min")
+}
+
+// EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
+func EnableAdHocDebugging(lb *yawolv1beta1.LoadBalancer, recorder record.EventRecorder, lbmName string) error {
+	// skip if debugging is enabled anyway
+	if lb.Spec.DebugSettings.Enabled {
+		return nil
+	}
+
+	enabled, _ := strconv.ParseBool(lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebug])
+	sshKey, sshKeySet := lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebugSSHKey]
+
+	// skip not all needed annotations are set or disabled
+	if !enabled || !sshKeySet {
+		return nil
+	}
+
+	err := os.MkdirAll("/home/yawol/.ssh", 0755)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile("/home/yawol/.ssh/authorized_keys", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.Write([]byte("\n" + sshKey + "\n")); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	startSSH := exec.Command("sudo", "/sbin/rc-service", "sshd", "start")
+	if err = startSSH.Run(); err != nil {
+		return err
+	}
+
+	recorder.Eventf(lb, corev1.EventTypeWarning, "AdHocDebuggingEnabled", "Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
+
+	return nil
 }

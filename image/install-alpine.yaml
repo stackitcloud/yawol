@@ -60,6 +60,14 @@
         state: directory
         mode: '0755'
 
+    - name: add sudoers file for yawol
+      copy:
+        src: ./yawol-sudoers
+        dest: /etc/sudoers.d/yawol
+        owner: root
+        group: root
+        mode: 0644
+
     # envoy
     - name: Copy envoy in place
       copy:
@@ -237,3 +245,6 @@
 
     - name: more cleanup
       command: "cloud-init clean -l -s"
+
+    - name: cleanup ssh-keys
+      command: "> /home/alpine/.ssh/authorized_keys"

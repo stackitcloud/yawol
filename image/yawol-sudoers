@@ -1,0 +1,1 @@
+yawol ALL = NOPASSWD: /sbin/rc-service sshd start
