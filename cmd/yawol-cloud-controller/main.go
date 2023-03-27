@@ -345,6 +345,6 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 			ImageSearch: imageSearch,
 		},
 		AvailabilityZone: pointer.String(availabilityZone),
-		InternalLB:       pointer.BoolPtr(internalLb),
+		InternalLB:       pointer.Bool(internalLb),
 	}
 }
