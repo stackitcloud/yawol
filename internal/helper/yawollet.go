@@ -810,7 +810,7 @@ func EnableAdHocDebugging(lb *yawolv1beta1.LoadBalancer, recorder record.EventRe
 	}
 	defer f.Close()
 
-	if _, err := f.Write([]byte("\n" + sshKey + "\n")); err != nil {
+	if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
 		return err
 	}
 
@@ -819,11 +819,14 @@ func EnableAdHocDebugging(lb *yawolv1beta1.LoadBalancer, recorder record.EventRe
 	}
 
 	startSSH := exec.Command("sudo", "/sbin/rc-service", "sshd", "start")
-	if err = startSSH.Run(); err != nil {
+	if err := startSSH.Run(); err != nil {
 		return err
 	}
 
-	recorder.Eventf(lb, corev1.EventTypeWarning, "AdHocDebuggingEnabled", "Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
+	recorder.Eventf(lb, corev1.EventTypeWarning,
+		"AdHocDebuggingEnabled",
+		"Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. "+
+			"Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
 
 	return nil
 }
