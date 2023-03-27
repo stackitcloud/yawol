@@ -56,7 +56,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// enable ad hoc debugging if configured
-	if err := helper.EnableAdHocDebugging(lb, r.Recorder, r.LoadbalancerMachineName); err != nil {
+	if err := helper.EnableAdHocDebugging(lb, lbm, r.Recorder, r.LoadbalancerMachineName); err != nil {
 		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
 	}
 
