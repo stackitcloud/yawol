@@ -23,6 +23,25 @@
         search_string: 'slaac hwaddr'
         line: 'slaac hwaddr'
 
+    # sshd config
+    - name: disable root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PermitRootLogin.*$
+        line: 'PermitRootLogin no'
+
+    - name: disable login without password
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PermitEmptyPasswords.*$
+        line: 'PermitEmptyPasswords no'
+
+    - name: disable login password login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PasswordAuthentication.*$
+        line: 'PasswordAuthentication no'
+
     # keepalived
     - name: install keepalived
       command: "apk add keepalived"
@@ -53,6 +72,7 @@
       user:
         name: "yawol"
         shell: /bin/ash
+        password: '*'
 
     - name: Create a directory for yawol
       file:
@@ -247,4 +267,7 @@
       command: "cloud-init clean -l -s"
 
     - name: cleanup ssh-keys
-      command: "> /home/alpine/.ssh/authorized_keys"
+      lineinfile:
+        path: /home/alpine/.ssh/authorized_keys
+        state: absent
+        regexp: '.*'
