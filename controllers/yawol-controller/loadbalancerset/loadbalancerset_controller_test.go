@@ -23,7 +23,7 @@ import (
 )
 
 // integration tests
-var _ = Describe("LoadBalancerSet controller", func() {
+var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 	const (
 		LoadBalancerSetName      = "test-lbset"
 		LoadBalancerSetNamespace = "test-lbset-namespace"
