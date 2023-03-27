@@ -786,7 +786,12 @@ func UpdateKeepalivedStatus(
 }
 
 // EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
-func EnableAdHocDebugging(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine, recorder record.EventRecorder, lbmName string) error {
+func EnableAdHocDebugging(
+	lb *yawolv1beta1.LoadBalancer,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	recorder record.EventRecorder,
+	lbmName string,
+) error {
 	// skip if debugging is enabled anyway
 	if lb.Spec.DebugSettings.Enabled {
 		return nil
