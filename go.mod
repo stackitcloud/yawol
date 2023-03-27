@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/cncf/xds/go v0.0.0-20230105202645-06c439db220b
-	github.com/envoyproxy/go-control-plane v0.11.0
+	github.com/envoyproxy/go-control-plane v0.10.3
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/protobuf v1.5.3
 	github.com/gophercloud/gophercloud v1.2.0
@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/shirou/gopsutil/v3 v3.23.2
 	go.uber.org/zap v1.24.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.52.0-dev
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -22,7 +22,7 @@ require (
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
-	sigs.k8s.io/controller-runtime v0.13.1
+	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20230326190753-3b0376c24e4f
 	sigs.k8s.io/controller-tools v0.11.3
 )
@@ -34,8 +34,6 @@ replace (
 )
 
 require (
-	cloud.google.com/go/compute v1.15.1 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.27 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.20 // indirect
@@ -103,7 +101,7 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
