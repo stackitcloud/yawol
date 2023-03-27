@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -810,8 +811,18 @@ func EnableAdHocDebugging(lb *yawolv1beta1.LoadBalancer, recorder record.EventRe
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
-		return err
+	scanner := bufio.NewScanner(f)
+	var found bool
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), sshKey) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
+			return err
+		}
 	}
 
 	if err := f.Close(); err != nil {
