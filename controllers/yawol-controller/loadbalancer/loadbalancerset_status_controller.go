@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
@@ -23,6 +24,7 @@ type LoadBalancerSetStatusReconciler struct { //nolint:revive // naming from kub
 	Scheme      *runtime.Scheme
 	Recorder    record.EventRecorder
 	WorkerCount int
+	RateLimiter ratelimiter.RateLimiter
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -89,6 +91,7 @@ func (r *LoadBalancerSetStatusReconciler) SetupWithManager(mgr ctrl.Manager) err
 		For(&yawolv1beta1.LoadBalancerSet{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
+			RateLimiter:             r.RateLimiter,
 		}).
 		Complete(r)
 }
