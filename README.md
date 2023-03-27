@@ -257,6 +257,9 @@ metadata:
     yawol.stackit.cloud/replicas: "3"
     # Specify an existing floating IP for yawol to use.
     yawol.stackit.cloud/existingFloatingIP: "193.148.175.46"
+    # Specify the loadBalancerSourceRanges for the LoadBalancer like service.spec.loadBalancerSourceRanges (comma separated list).
+    # If service.spec.loadBalancerSourceRanges is set this annotation will NOT be used.
+    yawol.stackit.cloud/loadBalancerSourceRanges: "10.10.10.0/24,10.10.20.0/24"
     # Enable/disable envoy support for proxy protocol.
     yawol.stackit.cloud/tcpProxyProtocol: "false"
     # Defines proxy protocol ports (comma separated list).

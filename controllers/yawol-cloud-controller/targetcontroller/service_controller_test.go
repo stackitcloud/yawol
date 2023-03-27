@@ -355,6 +355,61 @@ var _ = Describe("Check loadbalancer reconcile", func() {
 				return helper.ErrSourceRangesAreWrong
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 
+			By("remove LoadBalancerSourceRange")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{
+				Name: service.Name, Namespace: service.Namespace,
+			}, &service)).Should(Succeed())
+
+			service.Spec.LoadBalancerSourceRanges = []string{}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name: "default--service-test20", Namespace: service.Namespace,
+				}, &lb)
+
+				if err != nil {
+					return err
+				}
+
+				if lb.Spec.Options.LoadBalancerSourceRanges != nil {
+					return helper.ErrSourceRangesWrongLength
+				}
+
+				return nil
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("add LoadBalancerSourceRanges via annotation")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{
+				Name: service.Name, Namespace: service.Namespace,
+			}, &service)).Should(Succeed())
+			if service.Annotations == nil {
+				service.Annotations = make(map[string]string)
+			}
+			service.Annotations[yawolv1beta1.ServiceLoadBalancerSourceRanges] = "2.2.2.2/24,4.2.2.2/16"
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name: "default--service-test20", Namespace: service.Namespace,
+				}, &lb)
+
+				if err != nil {
+					return err
+				}
+
+				if lb.Spec.Options.LoadBalancerSourceRanges == nil || len(lb.Spec.Options.LoadBalancerSourceRanges) != 2 {
+					return helper.ErrSourceRangesWrongLength
+				}
+
+				if lb.Spec.Options.LoadBalancerSourceRanges[0] == "2.2.2.2/24" &&
+					lb.Spec.Options.LoadBalancerSourceRanges[1] == "4.2.2.2/16" {
+					return nil
+				}
+
+				return helper.ErrSourceRangesAreWrong
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
 			By("clean up load balancer")
 			Expect(k8sClient.Delete(ctx, &service)).Should(Succeed())
 			Eventually(func() error {
