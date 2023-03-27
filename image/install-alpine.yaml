@@ -36,7 +36,7 @@
         regexp: ^PermitEmptyPasswords.*$
         line: 'PermitEmptyPasswords no'
 
-    - name: disable login password login
+    - name: disable password login
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: ^PasswordAuthentication.*$
