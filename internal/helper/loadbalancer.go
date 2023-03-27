@@ -28,7 +28,8 @@ func LoadBalancerOpenstackReconcileIsNeeded(lb *yawolv1beta1.LoadBalancer) bool 
 	}
 
 	// lastOpenstackReconcile is older than 5 min
-	if lb.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-5 * time.Minute)}) {
+	// add some seconds in order to be sure it reconciles
+	if lb.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
 		return true
 	}
 
