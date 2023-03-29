@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -804,22 +803,8 @@ func EnableAdHocDebugging(
 		return nil
 	}
 
-	err := os.MkdirAll("/home/yawol/.ssh", 0755)
-	if err != nil {
-		return err
-	}
-
-	f, err := os.OpenFile("/home/yawoldebug/.ssh/authorized_keys", os.O_WRONLY|os.O_CREATE, 0660)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
-		return err
-	}
-
-	if err := f.Close(); err != nil {
+	addAuthorizedKeys := exec.Command("/bin/sh", "-c", "echo \"\n"+sshKey+"\n\" | sudo tee /home/yawoldebug/.ssh/authorized_keys")
+	if err := addAuthorizedKeys.Run(); err != nil {
 		return err
 	}
 

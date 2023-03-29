@@ -67,17 +67,10 @@
         group: root
         mode: 0755
 
-    # create yawol group
-    - name: Creating yawol group
-      ansible.builtin.group:
-        name: yawol
-        state: present
-
     # yawol user
     - name: Creating yawol user
       user:
         name: "yawol"
-        group: "yawol"
         shell: /bin/ash
 
     - name: Create a directory for yawol
@@ -98,7 +91,8 @@
     - name: Creating yawol user
       user:
         name: "yawoldebug"
-        group: "yawol"
+        groups:
+          - wheel
         shell: /bin/ash
         password: "*"
 
@@ -106,9 +100,15 @@
       file:
         path: /home/yawoldebug/.ssh
         owner: "yawoldebug"
-        group: "yawol"
         state: directory
-        mode: '0770'
+        mode: '0700'
+
+    - name: Create a .ssh(authorized_keys file for yawoldebug user
+      file:
+        path: /home/yawoldebug/.ssh/authorized_keys
+        owner: "yawoldebug"
+        state: touch
+        mode: '0600'
 
     # envoy
     - name: Copy envoy in place
