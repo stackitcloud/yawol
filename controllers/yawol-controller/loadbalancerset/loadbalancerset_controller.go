@@ -22,6 +22,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
 const FINALIZER = "stackit.cloud/loadbalancermachine"
@@ -34,6 +35,7 @@ type LoadBalancerSetReconciler struct { //nolint:revive // naming from kubebuild
 	Recorder    record.EventRecorder
 	Metrics     *helpermetrics.LoadBalancerSetMetricList
 	WorkerCount int
+	RateLimiter ratelimiter.RateLimiter
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -340,6 +342,7 @@ func (r *LoadBalancerSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&yawolv1beta1.LoadBalancerSet{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
+			RateLimiter:             r.RateLimiter,
 		}).
 		Complete(r)
 }

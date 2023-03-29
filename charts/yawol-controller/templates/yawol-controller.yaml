@@ -40,6 +40,12 @@ spec:
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
           {{- end }}
+          {{- if .Values.yawolController.errorBackoffBaseDelay }}
+          - -error-backoff-base-delay={{ .Values.yawolController.errorBackoffBaseDelay }}
+          {{- end }}
+          {{- if .Values.yawolController.errorBackoffMaxDelay }}
+          - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
+          {{- end }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -64,8 +70,11 @@ spec:
         args:
           - -leader-elect
           - -enable-loadbalancerset-controller
-          {{- if .Values.openstackTimeout }}
-          - -openstack-timeout={{ .Values.openstackTimeout }}
+          {{- if .Values.yawolController.errorBackoffBaseDelay }}
+          - -error-backoff-base-delay={{ .Values.yawolController.errorBackoffBaseDelay }}
+          {{- end }}
+          {{- if .Values.yawolController.errorBackoffMaxDelay }}
+          - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
         env:
           {{- if .Values.namespace }}
@@ -93,6 +102,12 @@ spec:
           - -enable-loadbalancermachine-controller
           {{- if .Values.openstackTimeout }}
           - -openstack-timeout={{ .Values.openstackTimeout }}
+          {{- end }}
+          {{- if .Values.yawolController.errorBackoffBaseDelay }}
+          - -error-backoff-base-delay={{ .Values.yawolController.errorBackoffBaseDelay }}
+          {{- end }}
+          {{- if .Values.yawolController.errorBackoffMaxDelay }}
+          - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
         env:
           {{- if .Values.namespace }}

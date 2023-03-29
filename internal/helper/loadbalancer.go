@@ -28,7 +28,8 @@ func LoadBalancerOpenstackReconcileIsNeeded(lb *yawolv1beta1.LoadBalancer) bool 
 	}
 
 	// lastOpenstackReconcile is older than 5 min
-	if lb.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-5 * time.Minute)}) {
+	// add some seconds in order to be sure it reconciles
+	if lb.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
 		return true
 	}
 
@@ -272,7 +273,10 @@ func getSecGroupRulesForPorts(r record.EventRecorder, lb *yawolv1beta1.LoadBalan
 }
 
 func getSecGroupRulesForDebugSettings(r record.EventRecorder, lb *yawolv1beta1.LoadBalancer) []rules.SecGroupRule {
-	if !lb.Spec.DebugSettings.Enabled {
+	adHocDebug, _ := strconv.ParseBool(lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebug])
+
+	if !lb.Spec.DebugSettings.Enabled &&
+		!adHocDebug {
 		return []rules.SecGroupRule{}
 	}
 

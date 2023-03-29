@@ -52,6 +52,7 @@ local:
 build-local:
   BUILD +local --CONTROLLER=yawol-controller
   BUILD +local --CONTROLLER=yawol-cloud-controller
+  BUILD +local --CONTROLLER=yawollet
 
 build-test:
     FROM +deps
@@ -62,7 +63,17 @@ build-test:
 get-envoy-local:
     FROM +envoy
     COPY +get-envoy/envoy /envoy
-    SAVE ARTIFACT /envoy AS LOCAL out/envoy
+    SAVE ARTIFACT /envoy AS LOCAL out/envoy/envoy
+
+get-envoy-libs-local:
+    FROM +envoy
+    COPY +get-envoy/envoylibs /envoylibs
+    SAVE ARTIFACT /envoylibs AS LOCAL out/envoy/lib
+
+get-promtail-local:
+    FROM +promtail
+    COPY +promtail/promtail /promtail
+    SAVE ARTIFACT /promtail AS LOCAL out/promtail
 
 get-envoy:
     FROM +envoy
