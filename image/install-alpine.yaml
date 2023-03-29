@@ -23,6 +23,25 @@
         search_string: 'slaac hwaddr'
         line: 'slaac hwaddr'
 
+    # sshd config
+    - name: disable root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PermitRootLogin.*$
+        line: 'PermitRootLogin no'
+
+    - name: disable login without password
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PermitEmptyPasswords.*$
+        line: 'PermitEmptyPasswords no'
+
+    - name: disable password login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PasswordAuthentication.*$
+        line: 'PasswordAuthentication no'
+
     # keepalived
     - name: install keepalived
       command: "apk add keepalived"
@@ -59,6 +78,35 @@
         path: /etc/yawol
         state: directory
         mode: '0755'
+
+    - name: add sudoers file for yawol
+      copy:
+        src: ./yawol-sudoers
+        dest: /etc/sudoers.d/yawol
+        owner: root
+        group: root
+        mode: 0644
+
+    # yawoldebug user
+    - name: Creating yawol user
+      user:
+        name: "yawoldebug"
+        shell: /bin/ash
+        password: "*"
+
+    - name: Create a .ssh directory for yawoldebug user
+      file:
+        path: /home/yawoldebug/.ssh
+        owner: "yawoldebug"
+        state: directory
+        mode: '0700'
+
+    - name: Create a .ssh/authorized_keys file for yawoldebug user
+      file:
+        path: /home/yawoldebug/.ssh/authorized_keys
+        owner: "yawoldebug"
+        state: touch
+        mode: '0600'
 
     # envoy
     - name: Copy envoy in place
@@ -243,3 +291,10 @@
 
     - name: more cleanup
       command: "cloud-init clean -l -s"
+
+    - name: cleanup ssh-keys
+      lineinfile:
+        path: /home/alpine/.ssh/authorized_keys
+        state: absent
+        regexp: '.*'
+
