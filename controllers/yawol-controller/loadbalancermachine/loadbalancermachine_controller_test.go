@@ -52,7 +52,7 @@ func getLBMName() string {
 	return loadBalancerMachineName + fmt.Sprint(loadBalancerMachineCounter)
 }
 
-var _ = Describe("load balancer machine", func() {
+var _ = Describe("load balancer machine", Serial, Ordered, func() {
 	var (
 		lb     *LB
 		lbm    *LBM

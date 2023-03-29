@@ -176,15 +176,22 @@ TCP testing using the admin port of Envoy:
 1. Open http://localhost:8085 in your browser
 2. You should get forwarded to the admin port of Envoy which is listening to localhost:9000
 
-## Live-Debugging yawollet
+## Troubleshooting - SSH access to yawol VM
+
+There are currently 2 debug options to access the `LoadBalancerMachine` VM via SSH:
+
+### Debug settings within the `LoadBalancer` `.spec.debugSettings`
+This will add the SSH key via OpenStack KeyPair. A change will recreate the `LoadBalancerMachines`, because OpenStack
+KeyPairs are only possible while VM creation.
 
 1. Upload ssh key-pair to OpenStack
 
-   ```bash
-   openstack keypair create <name> # create new keypair
-   # or
-   openstack keypair create --public-key <path> <name> # add existing pubkey
-   ```
+```bash
+openstack keypair create <name> # create new keypair
+# or
+openstack keypair create --public-key <path> <name> # add existing pubkey
+```
+
 
 2. Add the following to `LoadBalancer`:
 
@@ -197,4 +204,37 @@ TCP testing using the admin port of Envoy:
    ...
    ```
 
-3. SSH into the VM with username `alpine` and `externalIP` from `LoadBalancer`
+This can be also enabled with the service annotations: `yawol.stackit.cloud/debug` and `yawol.stackit.cloud/debugsshkey`
+
+> You can login with the user: `alpine`
+
+### Ad hoc debugging
+To troubleshoot a running `LoadBalancerMachine` we added a function into the `yawollet` to be able to add a SSH key
+and enable/start sshd on the fly.
+
+This can only be enabled with annotations on the `LoadBalancer`: `yawol.stackit.cloud/adHocDebug` and `yawol.stackit.cloud/adHocDebugSSHKey`
+
+This will not recreate the `LoadBalancerMachine`. Be aware that the `yawol.stackit.cloud/adHocDebugSSHKey` has to contain the complete
+SSH public key.
+
+> You can login with the user: `yawoldebug`
+
+> After you are done please remove the VMs, because yawol will **not** disable SSH again.
+
+
+## Image Build
+
+For the image build ansible is used. To develop on ansible you can run in locally.
+Therefore, you need to get/build all needed binaries and change to the `image` directory:
+
+```
+earthly +get-envoy-local
+earthly +get-envoy-libs-local
+earthly +get-promtail-local
+earthly +build-local
+```
+
+Now you can run ansible:
+```
+ansible-playbook -i <IP-Address>, --private-key=~/.ssh/ske-key --user alpine install-alpine.yaml
+```

@@ -35,6 +35,9 @@ const (
 	ServiceClassName = "yawol.stackit.cloud/className"
 	// ServiceReplicas for setting loadbalancer replicas in cloud-controller
 	ServiceReplicas = "yawol.stackit.cloud/replicas"
+	// ServiceLoadBalancerSourceRanges sets the loadBalancerSourceRanges in the loadbalancer (same as svc.spec.loadBalancerSourceRanges)
+	// If svc.spec.loadBalancerSourceRanges is set this annotation will NOT be used.
+	ServiceLoadBalancerSourceRanges = "yawol.stackit.cloud/loadBalancerSourceRanges"
 	// ServiceTCPProxyProtocol enables the HAProxy TCP Proxy Protocol for all TCP connections
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
@@ -53,6 +56,15 @@ const (
 	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
 	// ServiceAdditionalNetworks adds additional openstack networks for the loadbalancer (comma separated list)
 	ServiceAdditionalNetworks = "yawol.stackit.cloud/additionalNetworks"
+)
+
+// Annotation for settings in lb object
+const (
+	// LoadBalancerAdHocDebug enables adhoc debugging, all LoadBalancer Machines will enable SSH
+	LoadBalancerAdHocDebug = "yawol.stackit.cloud/adHocDebug"
+	// LoadBalancerAdHocDebugSSHKey defines the public ssh key for adhoc debugging
+	// All LoadBalancer Machines will add this public SSH key
+	LoadBalancerAdHocDebugSSHKey = "yawol.stackit.cloud/adHocDebugSSHKey"
 )
 
 // +kubebuilder:object:root=true

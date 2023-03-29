@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("LB Status update", func() {
+var _ = Describe("LB Status update", Serial, Ordered, func() {
 	one := 1
 	var lbNN types.NamespacedName
 	var lb yawolv1beta1.LoadBalancer
