@@ -58,6 +58,15 @@ const (
 	ServiceAdditionalNetworks = "yawol.stackit.cloud/additionalNetworks"
 )
 
+// Annotation for settings in lb object
+const (
+	// LoadBalancerAdHocDebug enables adhoc debugging, all LoadBalancer Machines will enable SSH
+	LoadBalancerAdHocDebug = "yawol.stackit.cloud/adHocDebug"
+	// LoadBalancerAdHocDebugSSHKey defines the public ssh key for adhoc debugging
+	// All LoadBalancer Machines will add this public SSH key
+	LoadBalancerAdHocDebugSSHKey = "yawol.stackit.cloud/adHocDebugSSHKey"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=lb
 // +kubebuilder:subresource:status
