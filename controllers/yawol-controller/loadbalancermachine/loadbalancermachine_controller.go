@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
 const (
@@ -62,6 +63,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	WorkerCount       int
 	OpenstackTimeout  time.Duration
 	DiscoveryClient   *discovery.DiscoveryClient
+	RateLimiter       ratelimiter.RateLimiter
 }
 
 // Reconcile Reconciles a LoadBalancerMachine
@@ -221,6 +223,7 @@ func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error
 		For(&yawolv1beta1.LoadBalancerMachine{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
+			RateLimiter:             r.RateLimiter,
 		}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
