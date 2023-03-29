@@ -1,6 +1,6 @@
 ---
 - name: install dependencies and envoy to machine
-  hosts: default
+  hosts: all
   become: true
   tasks:
     # alpine updates
@@ -67,12 +67,18 @@
         group: root
         mode: 0755
 
+    # create yawol group
+    - name: Creating yawol group
+      ansible.builtin.group:
+        name: yawol
+        state: present
+
     # yawol user
     - name: Creating yawol user
       user:
         name: "yawol"
+        group: "yawol"
         shell: /bin/ash
-        password: '*'
 
     - name: Create a directory for yawol
       file:
@@ -87,6 +93,22 @@
         owner: root
         group: root
         mode: 0644
+
+    # yawoldebug user
+    - name: Creating yawol user
+      user:
+        name: "yawoldebug"
+        group: "yawol"
+        shell: /bin/ash
+        password: "*"
+
+    - name: Create a .ssh directory for yawoldebug user
+      file:
+        path: /home/yawoldebug/.ssh
+        owner: "yawoldebug"
+        group: "yawol"
+        state: directory
+        mode: '0770'
 
     # envoy
     - name: Copy envoy in place
@@ -271,3 +293,4 @@
         path: /home/alpine/.ssh/authorized_keys
         state: absent
         regexp: '.*'
+
