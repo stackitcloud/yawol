@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -73,6 +75,7 @@ const (
 	ConfigReady         LoadbalancerCondition = "ConfigReady"
 	EnvoyReady          LoadbalancerCondition = "EnvoyReady"
 	EnvoyUpToDate       LoadbalancerCondition = "EnvoyUpToDate"
+	KeepalivedProcess   LoadbalancerCondition = "KeepalivedProcess"
 	KeepalivedStatsFile LoadbalancerCondition = "KeepalivedStatsFile"
 	KeepalivedMaster    LoadbalancerCondition = "KeepalivedMaster"
 )
@@ -738,6 +741,25 @@ func UpdateKeepalivedStatus(
 	keepalivedStatsFile string,
 	lbm *yawolv1beta1.LoadBalancerMachine,
 ) error {
+	err := UpdateKeepalivedStatsStatus(ctx, c, keepalivedStatsFile, lbm)
+	if err != nil {
+		return err
+	}
+
+	err = UpdateKeepalivedPIDStatus(ctx, c, lbm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateKeepalivedStatsStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	keepalivedStatsFile string,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
 	if keepalivedStatsFile == "" {
 		return nil
 	}
@@ -780,4 +802,46 @@ func UpdateKeepalivedStatus(
 		KeepalivedStatsFile,
 		ConditionTrue,
 		"StatsUpToDate", "Keepalived stat file is newer than 5 min")
+}
+
+func UpdateKeepalivedPIDStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
+	pidFile, err := os.ReadFile("/run/keepalived.pid")
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotGetPIDFile", "Could not get pid file: "+err.Error())
+	}
+
+	pidID, err := strconv.Atoi(string(pidFile))
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotGetPID", "Could not get pid: "+err.Error())
+	}
+
+	keepalivedProc, err := os.FindProcess(pidID)
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
+	}
+	err = keepalivedProc.Signal(syscall.Signal(0))
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
+	}
+
+	return UpdateLBMConditions(ctx, c, lbm,
+		KeepalivedProcess,
+		ConditionTrue,
+		"KeepalivedIsRunning", "Keepalived is running with PID: "+string(pidID))
 }
