@@ -277,6 +277,12 @@
         regexp: "rc_parallel"
         line: "rc_parallel='YES'"
 
+    - name: Restart crashed services
+      ansible.builtin.cron:
+        name: restart crashed services
+        user: root
+        job: "/bin/rc-status -c | /usr/bin/xargs -I{} service {} restart"
+
     - name: disable ssh service
       command: "rc-update del sshd"
 
