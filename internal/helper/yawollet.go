@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -810,24 +809,14 @@ func EnableAdHocDebugging(
 		return err
 	}
 
-	f, err := os.OpenFile("/home/yawol/.ssh/authorized_keys", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile("/home/yawoldebug/.ssh/authorized_keys", os.O_WRONLY|os.O_CREATE, 0660)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	var found bool
-	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), sshKey) {
-			found = true
-			break
-		}
-	}
-	if !found {
-		if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
-			return err
-		}
+	if _, err := f.WriteString("\n" + sshKey + "\n"); err != nil {
+		return err
 	}
 
 	if err := f.Close(); err != nil {
