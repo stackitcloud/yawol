@@ -24,6 +24,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/time/rate"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	//+kubebuilder:scaffold:imports
 )
@@ -55,6 +57,8 @@ func main() {
 	var probeAddr string
 
 	var concurrentWorkersPerReconciler int
+	var errorBackoffBaseDelay time.Duration
+	var errorBackoffMaxDelay time.Duration
 	var lbController bool
 	var lbSetController bool
 	var lbMachineController bool
@@ -80,6 +84,10 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 
 	flag.IntVar(&concurrentWorkersPerReconciler, "concurrent-workers", 30, "Defines the amount of concurrent workers per reconciler.")
+	flag.DurationVar(&errorBackoffBaseDelay, "error-backoff-base-delay", 5*time.Millisecond,
+		"Defines the base delay of reconciles in case of an error.")
+	flag.DurationVar(&errorBackoffMaxDelay, "error-backoff-max-delay", 1000*time.Second,
+		"Defines the max delay of reconciles in case of an error.")
 	flag.BoolVar(&lbController, "enable-loadbalancer-controller", false,
 		"Enable loadbalancer controller manager. ")
 	flag.BoolVar(&lbSetController, "enable-loadbalancerset-controller", false,
@@ -127,7 +135,13 @@ func main() {
 	var loadBalancerMachineMgr manager.Manager
 	cfg := ctrl.GetConfigOrDie()
 
-	// Controller 2
+	rateLimiter := workqueue.NewMaxOfRateLimiter(
+		workqueue.NewItemExponentialFailureRateLimiter(errorBackoffBaseDelay, errorBackoffMaxDelay),
+		// 10 qps, 100 bucket size.  This is only for retry speed and its only the overall factor (not per item)
+		&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)}, // default values
+	)
+
+	// LoadBalancer Controller
 	if lbController {
 		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
@@ -146,7 +160,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err = (&loadbalancer.Reconciler{
+		if err := (&loadbalancer.Reconciler{
 			Client:           loadBalancerMgr.GetClient(),
 			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancer"),
 			Scheme:           loadBalancerMgr.GetScheme(),
@@ -155,22 +169,24 @@ func main() {
 			Recorder:         loadBalancerMgr.GetEventRecorderFor("LoadBalancer"),
 			Metrics:          &helpermetrics.LoadBalancerMetrics,
 			OpenstackTimeout: openstackTimeout,
+			RateLimiter:      rateLimiter,
 		}).SetupWithManager(loadBalancerMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)
 		}
-		if err = (&loadbalancer.LoadBalancerSetStatusReconciler{
+		if err := (&loadbalancer.LoadBalancerSetStatusReconciler{
 			Client:      loadBalancerMgr.GetClient(),
 			Log:         ctrl.Log.WithName("controller").WithName("LoadBalancerSetStatus"),
 			Scheme:      loadBalancerMgr.GetScheme(),
 			WorkerCount: concurrentWorkersPerReconciler,
+			RateLimiter: rateLimiter,
 		}).SetupWithManager(loadBalancerMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)
 		}
 	}
 
-	// Controller 3
+	// LoadBalancerSet Controller
 	if lbSetController {
 		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                     scheme,
@@ -189,29 +205,31 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err = (&loadbalancerset.LoadBalancerSetReconciler{
+		if err := (&loadbalancerset.LoadBalancerSetReconciler{
 			Client:      loadBalancerSetMgr.GetClient(),
 			Log:         ctrl.Log.WithName("controller").WithName("LoadBalancerSet"),
 			Scheme:      loadBalancerSetMgr.GetScheme(),
 			WorkerCount: concurrentWorkersPerReconciler,
 			Recorder:    loadBalancerSetMgr.GetEventRecorderFor("LoadBalancerSet"),
 			Metrics:     &helpermetrics.LoadBalancerSetMetrics,
+			RateLimiter: rateLimiter,
 		}).SetupWithManager(loadBalancerSetMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerSet")
 			os.Exit(1)
 		}
-		if err = (&loadbalancerset.LoadBalancerMachineStatusReconciler{
+		if err := (&loadbalancerset.LoadBalancerMachineStatusReconciler{
 			Client:      loadBalancerSetMgr.GetClient(),
 			Log:         ctrl.Log.WithName("controller").WithName("LoadBalancerMachineStatus"),
 			Scheme:      loadBalancerSetMgr.GetScheme(),
 			WorkerCount: concurrentWorkersPerReconciler,
+			RateLimiter: rateLimiter,
 		}).SetupWithManager(loadBalancerSetMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerSet")
 			os.Exit(1)
 		}
 	}
 
-	// Controller 4
+	// LoadBalancerMachine Controller
 	if lbMachineController {
 		var apiEndpoint string
 		if apiEndpoint = os.Getenv(EnvAPIEndpoint); apiEndpoint == "" {
@@ -237,7 +255,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err = (&loadbalancermachine.LoadBalancerMachineReconciler{
+		if err := (&loadbalancermachine.LoadBalancerMachineReconciler{
 			Client:           loadBalancerMachineMgr.GetClient(),
 			WorkerCount:      concurrentWorkersPerReconciler,
 			APIHost:          loadBalancerMachineMgr.GetConfig().Host,
@@ -250,6 +268,7 @@ func main() {
 			Metrics:          &helpermetrics.LoadBalancerMachineMetrics,
 			OpenstackTimeout: openstackTimeout,
 			DiscoveryClient:  discoveryClient,
+			RateLimiter:      rateLimiter,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)

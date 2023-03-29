@@ -22,6 +22,8 @@ yawolCloudController:
 
 yawolController:
   gardenerMonitoringEnabled: false
+  errorBackoffBaseDelay: 5ms
+  errorBackoffMaxDelay: 1000s
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
     # -- Allows you to override the yawol version in this chart. Use at your own risk.
