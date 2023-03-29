@@ -50,6 +50,10 @@ func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1
 	if svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer] != "" {
 		options.InternalLB, _ = strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer])
 	}
+
+	if svc.Annotations[yawolv1beta1.ServiceLoadBalancerSourceRanges] != "" {
+		options.LoadBalancerSourceRanges = strings.Split(svc.Annotations[yawolv1beta1.ServiceLoadBalancerSourceRanges], ",")
+	}
 	if svc.Spec.LoadBalancerSourceRanges != nil {
 		options.LoadBalancerSourceRanges = svc.Spec.LoadBalancerSourceRanges
 	}
