@@ -35,6 +35,9 @@ const (
 	ServiceClassName = "yawol.stackit.cloud/className"
 	// ServiceReplicas for setting loadbalancer replicas in cloud-controller
 	ServiceReplicas = "yawol.stackit.cloud/replicas"
+	// ServiceLoadBalancerSourceRanges sets the loadBalancerSourceRanges in the loadbalancer (same as svc.spec.loadBalancerSourceRanges)
+	// If svc.spec.loadBalancerSourceRanges is set this annotation will NOT be used.
+	ServiceLoadBalancerSourceRanges = "yawol.stackit.cloud/loadBalancerSourceRanges"
 	// ServiceTCPProxyProtocol enables the HAProxy TCP Proxy Protocol for all TCP connections
 	ServiceTCPProxyProtocol = "yawol.stackit.cloud/tcpProxyProtocol"
 	// ServiceTCPProxyProtocolPortsFilter enables for the specified ports (comma separated list)
