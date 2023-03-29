@@ -272,7 +272,10 @@ func getSecGroupRulesForPorts(r record.EventRecorder, lb *yawolv1beta1.LoadBalan
 }
 
 func getSecGroupRulesForDebugSettings(r record.EventRecorder, lb *yawolv1beta1.LoadBalancer) []rules.SecGroupRule {
-	if !lb.Spec.DebugSettings.Enabled {
+	adHocDebug, _ := strconv.ParseBool(lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebug])
+
+	if !lb.Spec.DebugSettings.Enabled &&
+		!adHocDebug {
 		return []rules.SecGroupRule{}
 	}
 
