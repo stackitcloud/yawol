@@ -1,6 +1,6 @@
 ---
 - name: install dependencies and envoy to machine
-  hosts: default
+  hosts: all
   become: true
   tasks:
     # alpine updates
@@ -228,6 +228,12 @@
         path: /etc/rc.conf
         regexp: "rc_parallel"
         line: "rc_parallel='YES'"
+
+    - name: Restart crashed services
+      ansible.builtin.cron:
+        name: restart crashed services
+        user: root
+        job: "/bin/rc-status -c | /usr/bin/xargs -I{} service {} restart"
 
     - name: disable ssh service
       command: "rc-update del sshd"
