@@ -286,31 +286,6 @@ kubectl create deploy --image nginx --port 80 nginx
 kubectl expose deployment nginx --port 80 --type LoadBalancer
 ```
 
-## Troubleshooting
-
-There are currently 2 debug options to access the `LoadBalancerMachine` VM via SSH:
-
-### Debug settings within the `LoadBalancer` `.spec.debugSettings`
-This will add the SSH key via OpenStack KeyPair. A change will recreate the `LoadBalancerMachines`, because OpenStack
-KeyPairs are only possible while VM creation.
-
-This can be also enabled with the service annotations: `yawol.stackit.cloud/debug` and `yawol.stackit.cloud/debugsshkey`
-
-> You can login with the user: `alpine`
-
-### Ad hoc debugging
-To troubleshoot a running `LoadBalancerMachine` we added a function into the `yawollet` to be able to add a SSH key 
-and enable/start sshd on the fly.
-
-This can only be enabled with annotations on the `LoadBalancer`: `yawol.stackit.cloud/adHocDebug` and `yawol.stackit.cloud/adHocDebugSSHKey`
-
-This will not recreate the `LoadBalancerMachine`. Be aware that the `yawol.stackit.cloud/adHocDebugSSHKey` has to contain the complete 
-SSH public key.
-
-> You can login with the user: `yawol`
-
-> After you are done please remove the VMs, because yawol will **not** disable SSH again.
-
 ## Development
 
 See the [development guide](docs/development.md).
