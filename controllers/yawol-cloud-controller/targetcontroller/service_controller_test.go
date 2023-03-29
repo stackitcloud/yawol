@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Check loadbalancer reconcile", func() {
+var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 	Context("run tests", func() {
 		ctx := context.Background()
 		var lb yawolv1beta1.LoadBalancer

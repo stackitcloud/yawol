@@ -37,7 +37,7 @@ const (
 	interval = time.Millisecond * 250
 )
 
-var _ = Describe("loadbalancer controller", func() {
+var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	var (
 		lb     *LB
 		client *testing.MockClient
