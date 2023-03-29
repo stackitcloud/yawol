@@ -101,7 +101,7 @@
         state: directory
         mode: '0700'
 
-    - name: Create a .ssh(authorized_keys file for yawoldebug user
+    - name: Create a .ssh/authorized_keys file for yawoldebug user
       file:
         path: /home/yawoldebug/.ssh/authorized_keys
         owner: "yawoldebug"
