@@ -833,7 +833,7 @@ func UpdateKeepalivedPIDStatus(
 			"CouldNotGetPIDFile", "Could not get pid file: "+err.Error())
 	}
 
-	pidID, err := strconv.Atoi(string(pidFile))
+	pidID, err := strconv.ParseInt(string(pidFile), 10, 32)
 	if err != nil {
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
@@ -866,7 +866,7 @@ func UpdateKeepalivedPIDStatus(
 	return UpdateLBMConditions(ctx, c, lbm,
 		KeepalivedProcess,
 		ConditionTrue,
-		"KeepalivedIsRunning", "Keepalived is running with PID: "+string(pidID))
+		"KeepalivedIsRunning", fmt.Sprintf("Keepalived is running with PID: %d", pidID))
 }
 
 // EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
