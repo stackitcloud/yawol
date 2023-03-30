@@ -830,10 +830,10 @@ func UpdateKeepalivedPIDStatus(
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotGetPIDFile", "Could not get pid file: "+err.Error())
+			"CouldNotGetPIDFile", "Could not get pid file")
 	}
-
-	pidID, err := strconv.ParseInt(string(pidFile), 10, 32)
+	pidFileContent := strings.ReplaceAll(string(pidFile), "\n", "")
+	pidID, err := strconv.ParseInt(pidFileContent, 10, 32)
 	if err != nil {
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
