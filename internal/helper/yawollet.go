@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -23,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/shirou/gopsutil/v3/process"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/envoystatus"
@@ -85,6 +86,7 @@ const (
 	MetricLoad1                            LoadbalancerMetric = "load1"
 	MetricLoad5                            LoadbalancerMetric = "load5"
 	MetricLoad15                           LoadbalancerMetric = "load15"
+	MetricUptime                           LoadbalancerMetric = "uptime"
 	MetricNumCPU                           LoadbalancerMetric = "numCPU"
 	MetricMemTotal                         LoadbalancerMetric = "memTotal"
 	MetricMemFree                          LoadbalancerMetric = "memFree"
@@ -614,6 +616,14 @@ func WriteLBMMetrics(
 			}}...)
 	}
 
+	if uptime, err := hostmetrics.GetUptime(); err == nil {
+		metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
+			Type:  string(MetricUptime),
+			Value: uptime,
+			Time:  v1.Now(),
+		})
+	}
+
 	if memTotal, memFree, memAvailable, err := hostmetrics.GetMem(); err == nil {
 		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
 			{
@@ -825,19 +835,26 @@ func UpdateKeepalivedPIDStatus(
 			"CouldNotGetPID", "Could not get pid: "+err.Error())
 	}
 
-	keepalivedProc, err := os.FindProcess(pidID)
+	keepalivedProc, err := process.NewProcess(int32(pidID))
 	if err != nil {
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
 			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
 	}
-	err = keepalivedProc.Signal(syscall.Signal(0))
+	keepalivedRunning, err := keepalivedProc.IsRunning()
 	if err != nil {
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
 			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
+	}
+
+	if !keepalivedRunning {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Keepalived is not running")
 	}
 
 	return UpdateLBMConditions(ctx, c, lbm,
