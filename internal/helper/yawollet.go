@@ -853,7 +853,7 @@ func UpdateKeepalivedPIDStatus(
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Could not get keepalived process")
+			"CouldNotKeepalivedProcess", "Error while checking if keepalived is running")
 	}
 
 	if !keepalivedRunning {
