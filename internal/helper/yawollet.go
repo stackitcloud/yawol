@@ -838,7 +838,7 @@ func UpdateKeepalivedPIDStatus(
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotGetPID", "Could not get pid: "+err.Error())
+			"CouldNotGetPID", "Could not get pid")
 	}
 
 	keepalivedProc, err := process.NewProcess(int32(pidID))
@@ -846,14 +846,14 @@ func UpdateKeepalivedPIDStatus(
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
+			"CouldNotKeepalivedProcess", "Could not get keepalived process")
 	}
 	keepalivedRunning, err := keepalivedProc.IsRunning()
 	if err != nil {
 		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Could not get keepalived process: "+err.Error())
+			"CouldNotKeepalivedProcess", "Could not get keepalived process")
 	}
 
 	if !keepalivedRunning {
@@ -866,7 +866,7 @@ func UpdateKeepalivedPIDStatus(
 	return UpdateLBMConditions(ctx, c, lbm,
 		KeepalivedProcess,
 		ConditionTrue,
-		"KeepalivedIsRunning", fmt.Sprintf("Keepalived is running with PID: %d", pidID))
+		"KeepalivedIsRunning", "Keepalived is running")
 }
 
 // EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
