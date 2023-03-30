@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -22,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/shirou/gopsutil/v3/process"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/envoystatus"
@@ -74,6 +77,7 @@ const (
 	ConfigReady         LoadbalancerCondition = "ConfigReady"
 	EnvoyReady          LoadbalancerCondition = "EnvoyReady"
 	EnvoyUpToDate       LoadbalancerCondition = "EnvoyUpToDate"
+	KeepalivedProcess   LoadbalancerCondition = "KeepalivedProcess"
 	KeepalivedStatsFile LoadbalancerCondition = "KeepalivedStatsFile"
 	KeepalivedMaster    LoadbalancerCondition = "KeepalivedMaster"
 )
@@ -83,6 +87,7 @@ const (
 	MetricLoad1                            LoadbalancerMetric = "load1"
 	MetricLoad5                            LoadbalancerMetric = "load5"
 	MetricLoad15                           LoadbalancerMetric = "load15"
+	MetricUptime                           LoadbalancerMetric = "uptime"
 	MetricNumCPU                           LoadbalancerMetric = "numCPU"
 	MetricMemTotal                         LoadbalancerMetric = "memTotal"
 	MetricMemFree                          LoadbalancerMetric = "memFree"
@@ -617,6 +622,14 @@ func WriteLBMMetrics(
 			}}...)
 	}
 
+	if uptime, err := hostmetrics.GetUptime(); err == nil {
+		metrics = append(metrics, yawolv1beta1.LoadBalancerMachineMetric{
+			Type:  string(MetricUptime),
+			Value: uptime,
+			Time:  v1.Now(),
+		})
+	}
+
 	if memTotal, memFree, memAvailable, err := hostmetrics.GetMem(); err == nil {
 		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
 			{
@@ -744,6 +757,25 @@ func UpdateKeepalivedStatus(
 	keepalivedStatsFile string,
 	lbm *yawolv1beta1.LoadBalancerMachine,
 ) error {
+	err := UpdateKeepalivedStatsStatus(ctx, c, keepalivedStatsFile, lbm)
+	if err != nil {
+		return err
+	}
+
+	err = UpdateKeepalivedPIDStatus(ctx, c, lbm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateKeepalivedStatsStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	keepalivedStatsFile string,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
 	if keepalivedStatsFile == "" {
 		return nil
 	}
@@ -786,6 +818,55 @@ func UpdateKeepalivedStatus(
 		KeepalivedStatsFile,
 		ConditionTrue,
 		"StatsUpToDate", "Keepalived stat file is newer than 5 min")
+}
+
+func UpdateKeepalivedPIDStatus(
+	ctx context.Context,
+	c client.StatusWriter,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+) error {
+	pidFile, err := os.ReadFile("/run/keepalived.pid")
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotGetPIDFile", "Could not get pid file")
+	}
+	pidFileContent := strings.ReplaceAll(string(pidFile), "\n", "")
+	pidID, err := strconv.ParseInt(pidFileContent, 10, 32)
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotGetPID", "Could not get pid")
+	}
+
+	keepalivedProc, err := process.NewProcess(int32(pidID))
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Could not get keepalived process")
+	}
+	keepalivedRunning, err := keepalivedProc.IsRunning()
+	if err != nil {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Error while checking if keepalived is running")
+	}
+
+	if !keepalivedRunning {
+		return UpdateLBMConditions(ctx, c, lbm,
+			KeepalivedProcess,
+			ConditionFalse,
+			"CouldNotKeepalivedProcess", "Keepalived is not running")
+	}
+
+	return UpdateLBMConditions(ctx, c, lbm,
+		KeepalivedProcess,
+		ConditionTrue,
+		"KeepalivedIsRunning", "Keepalived is running")
 }
 
 // EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
