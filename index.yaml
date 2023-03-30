@@ -1,6 +1,17 @@
 apiVersion: v1
 entries:
   yawol-controller:
+  - apiVersion: v1
+    appVersion: v0.14.0
+    created: "2023-03-30T10:12:10.761721914Z"
+    description: Helm chart for yawol-controller
+    digest: dd704eb187387540cdfbb76af47c049b10af7a66ebda780bb310ccd5e24decde
+    name: yawol-controller
+    sources:
+    - https://github.com/stackitcloud/yawol
+    urls:
+    - https://github.com/stackitcloud/yawol/releases/download/yawol-controller-0.14.0/yawol-controller-0.14.0.tgz
+    version: 0.14.0
   - apiVersion: v2
     appVersion: v0.13.0
     created: "2023-03-09T13:00:37.371588501Z"
@@ -55,4 +66,4 @@ entries:
     urls:
     - https://github.com/stackitcloud/yawol/releases/download/yawol-controller-v0.8.5/yawol-controller-v0.8.5.tgz
     version: v0.8.5
-generated: "2023-03-09T13:00:37.371823715Z"
+generated: "2023-03-30T10:12:10.761745914Z"
