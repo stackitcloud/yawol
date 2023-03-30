@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -116,6 +117,11 @@ const (
 // Const declaration for DNS checking
 const dnsName string = `^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9])).([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}.[a-zA-Z]{2,3})$` //nolint:lll // long regex
 var rxDNSName = regexp.MustCompile(dnsName)
+
+// Const declaration for SSH pub key checking
+const sshPublicKey = `^ssh-rsa\s+[A-Za-z0-9+/=]+$`
+
+var rxSSHPublicKey = regexp.MustCompile(sshPublicKey)
 
 // CreateEnvoyConfig create a new envoy snapshot and checks if the new snapshot has changes
 func CreateEnvoyConfig(
@@ -861,4 +867,61 @@ func UpdateKeepalivedPIDStatus(
 		KeepalivedProcess,
 		ConditionTrue,
 		"KeepalivedIsRunning", "Keepalived is running with PID: "+string(pidID))
+}
+
+// EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
+func EnableAdHocDebugging(
+	lb *yawolv1beta1.LoadBalancer,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	recorder record.EventRecorder,
+	lbmName string,
+) error {
+	enabled, _ := strconv.ParseBool(lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebug])
+	sshKey, sshKeySet := lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebugSSHKey]
+
+	// skip not all needed annotations are set or disabled
+	if !enabled || !sshKeySet {
+		return nil
+	}
+
+	// skip if debugging is enabled anyway
+	if lb.Spec.DebugSettings.Enabled {
+		recorder.Event(lbm, corev1.EventTypeWarning,
+			"AdHocDebuggingNotEnabled",
+			"Ad-hoc debugging will not be enabled because normal debug with is already enabled")
+		return nil
+	}
+
+	if !rxSSHPublicKey.MatchString(sshKey) {
+		recorder.Event(lbm, corev1.EventTypeWarning,
+			"AdHocDebuggingNotEnabled",
+			"Ad-hoc debugging will not be enabled because ssh key is not valid")
+		return nil
+	}
+
+	addAuthorizedKeys := exec.Command( //nolint: gosec // sshKey can only be a ssh public key checked by regex
+		"/bin/sh",
+		"-c",
+		"echo \"\n"+sshKey+"\n\" | sudo tee /home/yawoldebug/.ssh/authorized_keys",
+	)
+	if err := addAuthorizedKeys.Run(); err != nil {
+		recorder.Eventf(lbm, corev1.EventTypeWarning,
+			"AdHocDebuggingNotEnabled",
+			"Ad-hoc debugging cant be enabled because authorized_keys cant be written: %v", err)
+		return nil // no error to be sure the loadbalancer still will be reconciled
+	}
+
+	startSSH := exec.Command("sudo", "/sbin/rc-service", "sshd", "start")
+	if err := startSSH.Run(); err != nil {
+		recorder.Eventf(lbm, corev1.EventTypeWarning,
+			"AdHocDebuggingNotEnabled",
+			"Ad-hoc debugging cant be enabled because ssh cant be started: %v", err)
+		return nil // no error to be sure the loadbalancer still will be reconciled
+	}
+
+	recorder.Eventf(lbm, corev1.EventTypeWarning,
+		"AdHocDebuggingEnabled",
+		"Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. "+
+			"Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
+	return nil
 }

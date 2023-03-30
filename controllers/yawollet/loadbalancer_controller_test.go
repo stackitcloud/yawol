@@ -26,7 +26,7 @@ const (
 	INTERVAL = 500 * time.Millisecond
 )
 
-var _ = Describe("check loadbalancer reconcile", func() {
+var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 
 	It("should create the namespace", func() {
 		ns := v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: Namespace}}
