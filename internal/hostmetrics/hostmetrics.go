@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
 )
@@ -56,4 +57,15 @@ func GetMem() (
 		return "", "", "", fmt.Errorf("failed to get virtual memory stats: %w", err)
 	}
 	return formatUint(stats.Total), formatUint(stats.Free), formatUint(stats.Available), nil
+}
+
+func GetUptime() (
+	totalMemory string,
+	err error,
+) {
+	uptime, err := host.Uptime()
+	if err != nil {
+		return "", fmt.Errorf("failed to get uptime stats: %w", err)
+	}
+	return formatUint(uptime), nil
 }
