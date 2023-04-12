@@ -44,7 +44,7 @@ jobs:
     - name: Earthly help
       run: earthly --help
     - name: Earthly env
-      run: earthly bootstrap
+      run: earthly bootstrap && docker exec earthly-buildkitd cat /etc/buildkitd.toml
     - name: Run Snyk
       if: ${{ env.SNYK_TOKEN }}
       run: earthly --ci --secret SNYK_TOKEN +snyk
