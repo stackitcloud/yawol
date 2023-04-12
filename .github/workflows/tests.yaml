@@ -36,6 +36,8 @@ jobs:
             [registry."193.148.176.21:5000"]
               insecure = true
         EOF
+    - name: Check earthly config
+      run: cat ~/.earthly/config.yml
     - name: Earthly version
       run: earthly --version
     - name: Run Snyk
