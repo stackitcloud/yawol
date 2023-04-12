@@ -28,7 +28,7 @@ jobs:
     - name: Configure pull-through-cache
       run: |
         mkdir ~/.earthly
-        cat <<EOF > ~/.earthly/config.yml
+        cat <<EOF > /home/runner/.earthly/config.yml
         global:
           buildkit_additional_config: |
             [registry."docker.io"]
@@ -38,14 +38,16 @@ jobs:
               insecure = true
         EOF
     - name: Check earthly config
-      run: cat ~/.earthly/config.yml
+      run: cat /home/runner/.earthly/config.yml
     - name: Earthly version
       run: earthly --version
     - name: Earthly help
       run: earthly --help
+    - name: Earthly env
+      run: echo $EARTHLY_CONFIG
     - name: Run Snyk
       if: ${{ env.SNYK_TOKEN }}
       run: earthly --ci --secret SNYK_TOKEN +snyk
     - name: Run Tests
-      run: earthly --ci +all-except-snyk
+      run: EARTHLY_CONFIG=/home/runner/.earthly/config.yml earthly --ci +all-except-snyk
 
