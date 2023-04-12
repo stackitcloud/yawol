@@ -44,7 +44,7 @@ jobs:
     - name: Earthly help
       run: earthly --help
     - name: Earthly env
-      run: echo $EARTHLY_CONFIG
+      run: earthly bootstrap
     - name: Run Snyk
       if: ${{ env.SNYK_TOKEN }}
       run: earthly --ci --secret SNYK_TOKEN +snyk
