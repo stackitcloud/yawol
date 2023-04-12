@@ -34,6 +34,7 @@ jobs:
             [registry."docker.io"]
               mirrors = ["193.148.176.21:5000"]
             [registry."193.148.176.21:5000"]
+              http = true
               insecure = true
         EOF
     - name: Check earthly config
