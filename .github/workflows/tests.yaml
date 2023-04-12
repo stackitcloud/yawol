@@ -27,6 +27,7 @@ jobs:
       run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.23/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
     - name: Configure pull-through-cache
       run: |
+        mkdir ~/.config
         cat <<EOF > ~/.config/earthly.yml
         global:
           buildkit_additional_config: |
