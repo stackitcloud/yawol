@@ -32,8 +32,8 @@ jobs:
         global:
           buildkit_additional_config: |
             [registry."docker.io"]
-              mirrors = ["193.148.176.216:5000"]
-            [registry."193.148.176.216:5000"]
+              mirrors = ["yawol-registry-docker-registry.yawol-registry.svc:5000"]
+            [registry."yawol-registry-docker-registry.yawol-registry.svc:5000"]
               http = true
               insecure = true
         EOF

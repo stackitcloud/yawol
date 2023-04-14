@@ -32,6 +32,18 @@ jobs:
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
     - name: Install earthly
       run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.23/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
+    - name: Configure pull-through-cache
+      run: |
+        mkdir ~/.earthly
+        cat <<EOF > ~/.earthly/config.yml
+        global:
+          buildkit_additional_config: |
+            [registry."docker.io"]
+              mirrors = ["yawol-registry-docker-registry.yawol-registry.svc:5000"]
+            [registry."yawol-registry-docker-registry.yawol-registry.svc:5000"]
+              http = true
+              insecure = true
+        EOF
     - name: Earthly version
       run: earthly --version
     - name: Run build
