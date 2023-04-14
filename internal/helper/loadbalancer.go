@@ -86,11 +86,13 @@ func GetLoadBalancerForLoadBalancerSet(
 
 // GetOpenStackReconcileHash returns a 16 char hash for all openstack relevant data to check if an openstack reconcile is needed.
 func GetOpenStackReconcileHash(lb *yawolv1beta1.LoadBalancer) (string, error) {
+	adHocDebug, _ := strconv.ParseBool(lb.Annotations[yawolv1beta1.LoadBalancerAdHocDebug])
 	return HashData(map[string]interface{}{
 		"ports":             lb.Spec.Ports,
 		"sourceRanges":      lb.Spec.Options.LoadBalancerSourceRanges,
 		"debugSettings":     lb.Spec.DebugSettings,
 		"serverGroupPolicy": lb.Spec.Options.ServerGroupPolicy,
+		"adHocDebug":        adHocDebug,
 	})
 }
 
