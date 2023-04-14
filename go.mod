@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.2
 	github.com/onsi/gomega v1.27.6
 	github.com/prometheus/client_golang v1.14.0
-	github.com/shirou/gopsutil/v3 v3.23.2
+	github.com/shirou/gopsutil/v3 v3.23.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.53.0
@@ -85,6 +85,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/shoenig/go-m1cpu v0.1.4 // indirect
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
