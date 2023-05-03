@@ -106,7 +106,6 @@ validate-yawollet-image:
       -var 'machine_flavor=UNSET' \
       -var 'volume_type=UNSET' \
       -var 'image_visibility=private' \
-      -var 'multiqueue_enabled=false' \
       image/alpine-yawol.pkr.hcl
 
 build-yawollet-image:
@@ -117,7 +116,6 @@ build-yawollet-image:
 
     ARG MACHINE_FLAVOR=c1.2
     ARG VOLUME_TYPE=storage_premium_perf6
-    ARG MULTIQUEUE_ENABLED=False
 
     ARG --required IMAGE_VISIBILITY
     ARG --required OS_SOURCE_IMAGE
@@ -152,7 +150,6 @@ build-yawollet-image:
       -var "machine_flavor=$MACHINE_FLAVOR" \
       -var "volume_type=$VOLUME_TYPE" \
       -var "image_visibility=$IMAGE_VISIBILITY" \
-      -var "multiqueue_enabled=$MULTIQUEUE_ENABLED" \
       image/alpine-yawol.pkr.hcl
 
 build-packer-environment:

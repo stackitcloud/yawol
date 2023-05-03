@@ -48,16 +48,10 @@ variable "source_image" {
   description = "The source image this build is based on, which must contain an alpine linux and match the machine_flavor above."
 }
 
-variable "multiqueue_enabled" {
-  type        = string
-  description = "Boolean to toggle if hw_vif_multiqueue_enabled should be enabled or not."
-}
-
 source "openstack" "yawollet" {
   external_source_image_properties = {
-    os_distro                 = "alpine"
-    os_type                   = "linux"
-    hw_vif_multiqueue_enabled = "${var.multiqueue_enabled}"
+    os_distro = "alpine"
+    os_type   = "linux"
   }
   flavor                   = var.machine_flavor
   floating_ip_network      = "${var.floating_network_id}"
