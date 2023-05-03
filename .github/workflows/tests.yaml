@@ -44,4 +44,5 @@ jobs:
       run: earthly --ci --secret SNYK_TOKEN +snyk
     - name: Run Tests
       run: earthly --ci +all-except-snyk
-
+    - name: Packer validate
+      run: earthly --ci +validate-yawollet-image

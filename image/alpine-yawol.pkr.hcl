@@ -49,15 +49,15 @@ variable "source_image" {
 }
 
 variable "multiqueue_enabled" {
-  type = string
+  type        = string
   description = "Boolean to toggle if hw_vif_multiqueue_enabled should be enabled or not."
 }
 
 source "openstack" "yawollet" {
   external_source_image_properties = {
-    os_distro = "alpine"
-    os_type   = "linux"
-    hw_vif_multiqueue_enabled = ${var.multiqueue_enabled}
+    os_distro                 = "alpine"
+    os_type                   = "linux"
+    hw_vif_multiqueue_enabled = "${var.multiqueue_enabled}"
   }
   flavor                   = var.machine_flavor
   floating_ip_network      = "${var.floating_network_id}"

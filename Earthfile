@@ -106,6 +106,7 @@ validate-yawollet-image:
       -var 'machine_flavor=UNSET' \
       -var 'volume_type=UNSET' \
       -var 'image_visibility=private' \
+      -var 'multiqueue_enabled=false' \
       image/alpine-yawol.pkr.hcl
 
 build-yawollet-image:
