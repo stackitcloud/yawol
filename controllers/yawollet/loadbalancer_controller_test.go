@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 	"strings"
 	"time"
 
@@ -25,6 +26,85 @@ const (
 	TIMEOUT  = 10 * time.Second
 	INTERVAL = 500 * time.Millisecond
 )
+
+var _ = Describe("check controller-runtime predicate", func() {
+	baseLb := yawolv1beta1.LoadBalancer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nameLB,
+			Namespace: Namespace,
+		},
+		Spec: yawolv1beta1.LoadBalancerSpec{
+			Selector: metav1.LabelSelector{},
+			Replicas: 1,
+			Options: yawolv1beta1.LoadBalancerOptions{
+				InternalLB:               false,
+				LoadBalancerSourceRanges: nil,
+			},
+			Endpoints: []yawolv1beta1.LoadBalancerEndpoint{{
+				Name:      "localhost",
+				Addresses: []string{"127.0.0.1"},
+			}},
+			Ports: []v1.ServicePort{{
+				Name:       "port",
+				Protocol:   "TCP",
+				Port:       8081,
+				TargetPort: intstr.IntOrString{IntVal: 8081},
+				NodePort:   12456,
+			}},
+			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{},
+		},
+	}
+
+	It("should reconcile by change in spec", func() {
+		By("change in spec with correct lb name", func() {
+			oldLb := baseLb.DeepCopy()
+			newLb := baseLb.DeepCopy()
+			newLb.Spec.Options.TCPProxyProtocol = true
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: oldLb,
+				ObjectNew: newLb,
+			}
+			Expect(yawolletPredicate(nameLB).Update(event)).To(BeTrue())
+		})
+		By("create with correct lb name", func() {
+			event := predicatesEvent.CreateEvent{
+				Object: baseLb.DeepCopy(),
+			}
+			Expect(yawolletPredicate(nameLB).Create(event)).To(BeTrue())
+		})
+	})
+
+	It("should not reconcile", func() {
+		By("change in spec with wrong lb name", func() {
+			oldLb := baseLb.DeepCopy()
+			newLb := baseLb.DeepCopy()
+			newLb.Spec.Options.TCPProxyProtocol = true
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: oldLb,
+				ObjectNew: newLb,
+			}
+			Expect(yawolletPredicate("wrong-lb").Update(event)).To(BeFalse())
+		})
+		By("create with wrong lb name", func() {
+			event := predicatesEvent.CreateEvent{
+				Object: baseLb.DeepCopy(),
+			}
+			Expect(yawolletPredicate("wrong-lb").Create(event)).To(BeFalse())
+		})
+		By("delete", func() {
+			event := predicatesEvent.DeleteEvent{
+				Object: baseLb.DeepCopy(),
+			}
+			Expect(yawolletPredicate(nameLB).Delete(event)).To(BeFalse())
+		})
+		By("generic", func() {
+			event := predicatesEvent.GenericEvent{
+				Object: baseLb.DeepCopy(),
+			}
+			Expect(yawolletPredicate(nameLB).Generic(event)).To(BeFalse())
+		})
+	})
+})
 
 var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 

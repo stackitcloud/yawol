@@ -4,6 +4,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -144,5 +147,28 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
+		WithEventFilter(yawolletPredicate(r.LoadbalancerName)).
 		Complete(r)
+}
+
+func yawolletPredicate(loadbalancerName string) predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(event event.CreateEvent) bool {
+			return event.Object.GetName() == loadbalancerName
+		},
+		DeleteFunc: func(event event.DeleteEvent) bool {
+			return false
+		},
+		UpdateFunc: func(event event.UpdateEvent) bool {
+			if event.ObjectNew.GetName() != loadbalancerName {
+				return false
+			}
+			return !reflect.DeepEqual(
+				event.ObjectOld.(*yawolv1beta1.LoadBalancer).Spec,
+				event.ObjectNew.(*yawolv1beta1.LoadBalancer).Spec)
+		},
+		GenericFunc: func(event event.GenericEvent) bool {
+			return false
+		},
+	}
 }
