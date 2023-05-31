@@ -219,6 +219,7 @@ func GenerateUserData(
 	loadbalancer *yawolv1beta1.LoadBalancer,
 	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
+	yawolletRequeueTime int,
 ) string {
 	const (
 		openRCDel   = "del"
@@ -247,6 +248,17 @@ func GenerateUserData(
 		sshOpenRCState = openRCStart
 	}
 
+	var yawolletArgs string
+	yawolletArgs = yawolletArgs + "-namespace=" + loadbalancerMachine.Namespace + " "
+	yawolletArgs = yawolletArgs + "-loadbalancer-name=" + loadbalancer.Name + " "
+	yawolletArgs = yawolletArgs + "-loadbalancer-machine-name=" + loadbalancerMachine.Name + " "
+	yawolletArgs = yawolletArgs + "-listen-address=" + vip + " "
+	yawolletArgs = yawolletArgs + "-kubeconfig /etc/yawol/kubeconfig" + " "
+
+	if yawolletRequeueTime > 0 {
+		yawolletArgs = yawolletArgs + "-requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
+	}
+
 	return `
 #cloud-config
 write_files:
@@ -266,11 +278,7 @@ write_files:
   path: /etc/promtail/promtail.yaml
   permissions: '0644'
 - content: >
-    YAWOLLET_ARGS="-namespace=` + loadbalancerMachine.Namespace + `
-    -loadbalancer-name=` + loadbalancer.Name + `
-    -loadbalancer-machine-name=` + loadbalancerMachine.Name + `
-    -listen-address=` + vip + `
-    -kubeconfig /etc/yawol/kubeconfig"
+    YAWOLLET_ARGS="` + yawolletArgs + `"
   path: /etc/yawol/env.conf
 runcmd:
   - [ /sbin/rc-service, promtail, ` + promtailOpenRCState + ` ]

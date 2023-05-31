@@ -5,8 +5,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -21,6 +19,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 )

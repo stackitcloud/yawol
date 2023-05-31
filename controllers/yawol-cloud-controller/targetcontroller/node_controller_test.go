@@ -3,13 +3,13 @@ package targetcontroller
 import (
 	"context"
 	"fmt"
-	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"

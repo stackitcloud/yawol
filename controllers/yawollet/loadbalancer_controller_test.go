@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
-	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"

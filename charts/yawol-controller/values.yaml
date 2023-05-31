@@ -61,6 +61,7 @@ resources:
 
 #yawolClassName: debug
 #openstackTimeout: 20s
+#yawolletRequeueTime: 60
 
 # the name of the Kubernetes secret that contains the .openrc file contents
 # with the correct permissions to connect to the OpenStack API

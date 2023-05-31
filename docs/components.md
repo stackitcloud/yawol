@@ -77,7 +77,18 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 #### **loadbalancerset-controller**
 
 * Creates/Deletes `LoadBalancerMachines` from `LoadbalancerSet`
-* Monitor `LoadBalancerMachine` status and recreates `LoadBalancerMachine` if node is unhealthy
+* Monitor `LoadBalancerMachine` status and recreates `LoadBalancerMachine` if LoadBalancer is unhealthy.
+
+> A `LoadBalancerMachine` will me marked as unready if any of the following criteria matches:
+> - no condition are set
+> - any LastHeartbeatTime of condition is older than 3 min
+> - condition `ConfigReady`, `EnvoyReady` or `EnvoyUpToDate` is false
+> 
+> This will be represented in the status and in cases of scale down unready machines will be deleted first.
+> 
+> If a machine takes longer than 10 min to start (if no condition is present) it will be recreated. 
+> A machine which condition `ConfigReady`, `EnvoyReady` or `EnvoyUpToDate` is false for more than 5 min or 
+> if the heartbeat for any condition is older than 5 min will be recreated.
 
 #### **loadbalancermachine-controller**
 

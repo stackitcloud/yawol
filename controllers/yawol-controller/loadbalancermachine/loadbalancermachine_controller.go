@@ -51,19 +51,20 @@ var ipv4RegexC, _ = regexp.Compile(ipv4Regex)
 // LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
 type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubebuilder
 	client.Client
-	APIHost           string
-	CACert            []byte
-	Log               logr.Logger
-	Scheme            *runtime.Scheme
-	Recorder          record.EventRecorder
-	RecorderLB        record.EventRecorder
-	APIEndpoint       string
-	Metrics           *helpermetrics.LoadBalancerMachineMetricList
-	getOsClientForIni os.GetOSClientFunc
-	WorkerCount       int
-	OpenstackTimeout  time.Duration
-	DiscoveryClient   *discovery.DiscoveryClient
-	RateLimiter       ratelimiter.RateLimiter
+	APIHost             string
+	CACert              []byte
+	Log                 logr.Logger
+	Scheme              *runtime.Scheme
+	Recorder            record.EventRecorder
+	RecorderLB          record.EventRecorder
+	APIEndpoint         string
+	Metrics             *helpermetrics.LoadBalancerMachineMetricList
+	getOsClientForIni   os.GetOSClientFunc
+	WorkerCount         int
+	OpenstackTimeout    time.Duration
+	YawolletRequeueTime int
+	DiscoveryClient     *discovery.DiscoveryClient
+	RateLimiter         ratelimiter.RateLimiter
 }
 
 // Reconcile Reconciles a LoadBalancerMachine
@@ -677,6 +678,7 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		loadbalancer,
 		loadBalancerMachine,
 		vip,
+		r.YawolletRequeueTime,
 	)
 
 	var srv *servers.Server

@@ -74,8 +74,8 @@ func main() {
 	flag.StringVar(&loadbalancerMachineName, "loadbalancer-machine-name", "", "Name of lbm object.")
 	flag.StringVar(&listenAddress, "listen-address", "", "Address that envoy should listen.")
 	flag.StringVar(&listenInterface, "listen-interface", "", "Interface that envoy should listen on. Ignored if listen-address is set.")
-	flag.IntVar(&requeueTime, "requeue-time", 30, "Requeue Time for reconcile if object was successful reconciled. "+
-		"Values less than 5 are set to 5 and greater than 50 are set to 50")
+	flag.IntVar(&requeueTime, "requeue-time", 30, "Requeue Time in seconds for reconcile if object was successful reconciled. "+
+		"Values less than 5 are set to 5 and greater than 170 are set to 170")
 
 	flag.StringVar(&keepalivedStatsFile, "keepalived-stats-file", "/tmp/keepalived.stats",
 		"Stats file for keepalived (default: /tmp/keepalived.stats). "+
@@ -101,8 +101,8 @@ func main() {
 	// force requeue time between 5 and 50 (to be inside the heartbeat#time of yawol-controller)
 	if requeueTime < 5 {
 		requeueTime = 5
-	} else if requeueTime > 50 {
-		requeueTime = 50
+	} else if requeueTime > 170 {
+		requeueTime = 170
 	}
 
 	// set listen address

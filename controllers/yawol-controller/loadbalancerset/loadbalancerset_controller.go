@@ -72,31 +72,31 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	readyMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
-	notReadyMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
-	deletedMachines := make([]yawolv1beta1.LoadBalancerMachine, 0)
+	var (
+		readyMachineCount   int
+		deletedMachineCount int
+	)
+
 	for i := range childMachines.Items {
 		if childMachines.Items[i].DeletionTimestamp != nil {
-			deletedMachines = append(deletedMachines, childMachines.Items[i])
+			deletedMachineCount++
 			continue
 		}
 		if isMachineReady(childMachines.Items[i]) {
-			readyMachines = append(readyMachines, childMachines.Items[i])
+			readyMachineCount++
 			continue
 		}
-		notReadyMachines = append(notReadyMachines, childMachines.Items[i])
 	}
 
-	if res, err := r.reconcileStatus(ctx, &set, readyMachines); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err := r.reconcileStatus(ctx, &set, readyMachineCount); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
 	if res, err := r.reconcileReplicas(
 		ctx,
 		&set,
-		deletedMachines,
-		notReadyMachines,
-		readyMachines,
+		childMachines.Items,
+		deletedMachineCount,
 	); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
@@ -145,7 +145,7 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 func (r *LoadBalancerSetReconciler) reconcileStatus(
 	ctx context.Context,
 	set *yawolv1beta1.LoadBalancerSet,
-	readyMachines []yawolv1beta1.LoadBalancerMachine,
+	readyMachinesCount int,
 ) (ctrl.Result, error) {
 	// Write replicas into status
 	if set.Status.Replicas == nil || *set.Status.Replicas != set.Spec.Replicas {
@@ -159,8 +159,8 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 	}
 
 	// Write ready replicas into status
-	if set.Status.ReadyReplicas == nil || *set.Status.ReadyReplicas != len(readyMachines) {
-		replicas := len(readyMachines)
+	if set.Status.ReadyReplicas == nil || *set.Status.ReadyReplicas != readyMachinesCount {
+		replicas := readyMachinesCount
 		if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{
 			ReadyReplicas: &replicas,
 		}); err != nil {
@@ -175,39 +175,49 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 func (r *LoadBalancerSetReconciler) reconcileReplicas(
 	ctx context.Context,
 	set *yawolv1beta1.LoadBalancerSet,
-	deletedMachines, notReadyMachines, readyMachines []yawolv1beta1.LoadBalancerMachine,
+	machines []yawolv1beta1.LoadBalancerMachine,
+	deletedMachineCount int,
 ) (ctrl.Result, error) {
-	var currentReplicas, desiredReplicas, deletedReplicas int
-	desiredReplicas = set.Spec.Replicas
-	currentReplicas = len(deletedMachines) + len(notReadyMachines) + len(readyMachines)
-	deletedReplicas = len(deletedMachines)
-
-	if currentReplicas < desiredReplicas {
+	if len(machines) < set.Spec.Replicas {
 		if err := r.createMachine(ctx, set); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
 	}
 
-	if desiredReplicas < currentReplicas-deletedReplicas {
-		// Delete not ready machines first
-		if len(notReadyMachines) > 0 {
-			if err := r.deleteMachine(ctx, &notReadyMachines[0]); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{RequeueAfter: time.Second * 2}, nil
-		}
+	if len(machines) < len(machines)-deletedMachineCount {
+		machineForDeletion := findFirstMachineForDeletion(machines)
 
-		// Delete ready machines
-		if len(readyMachines) > 0 {
-			if err := r.deleteMachine(ctx, &readyMachines[0]); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{RequeueAfter: time.Second * 2}, nil
+		if err := r.deleteMachine(ctx, &machineForDeletion); err != nil {
+			return ctrl.Result{}, err
 		}
+		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// findFirstMachineForDeletion returns a machine which should be deleted first in case of a scale down.
+// returns unready machines first
+// returns machine which is not keepalived master
+// returns the first machine
+func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) yawolv1beta1.LoadBalancerMachine {
+	for i := range machines {
+		if !isMachineReady(machines[i]) {
+			return machines[i]
+		}
+	}
+
+	for i := range machines {
+		for _, c := range *machines[i].Status.Conditions {
+			if string(c.Type) == string(helper.KeepalivedMaster) &&
+				string(c.Status) != string(helper.ConditionFalse) {
+				return machines[i]
+			}
+		}
+	}
+
+	return machines[0]
 }
 
 func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(
@@ -266,20 +276,20 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, err
 
 // Decides whether the machine is ready or not
 // False if not all conditions are set
-// False if LastHeartbeatTime is older than 60sec
+// False if LastHeartbeatTime is older than 180sec
 // False if ConfigReady, EnvoyReady or EnvoyUpToDate are false
 func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
-	before60seconds := v1.Time{Time: time.Now().Add(-60 * time.Second)}
+	before180seconds := v1.Time{Time: time.Now().Add(-180 * time.Second)}
 
 	// not ready if no conditions are available
-	if machine.Status.Conditions == nil || len(*machine.Status.Conditions) < 3 {
+	if machine.Status.Conditions == nil || len(*machine.Status.Conditions) < 6 {
 		return false
 	}
 
 	// As soon as a conditions are set
 	if machine.Status.Conditions != nil {
 		for _, condition := range *machine.Status.Conditions {
-			if condition.LastHeartbeatTime.Before(&before60seconds) {
+			if condition.LastHeartbeatTime.Before(&before180seconds) {
 				return false
 			}
 			if helper.LoadBalancerSetConditionIsFalse(condition) {
