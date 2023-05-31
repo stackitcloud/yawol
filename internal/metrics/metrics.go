@@ -65,7 +65,7 @@ var (
 	LoadBalancerOpenstackInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_openstack_info",
 		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancer",
-	}, []string{"lb", "namespace", "portID", "flavorID", "floatingID", "securityGroupID"})
+	}, []string{"lb", "namespace", "portID", "floatingID", "securityGroupID", "flavorID"})
 	// LoadBalancerReplicasMetrics Replicas for LoadBalancer (from lb.spec.replicas)
 	LoadBalancerReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_replicas",
@@ -112,7 +112,7 @@ var (
 	LoadBalancerMachineOpenstackInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine_openstack_info",
 		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine",
-	}, []string{"lb", "lbm", "namespace", "portID", "flavorID", "serverID"})
+	}, []string{"lb", "lbm", "namespace", "portID", "serverID", "flavorID"})
 )
 
 func init() {
