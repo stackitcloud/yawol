@@ -21,7 +21,6 @@ import (
 var _ = Describe("check controller-runtime predicate", func() {
 	nodeName := "node1"
 	conditionReady := v1.NodeCondition{
-
 		Type:               v1.NodeReady,
 		Status:             v1.ConditionTrue,
 		LastHeartbeatTime:  metav1.Time{},
@@ -30,7 +29,6 @@ var _ = Describe("check controller-runtime predicate", func() {
 		Message:            "Ready",
 	}
 	conditionNotReady := v1.NodeCondition{
-
 		Type:               v1.NodeReady,
 		Status:             v1.ConditionFalse,
 		LastHeartbeatTime:  metav1.Time{},

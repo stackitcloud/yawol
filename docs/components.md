@@ -80,8 +80,8 @@ OpenStack instance where the yawollet and Envoy do the actual Load Balancing.
 * Monitor `LoadBalancerMachine` status and recreates `LoadBalancerMachine` if LoadBalancer is unhealthy.
 
 > A `LoadBalancerMachine` will me marked as unready if any of the following criteria matches:
-> - no condition are set
-> - any LastHeartbeatTime of condition is older than 3 min
+> - no conditions are set
+> - at least one LastHeartbeatTime of any condition is older than 3 min
 > - condition `ConfigReady`, `EnvoyReady` or `EnvoyUpToDate` is false
 > 
 > This will be represented in the status and in cases of scale down unready machines will be deleted first.

@@ -185,8 +185,11 @@ func (r *LoadBalancerSetReconciler) reconcileReplicas(
 		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
 	}
 
-	if len(machines) < len(machines)-deletedMachineCount {
-		machineForDeletion := findFirstMachineForDeletion(machines)
+	if set.Spec.Replicas < len(machines)-deletedMachineCount {
+		machineForDeletion, err := findFirstMachineForDeletion(machines)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 
 		if err := r.deleteMachine(ctx, &machineForDeletion); err != nil {
 			return ctrl.Result{}, err
@@ -201,10 +204,10 @@ func (r *LoadBalancerSetReconciler) reconcileReplicas(
 // returns unready machines first
 // returns machine which is not keepalived master
 // returns the first machine
-func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) yawolv1beta1.LoadBalancerMachine {
+func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (yawolv1beta1.LoadBalancerMachine, error) {
 	for i := range machines {
 		if !isMachineReady(machines[i]) {
-			return machines[i]
+			return machines[i], nil
 		}
 	}
 
@@ -212,12 +215,14 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) ya
 		for _, c := range *machines[i].Status.Conditions {
 			if string(c.Type) == string(helper.KeepalivedMaster) &&
 				string(c.Status) != string(helper.ConditionFalse) {
-				return machines[i]
+				return machines[i], nil
 			}
 		}
 	}
-
-	return machines[0]
+	if len(machines) == 0 {
+		return yawolv1beta1.LoadBalancerMachine{}, helper.ErrNoLBMFoundForScaleDown
+	}
+	return machines[0], nil
 }
 
 func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(

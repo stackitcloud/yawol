@@ -109,7 +109,8 @@ func yawolNodePredicate() predicate.Predicate {
 
 			return !reflect.DeepEqual(
 				getLoadBalancerEndpointFromNode(*oldNode, []coreV1.IPFamily{}),
-				getLoadBalancerEndpointFromNode(*newNode, []coreV1.IPFamily{}))
+				getLoadBalancerEndpointFromNode(*newNode, []coreV1.IPFamily{}),
+			)
 		},
 		GenericFunc: func(_ event.GenericEvent) bool {
 			return false
