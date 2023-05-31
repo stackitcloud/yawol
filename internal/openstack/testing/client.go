@@ -43,24 +43,24 @@ func (r *MockClient) Configure(_ []byte, _ openstack.OSClientOverwrite, _ time.D
 	r.StoredValues = make(map[string]interface{})
 	return nil
 }
-func (r *MockClient) FipClient(ctx context.Context) (openstack.FipClient, error) {
+func (r *MockClient) FipClient(_ context.Context) (openstack.FipClient, error) {
 	return r.FipClientObj, nil
 }
-func (r *MockClient) PortClient(ctx context.Context) (openstack.PortClient, error) {
+func (r *MockClient) PortClient(_ context.Context) (openstack.PortClient, error) {
 	return r.PortClientObj, nil
 }
-func (r *MockClient) GroupClient(ctx context.Context) (openstack.GroupClient, error) {
+func (r *MockClient) GroupClient(_ context.Context) (openstack.GroupClient, error) {
 	return r.GroupClientObj, nil
 }
-func (r *MockClient) RuleClient(ctx context.Context) (openstack.RuleClient, error) {
+func (r *MockClient) RuleClient(_ context.Context) (openstack.RuleClient, error) {
 	return r.RuleClientObj, nil
 }
-func (r *MockClient) ServerClient(ctx context.Context) (openstack.ServerClient, error) {
+func (r *MockClient) ServerClient(_ context.Context) (openstack.ServerClient, error) {
 	return r.ServerClientObj, nil
 }
-func (r *MockClient) KeyPairClient(ctx context.Context) (openstack.KeyPairClient, error) {
+func (r *MockClient) KeyPairClient(_ context.Context) (openstack.KeyPairClient, error) {
 	return r.KeyPairClientObj, nil
 }
-func (r *MockClient) ServerGroupClient(ctx context.Context) (openstack.ServerGroupClient, error) {
+func (r *MockClient) ServerGroupClient(_ context.Context) (openstack.ServerGroupClient, error) {
 	return r.ServerGroupClientObj, nil
 }

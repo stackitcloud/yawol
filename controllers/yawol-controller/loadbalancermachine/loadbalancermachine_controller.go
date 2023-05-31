@@ -828,18 +828,14 @@ func (r *LoadBalancerMachineReconciler) deleteServerAndWait(
 		}
 	}
 
-	if err := r.waitForServerStatus(
+	return r.waitForServerStatus(
 		ctx,
 		serverClient,
 		serverID,
 		[]string{openstackhelper.ServerStatusActive, openstackhelper.ServerStatusStopped, openstackhelper.ServerStatusError},
 		[]string{openstackhelper.ServerStatusDeleted},
 		600,
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
 }
 
 func (r *LoadBalancerMachineReconciler) deleteServer(
@@ -882,11 +878,7 @@ func (r *LoadBalancerMachineReconciler) deleteServer(
 		}
 	}
 
-	if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serverID"); err != nil {
-		return err
-	}
-
-	return nil
+	return helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "serverID")
 }
 
 func (r *LoadBalancerMachineReconciler) deletePort(
@@ -974,7 +966,7 @@ func (r *LoadBalancerMachineReconciler) deleteSA(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &sa); client.IgnoreNotFound(err) != nil {
+	if err := r.Client.Delete(ctx, &sa); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
 		return err
 	}
 
@@ -991,7 +983,7 @@ func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &rb); client.IgnoreNotFound(err) != nil {
+	if err := r.Client.Delete(ctx, &rb); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
 		return err
 	}
 
@@ -1008,7 +1000,7 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &role); client.IgnoreNotFound(err) != nil {
+	if err := r.Client.Delete(ctx, &role); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
 		return err
 	}
 
