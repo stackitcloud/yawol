@@ -67,7 +67,9 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	err := r.reconcile(ctx, lb, lbm, conditions)
+	// this error will be returned later in order to always
+	// keep metrics and conditions up-to-date
+	reconcileError := r.reconcile(ctx, lb, lbm, conditions)
 
 	metricString, err := helper.GetMetricString(r.KeepalivedStatsFile)
 	if err != nil {
@@ -79,12 +81,16 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	patch := []byte(`{ "status": { "conditions": ` + conditionString + `, "metrics": ` + metricString + `}}`)
-	if err := r.Client.Status().Patch(ctx, lbm, client.RawPatch(types.MergePatchType, patch)); err != nil {
+	patch := []byte(
+		`{ "status": { "conditions": ` + conditionString + `, "metrics": ` + metricString + `}}`,
+	)
+	if err := r.Client.Status().Patch(
+		ctx, lbm, client.RawPatch(types.MergePatchType, patch),
+	); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, err
+	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, reconcileError
 }
 
 func (r *LoadBalancerReconciler) reconcile(
