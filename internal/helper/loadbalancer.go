@@ -375,6 +375,11 @@ func parseLoadBalancerOpenstackMetric(
 		"portID":          "nil",
 		"floatingID":      "nil",
 		"securityGroupID": "nil",
+		"flavorID":        "nil",
+	}
+
+	if lb.Spec.Infrastructure.Flavor.FlavorID != nil {
+		labels["flavorID"] = *lb.Spec.Infrastructure.Flavor.FlavorID
 	}
 
 	if lb.Status.PortID != nil {
