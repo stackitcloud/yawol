@@ -55,7 +55,7 @@ var _ = Describe("check controller-runtime predicate", func() {
 		},
 	}
 
-	It("should reconcile by change in spec", func() {
+	It("should reconcile", func() {
 		By("change in spec with correct lb name", func() {
 			oldLb := baseLb.DeepCopy()
 			newLb := baseLb.DeepCopy()
@@ -71,6 +71,16 @@ var _ = Describe("check controller-runtime predicate", func() {
 				Object: baseLb.DeepCopy(),
 			}
 			Expect(yawolletPredicate(nameLB).Create(event)).To(BeTrue())
+		})
+		By("annotation change", func() {
+			oldLb := baseLb.DeepCopy()
+			newLb := baseLb.DeepCopy()
+			newLb.SetAnnotations(map[string]string{yawolv1beta1.LoadBalancerAdHocDebug: "t"})
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: oldLb,
+				ObjectNew: newLb,
+			}
+			Expect(yawolletPredicate(nameLB).Update(event)).To(BeTrue())
 		})
 	})
 

@@ -175,7 +175,7 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func yawolletPredicate(loadbalancerName string) predicate.Predicate {
-	return predicate.Funcs{
+	return predicate.Or(predicate.AnnotationChangedPredicate{}, predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
 			return event.Object.GetName() == loadbalancerName
 		},
@@ -193,5 +193,5 @@ func yawolletPredicate(loadbalancerName string) predicate.Predicate {
 		GenericFunc: func(event event.GenericEvent) bool {
 			return false
 		},
-	}
+	})
 }
