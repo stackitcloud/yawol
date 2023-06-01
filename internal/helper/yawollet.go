@@ -788,12 +788,10 @@ func UpdateKeepalivedStatsStatus(
 			"CouldNotReadStats", "Could not get stats file"); err != nil {
 			return err
 		}
-		if err := UpdateLBMConditions(ctx, c, lbm,
+
+		return UpdateLBMConditions(ctx, c, lbm,
 			KeepalivedMaster, ConditionFalse,
-			"CouldNotReadStats", "Could not get stats file"); err != nil {
-			return err
-		}
-		return nil
+			"CouldNotReadStats", "Could not get stats file")
 	}
 
 	keepalivedIsMaster := ConditionFalse
