@@ -751,7 +751,7 @@ func UpdateKeepalivedStatsStatus(
 		UpdateLBMConditions(
 			conditions,
 			KeepalivedMaster,
-      ConditionFalse,
+			ConditionFalse,
 			"CouldNotReadStats", "Could not get stats file",
 		)
 
