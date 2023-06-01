@@ -51,10 +51,7 @@ func CreateLoadBalancerSet(
 			Replicas: lb.Spec.Replicas,
 		},
 	}
-	if err := c.Create(ctx, &lbset); err != nil {
-		return err
-	}
-	return nil
+	return c.Create(ctx, &lbset)
 }
 
 // PatchLoadBalancerSetReplicas sets replicas in LoadBalancerSet

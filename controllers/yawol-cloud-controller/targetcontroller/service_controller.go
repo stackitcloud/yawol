@@ -329,11 +329,7 @@ func (r *ServiceReconciler) reconcileExistingFloatingIP(
 	}
 
 	// update existingFloatingIP in lb.Spec
-	if err := r.patchExistingFloatingIP(ctx, lb, *existingIP); err != nil {
-		return err
-	}
-
-	return nil
+	return r.patchExistingFloatingIP(ctx, lb, *existingIP)
 }
 
 func (r *ServiceReconciler) reconcileReplicas(
@@ -555,7 +551,7 @@ func (r *ServiceReconciler) deletionRoutine(
 ) (ctrl.Result, error) {
 	var loadBalancer yawolv1beta1.LoadBalancer
 	var err error
-	if err = r.ControlClient.Get(
+	if err = r.ControlClient.Get( //nolint: gocritic // ignore of not found is intended
 		ctx,
 		getLoadBalancerNamespacedName(&infraDefaults, svc),
 		&loadBalancer,
