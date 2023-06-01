@@ -175,7 +175,7 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func yawolletPredicate(loadbalancerName string) predicate.Predicate {
-	return predicate.Or(predicate.AnnotationChangedPredicate{}, predicate.Funcs{
+	return predicate.Funcs{
 		CreateFunc: func(event event.CreateEvent) bool {
 			return event.Object.GetName() == loadbalancerName
 		},
@@ -186,6 +186,11 @@ func yawolletPredicate(loadbalancerName string) predicate.Predicate {
 			if event.ObjectNew.GetName() != loadbalancerName {
 				return false
 			}
+
+			if !reflect.DeepEqual(event.ObjectOld.GetAnnotations(), event.ObjectNew.GetAnnotations()) {
+				return true
+			}
+
 			return !reflect.DeepEqual(
 				event.ObjectOld.(*yawolv1beta1.LoadBalancer).Spec,
 				event.ObjectNew.(*yawolv1beta1.LoadBalancer).Spec)
@@ -193,5 +198,5 @@ func yawolletPredicate(loadbalancerName string) predicate.Predicate {
 		GenericFunc: func(event event.GenericEvent) bool {
 			return false
 		},
-	})
+	}
 }
