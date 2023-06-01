@@ -434,13 +434,9 @@ func (r *Reconciler) assignOrCreateFIP(
 	fip, _ = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
 	if fip != nil {
 		r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
-		if err := helper.PatchLBStatus(
+		return helper.PatchLBStatus(
 			ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
-		); err != nil {
-			return err
-		}
-
-		return nil
+		)
 	}
 
 	// create fip
@@ -453,13 +449,9 @@ func (r *Reconciler) assignOrCreateFIP(
 		return helper.ErrFIPIDEmpty
 	}
 
-	if err := helper.PatchLBStatus(
+	return helper.PatchLBStatus(
 		ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{FloatingID: &fip.ID},
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
 }
 
 func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
