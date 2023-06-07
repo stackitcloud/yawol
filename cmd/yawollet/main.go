@@ -9,6 +9,9 @@ import (
 	"os"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -136,7 +139,7 @@ func main() {
 	}
 
 	// envoy grpc startup
-	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, nil)
+	envoyCache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, nil)
 
 	// create init snapshot
 	snapshot, err := cachev3.NewSnapshot("1", map[resource.Type][]types.Resource{
@@ -158,14 +161,14 @@ func main() {
 	}
 	setupLog.Info("will serve snapshot", "snapshot", snapshot)
 
-	if err := cache.SetSnapshot(ctx, "lb-id", snapshot); err != nil {
+	if err := envoyCache.SetSnapshot(ctx, "lb-id", snapshot); err != nil {
 		setupLog.Error(err, "snapshot error", "snapshot", snapshot)
 		os.Exit(1)
 	}
 
 	// envoy server startup
 	cb := &testv3.Callbacks{Debug: true}
-	srv := serverv3.NewServer(ctx, cache, cb)
+	srv := serverv3.NewServer(ctx, envoyCache, cb)
 
 	var grpcOptions []grpc.ServerOption
 	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxStreams))
@@ -192,6 +195,19 @@ func main() {
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "9df1d9a0.stackit.cloud",
 		Namespace:          namespace,
+
+		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			opts.SelectorsByObject = cache.SelectorsByObject{
+				&yawolv1beta1.LoadBalancer{}: cache.ObjectSelector{
+					Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerName}),
+				},
+				&yawolv1beta1.LoadBalancerMachine{}: cache.ObjectSelector{
+					Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerMachineName}),
+				},
+			}
+
+			return cache.New(config, opts)
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -204,7 +220,7 @@ func main() {
 		Scheme:                  mgr.GetScheme(),
 		LoadbalancerName:        loadbalancerName,
 		LoadbalancerMachineName: loadbalancerMachineName,
-		EnvoyCache:              cache,
+		EnvoyCache:              envoyCache,
 		ListenAddress:           listenAddress,
 		RequeueTime:             requeueTime,
 		KeepalivedStatsFile:     keepalivedStatsFile,
