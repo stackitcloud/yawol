@@ -4,6 +4,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -14,7 +15,6 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,33 +58,38 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	conditions := map[corev1.NodeConditionType]corev1.NodeCondition{}
+	conditionsMap := map[corev1.NodeConditionType]corev1.NodeCondition{}
 	if lbm.Status.Conditions != nil {
 		for _, v := range *lbm.Status.Conditions {
-			conditions[v.Type] = *v.DeepCopy()
+			conditionsMap[v.Type] = *v.DeepCopy()
 		}
 	}
 
 	// this error will be returned later in order to always
 	// keep metrics and conditions up-to-date
-	reconcileError := r.reconcile(ctx, lb, lbm, conditions)
+	reconcileError := r.reconcile(ctx, lb, lbm, conditionsMap)
 
-	metricString, err := helper.GetMetricString(r.KeepalivedStatsFile)
+	metrics, err := helper.GetMetrics(r.KeepalivedStatsFile)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	conditionString, err := helper.GetLBMConditionString(conditions)
-	if err != nil {
-		return ctrl.Result{}, err
+	// convert conditions back to slice for LoadBalancerMachine status
+	var conditions []corev1.NodeCondition
+	for _, con := range conditionsMap {
+		conditions = append(conditions, con)
 	}
 
-	patch := []byte(
-		`{ "status": { "conditions": ` + conditionString + `, "metrics": ` + metricString + `}}`,
-	)
-	if err := r.Client.Status().Patch(
-		ctx, lbm, client.RawPatch(types.MergePatchType, patch),
-	); err != nil {
+	// keep conditions in stable order for convenience
+	sort.Slice(conditions, func(i, j int) bool {
+		return conditions[i].Type < conditions[j].Type
+	})
+
+	patch := client.MergeFrom(lbm.DeepCopy())
+	lbm.Status.Conditions = &conditions
+	lbm.Status.Metrics = &metrics
+
+	if err := r.Client.Status().Patch(ctx, lbm, patch); err != nil {
 		return ctrl.Result{}, err
 	}
 

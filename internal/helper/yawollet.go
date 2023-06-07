@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -576,24 +575,8 @@ func UpdateLBMConditions(
 	}
 }
 
-func GetLBMConditionString(
-	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
-) (string, error) {
-	conditionArray := []corev1.NodeCondition{}
-	for _, con := range conditions {
-		conditionArray = append(conditionArray, con)
-	}
-
-	conditionString, err := json.Marshal(conditionArray)
-	if err != nil {
-		return "", err
-	}
-
-	return string(conditionString), nil
-}
-
-// GetMetricString gets metrics as string
-func GetMetricString(keepalivedStatsFile string) (string, error) {
+// GetMetrics returns the current LoadBalancerMachineMetrics
+func GetMetrics(keepalivedStatsFile string) ([]yawolv1beta1.LoadBalancerMachineMetric, error) {
 	metrics := []yawolv1beta1.LoadBalancerMachineMetric{}
 	if load1, load5, load15, err := hostmetrics.GetLoad(); err == nil {
 		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
@@ -687,12 +670,7 @@ func GetMetricString(keepalivedStatsFile string) (string, error) {
 		}
 	}
 
-	jsonMetrics, err := json.Marshal(metrics)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonMetrics), nil
+	return metrics, nil
 }
 
 func CheckEnvoyVersion(
@@ -884,7 +862,7 @@ func EnableAdHocDebugging(
 		return nil
 	}
 
-	addAuthorizedKeys := exec.Command( //nolint: gosec // sshKey can only be a ssh public key checked by regex
+	addAuthorizedKeys := exec.Command( // nolint: gosec // sshKey can only be a ssh public key checked by regex
 		"/bin/sh",
 		"-c",
 		"echo \"\n"+sshKey+"\n\" | sudo tee /home/yawoldebug/.ssh/authorized_keys",
