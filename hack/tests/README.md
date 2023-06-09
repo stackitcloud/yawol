@@ -3,7 +3,6 @@
 
 ```
 kubectl apply -f ./
-
 ```
 
 ## normal
@@ -36,14 +35,14 @@ curl "http://$(kubectl get services proxy-protocol --output jsonpath='{.status.l
 
 ## udp
 
-This returns test from the UDP echo (cancle with control-c):
+This returns test from the UDP echo (cancel with control-c):
 ```
 echo "test"  | nc -u $(kubectl get services udp-echo --output jsonpath='{.status.loadBalancer.ingress[0].ip}') 80
 ```
 
 ## udp-timeout
 
-This returns test from the UDP echo (cancle with control-c):
+This returns test from the UDP echo (cancel with control-c):
 ```
 echo "test"  | nc -u $(kubectl get services udp-timeout --output jsonpath='{.status.loadBalancer.ingress[0].ip}') 80
 ```
@@ -60,5 +59,4 @@ time nc $(kubectl get services tcp-timeout --output jsonpath='{.status.loadBalan
 
 ```
 kubectl delete -f ./
-
 ```
