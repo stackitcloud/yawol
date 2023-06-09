@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: tcp-timeout
+  name: tcp-timeout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tcp-timeout
+  template:
+    metadata:
+      labels:
+        app: tcp-timeout
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: tcp-timeout
+  name: tcp-timeout
+  annotations:
+    yawol.stackit.cloud/tcpIdleTimeout: "10s"
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: tcp-timeout
+  type: LoadBalancer

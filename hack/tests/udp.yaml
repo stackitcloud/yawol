@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: udp-echo
+  name: udp-echo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: udp-echo
+  template:
+    metadata:
+      labels:
+        app: udp-echo
+    spec:
+      containers:
+      - image: samos123/udp-echo-server:latest
+        imagePullPolicy: Always
+        name: udp-echo
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: udp-echo
+  name: udp-echo
+spec:
+  ports:
+  - port: 80
+    protocol: UDP
+    targetPort: 33333
+  selector:
+    app: udp-echo
+  type: LoadBalancer
