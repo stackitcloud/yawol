@@ -1,0 +1,99 @@
+apiVersion: v1
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+    
+    error_log  /var/log/nginx/error.log notice;
+    pid        /var/run/nginx.pid;
+    
+    
+    events {
+        worker_connections  1024;
+    }
+    
+    
+    http {
+        default_type  application/octet-stream;
+    
+        log_format  main  '$proxy_protocol_addr - $remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+    
+        access_log  /var/log/nginx/access.log  main;
+    
+        sendfile        on;
+        #tcp_nopush     on;
+    
+        keepalive_timeout  65;
+    
+        server {
+            listen       80 proxy_protocol;
+            listen  [::]:80 proxy_protocol;
+            server_name  localhost;
+                
+            location / {
+                root   /usr/share/nginx/html;
+                index  index.html index.htm;
+            }
+        
+            error_page   500 502 503 504  /50x.html;
+            location = /50x.html {
+                root   /usr/share/nginx/html;
+            }
+        }
+    }
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: proxy-protocol-nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: proxy-protocol
+  name: proxy-protocol
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy-protocol
+  template:
+    metadata:
+      labels:
+        app: proxy-protocol
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+        volumeMounts:
+        - name: proxy-protocol-nginx
+          mountPath: /etc/nginx
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      volumes:
+      - name: proxy-protocol-nginx
+        configMap:
+          name: proxy-protocol-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    yawol.stackit.cloud/tcpProxyProtocol: "t"
+  creationTimestamp: null
+  labels:
+    app: proxy-protocol
+  name: proxy-protocol
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: proxy-protocol
+  type: LoadBalancer

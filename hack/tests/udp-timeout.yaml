@@ -1,0 +1,39 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: udp-timeout
+  name: udp-timeout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: udp-timeout
+  template:
+    metadata:
+      labels:
+        app: udp-timeout
+    spec:
+      containers:
+      - image: samos123/udp-echo-server:latest
+        imagePullPolicy: Always
+        name: udp-timeout
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: udp-timeout
+  name: udp-timeout
+  annotations:
+    yawol.stackit.cloud/udpIdleTimeout: "10s"
+spec:
+  ports:
+  - port: 80
+    protocol: UDP
+    targetPort: 33333
+  selector:
+    app: udp-timeout
+  type: LoadBalancer

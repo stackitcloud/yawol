@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: internal
+  name: internal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: internal
+  template:
+    metadata:
+      labels:
+        app: internal
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: internal
+  name: internal
+  annotations:
+    yawol.stackit.cloud/internalLB: "t"
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: internal
+  type: LoadBalancer
