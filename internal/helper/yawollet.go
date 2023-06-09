@@ -1,8 +1,6 @@
 package helper
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -20,9 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/shirou/gopsutil/v3/process"
 
@@ -556,54 +552,31 @@ func proxyProtocolEnabled(options yawolv1beta1.LoadBalancerOptions, port corev1.
 
 // UpdateLBMConditions update a given condition in lbm object
 func UpdateLBMConditions(
-	ctx context.Context,
-	c client.StatusWriter,
-	lbm *yawolv1beta1.LoadBalancerMachine,
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
 	condition LoadbalancerCondition,
 	status LoadbalancerConditionStatus,
 	reason string,
 	message string,
-) error {
+) {
+	t := corev1.NodeConditionType(condition)
+
 	lastTransitionTime := v1.Now()
-	var otherConditions string
-	if lbm.Status.Conditions != nil {
-		for _, c := range *lbm.Status.Conditions {
-			if string(c.Type) == string(condition) {
-				if string(c.Status) == string(status) {
-					lastTransitionTime = c.LastTransitionTime
-				}
-			} else {
-				jsonCondition, err := json.Marshal(c)
-				if err != nil {
-					return err
-				}
-				otherConditions += "," + string(jsonCondition)
-			}
-		}
+	if old, exists := conditions[t]; exists {
+		lastTransitionTime = old.LastTransitionTime
 	}
-	patch := []byte(`{ "status": { "conditions": [{` +
-		`"lastHeartbeatTime": "` + v1.Now().UTC().Format(time.RFC3339) + `",` +
-		`"lastTransitionTime": "` + lastTransitionTime.UTC().Format(time.RFC3339) + `",` +
-		`"message": "` + message + `",` +
-		`"reason": "` + reason + `",` +
-		`"status": "` + string(status) + `",` +
-		`"type": "` + string(condition) +
-		`"}` +
-		otherConditions + `]}}`)
-	err := c.Patch(ctx, lbm, client.RawPatch(types.MergePatchType, patch))
-	if err != nil {
-		return err
+
+	conditions[t] = corev1.NodeCondition{
+		Type:               t,
+		Status:             corev1.ConditionStatus(status),
+		Reason:             reason,
+		Message:            message,
+		LastHeartbeatTime:  v1.Now(),
+		LastTransitionTime: lastTransitionTime,
 	}
-	return nil
 }
 
-// WriteLBMMetrics gets metrics and write new metrics to lbm
-func WriteLBMMetrics(
-	ctx context.Context,
-	c client.StatusWriter,
-	keepalivedStatsFile string,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
+// GetMetrics returns the current LoadBalancerMachineMetrics
+func GetMetrics(keepalivedStatsFile string) ([]yawolv1beta1.LoadBalancerMachineMetric, error) {
 	metrics := []yawolv1beta1.LoadBalancerMachineMetric{}
 	if load1, load5, load15, err := hostmetrics.GetLoad(); err == nil {
 		metrics = append(metrics, []yawolv1beta1.LoadBalancerMachineMetric{
@@ -697,174 +670,166 @@ func WriteLBMMetrics(
 		}
 	}
 
-	return updateLBMMetrics(ctx, c, lbm, metrics)
-}
-
-// updateLBMMetrics update metrics in lbm object
-func updateLBMMetrics(
-	ctx context.Context,
-	c client.StatusWriter,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-	metric []yawolv1beta1.LoadBalancerMachineMetric,
-) error {
-	jsonMetrics, err := json.Marshal(metric)
-	if err != nil {
-		return err
-	}
-	patch := []byte(`{ "status": { "metrics": ` + string(jsonMetrics) + `}}`)
-	err = c.Patch(ctx, lbm, client.RawPatch(types.MergePatchType, patch))
-	if err != nil {
-		return err
-	}
-	return nil
+	return metrics, nil
 }
 
 func CheckEnvoyVersion(
-	ctx context.Context,
-	c client.StatusWriter,
-	lbm *yawolv1beta1.LoadBalancerMachine,
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
 	snapshot envoycache.ResourceSnapshot,
-) error {
+) {
 	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
-
 	envoySnapshotClusterVersion, envoySnapshotListenerVersion, err := envoyStatus.GetCurrentSnapshotVersion()
 	if err != nil {
-		return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "unable to get envoy snapshot version")
+		UpdateLBMConditions(conditions, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "unable to get envoy snapshot version")
+		return
 	}
 
 	if envoySnapshotClusterVersion == snapshot.GetVersion(resource.ClusterType) &&
 		envoySnapshotListenerVersion == snapshot.GetVersion(resource.ListenerType) {
-		return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionTrue, "EnvoySnapshotUpToDate", "envoy snapshot version is up to date")
+		UpdateLBMConditions(conditions, EnvoyUpToDate, ConditionTrue, "EnvoySnapshotUpToDate", "envoy snapshot version is up to date")
+		return
 	}
-	return UpdateLBMConditions(ctx, c, lbm, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "envoy is not up to date")
+	UpdateLBMConditions(conditions, EnvoyUpToDate, ConditionFalse, "EnvoySnapshotUpToDate", "envoy is not up to date")
 }
 
-func UpdateEnvoyStatus(
-	ctx context.Context,
-	c client.StatusWriter,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
+func UpdateEnvoyStatus(conditions map[corev1.NodeConditionType]corev1.NodeCondition) {
 	envoyStatus := envoystatus.Config{AdminAddress: "127.0.0.1:9000"}
 	if envoyStatus.GetEnvoyStatus() {
-		return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionTrue, "EnvoyReady", "envoy response with 200")
+		UpdateLBMConditions(conditions, EnvoyReady, ConditionTrue, "EnvoyReady", "envoy response with 200")
+		return
 	}
-	return UpdateLBMConditions(ctx, c, lbm, EnvoyReady, ConditionFalse, "EnvoyNotReady", "envoy response not with 200")
+	UpdateLBMConditions(conditions, EnvoyReady, ConditionFalse, "EnvoyNotReady", "envoy response not with 200")
 }
 
 func UpdateKeepalivedStatus(
-	ctx context.Context,
-	c client.StatusWriter,
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
 	keepalivedStatsFile string,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
-	err := UpdateKeepalivedStatsStatus(ctx, c, keepalivedStatsFile, lbm)
-	if err != nil {
-		return err
-	}
-
-	err = UpdateKeepalivedPIDStatus(ctx, c, lbm)
-	if err != nil {
-		return err
-	}
-
-	return nil
+) {
+	UpdateKeepalivedStatsStatus(conditions, keepalivedStatsFile)
+	UpdateKeepalivedPIDStatus(conditions)
 }
 
 func UpdateKeepalivedStatsStatus(
-	ctx context.Context,
-	c client.StatusWriter,
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
 	keepalivedStatsFile string,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
+) {
 	if keepalivedStatsFile == "" {
-		return nil
+		return
 	}
 
 	keepalivedStats, modTime, err := keepalived.ReadStatsForInstanceName(VRRPInstanceName, keepalivedStatsFile)
 	if err != nil {
-		if err := UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedStatsFile,
 			ConditionFalse,
-			"CouldNotReadStats", "Could not get stats file"); err != nil {
-			return err
-		}
+			"CouldNotReadStats", "Could not get stats file",
+		)
 
-		return UpdateLBMConditions(ctx, c, lbm,
-			KeepalivedMaster, ConditionFalse,
-			"CouldNotReadStats", "Could not get stats file")
+		UpdateLBMConditions(
+			conditions,
+			KeepalivedMaster,
+			ConditionFalse,
+			"CouldNotReadStats", "Could not get stats file",
+		)
+
+		return
 	}
 
 	keepalivedIsMaster := ConditionFalse
 	if keepalivedStats.IsMaster() {
 		keepalivedIsMaster = ConditionTrue
 	}
-	if err := UpdateLBMConditions(ctx, c, lbm,
+
+	UpdateLBMConditions(
+		conditions,
 		KeepalivedMaster,
 		keepalivedIsMaster,
-		"KeepalivedStatus", "Read master status from stats file"); err != nil {
-		return err
-	}
+		"KeepalivedStatus", "Read master status from stats file",
+	)
 
 	if modTime.Before(time.Now().Add(-5 * time.Minute)) {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedStatsFile,
 			ConditionFalse,
-			"StatsNotUpToDate", "Keepalived stat file is older than 5 min")
+			"StatsNotUpToDate", "Keepalived stat file is older than 5 min",
+		)
+		return
 	}
 
-	return UpdateLBMConditions(ctx, c, lbm,
+	UpdateLBMConditions(
+		conditions,
 		KeepalivedStatsFile,
 		ConditionTrue,
-		"StatsUpToDate", "Keepalived stat file is newer than 5 min")
+		"StatsUpToDate", "Keepalived stat file is newer than 5 min",
+	)
 }
 
 func UpdateKeepalivedPIDStatus(
-	ctx context.Context,
-	c client.StatusWriter,
-	lbm *yawolv1beta1.LoadBalancerMachine,
-) error {
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
+) {
 	pidFile, err := os.ReadFile("/run/keepalived.pid")
 	if err != nil {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotGetPIDFile", "Could not get pid file")
+			"CouldNotGetPIDFile", "Could not get pid file",
+		)
+		return
 	}
+
 	pidFileContent := strings.ReplaceAll(string(pidFile), "\n", "")
 	pidID, err := strconv.ParseInt(pidFileContent, 10, 32)
 	if err != nil {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotGetPID", "Could not get pid")
+			"CouldNotGetPID", "Could not get pid",
+		)
+		return
 	}
 
 	keepalivedProc, err := process.NewProcess(int32(pidID))
 	if err != nil {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Could not get keepalived process")
+			"CouldNotKeepalivedProcess", "Could not get keepalived process",
+		)
+		return
 	}
+
 	keepalivedRunning, err := keepalivedProc.IsRunning()
 	if err != nil {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Error while checking if keepalived is running")
+			"CouldNotKeepalivedProcess", "Error while checking if keepalived is running",
+		)
+		return
 	}
 
 	if !keepalivedRunning {
-		return UpdateLBMConditions(ctx, c, lbm,
+		UpdateLBMConditions(
+			conditions,
 			KeepalivedProcess,
 			ConditionFalse,
-			"CouldNotKeepalivedProcess", "Keepalived is not running")
+			"CouldNotKeepalivedProcess", "Keepalived is not running",
+		)
+		return
 	}
 
-	return UpdateLBMConditions(ctx, c, lbm,
+	UpdateLBMConditions(
+		conditions,
 		KeepalivedProcess,
 		ConditionTrue,
-		"KeepalivedIsRunning", "Keepalived is running")
+		"KeepalivedIsRunning", "Keepalived is running",
+	)
 }
 
 // EnableAdHocDebugging enables ad-hoc debugging if enabled via annotations.
@@ -897,7 +862,7 @@ func EnableAdHocDebugging(
 		return nil
 	}
 
-	addAuthorizedKeys := exec.Command( //nolint: gosec // sshKey can only be a ssh public key checked by regex
+	addAuthorizedKeys := exec.Command( // nolint: gosec // sshKey can only be a ssh public key checked by regex
 		"/bin/sh",
 		"-c",
 		"echo \"\n"+sshKey+"\n\" | sudo tee /home/yawoldebug/.ssh/authorized_keys",

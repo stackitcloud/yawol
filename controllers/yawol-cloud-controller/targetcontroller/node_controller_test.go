@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -16,6 +17,103 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("check controller-runtime predicate", func() {
+	nodeName := "node1"
+	conditionReady := v1.NodeCondition{
+		Type:               v1.NodeReady,
+		Status:             v1.ConditionTrue,
+		LastHeartbeatTime:  metav1.Time{},
+		LastTransitionTime: metav1.Time{},
+		Reason:             "Ready",
+		Message:            "Ready",
+	}
+	conditionNotReady := v1.NodeCondition{
+		Type:               v1.NodeReady,
+		Status:             v1.ConditionFalse,
+		LastHeartbeatTime:  metav1.Time{},
+		LastTransitionTime: metav1.Time{},
+		Reason:             "Ready",
+		Message:            "Ready",
+	}
+
+	baseNode := v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nodeName,
+			Namespace: "default"},
+		Spec: v1.NodeSpec{},
+		Status: v1.NodeStatus{
+			Conditions: []v1.NodeCondition{
+				conditionReady,
+			},
+			Addresses: []v1.NodeAddress{
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "10.10.10.10",
+				}, {
+					Type:    v1.NodeInternalIP,
+					Address: "2001:16b8:3015:1100::1b14",
+				},
+			},
+		},
+	}
+
+	It("should reconcile", func() {
+		By("change in ready condition", func() {
+			oldNode := baseNode.DeepCopy()
+			newNode := baseNode.DeepCopy()
+			newNode.Status.Conditions = []v1.NodeCondition{conditionNotReady}
+
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: oldNode,
+				ObjectNew: newNode,
+			}
+			Expect(yawolNodePredicate().Update(event)).To(BeTrue())
+		})
+		By("change in node addresses", func() {
+			oldNode := baseNode.DeepCopy()
+			newNode := baseNode.DeepCopy()
+			newNode.Status.Addresses = append(newNode.Status.Addresses, v1.NodeAddress{
+				Type:    v1.NodeInternalIP,
+				Address: "10.10.10.11",
+			})
+
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: oldNode,
+				ObjectNew: newNode,
+			}
+			Expect(yawolNodePredicate().Update(event)).To(BeTrue())
+		})
+		By("create", func() {
+			event := predicatesEvent.CreateEvent{
+				Object: baseNode.DeepCopy(),
+			}
+			Expect(yawolNodePredicate().Create(event)).To(BeTrue())
+		})
+		By("delete", func() {
+			event := predicatesEvent.DeleteEvent{
+				Object: baseNode.DeepCopy(),
+			}
+			Expect(yawolNodePredicate().Delete(event)).To(BeTrue())
+		})
+	})
+
+	It("should not reconcile", func() {
+		By("change if no change in ready condition or node addresses", func() {
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: baseNode.DeepCopy(),
+				ObjectNew: baseNode.DeepCopy(),
+			}
+			Expect(yawolNodePredicate().Update(event)).To(BeFalse())
+		})
+		By("on generic event", func() {
+			event := predicatesEvent.GenericEvent{
+				Object: baseNode.DeepCopy(),
+			}
+			Expect(yawolNodePredicate().Generic(event)).To(BeFalse())
+		})
+	})
+})
 
 var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 	Context("run tests", func() {

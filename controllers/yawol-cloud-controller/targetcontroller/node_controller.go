@@ -3,6 +3,7 @@ package targetcontroller
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -16,6 +17,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // NodeReconciler reconciles service Objects with type LoadBalancer
@@ -84,7 +87,35 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&coreV1.Node{}).
+		WithEventFilter(yawolNodePredicate()).
 		Complete(r)
+}
+
+func yawolNodePredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(_ event.CreateEvent) bool {
+			return true
+		},
+		DeleteFunc: func(_ event.DeleteEvent) bool {
+			return true
+		},
+		UpdateFunc: func(updateEvent event.UpdateEvent) bool {
+			newNode := updateEvent.ObjectNew.(*coreV1.Node)
+			oldNode := updateEvent.ObjectOld.(*coreV1.Node)
+
+			if isNodeReady(*oldNode) != isNodeReady(*newNode) {
+				return true
+			}
+
+			return !reflect.DeepEqual(
+				getLoadBalancerEndpointFromNode(*oldNode, []coreV1.IPFamily{}),
+				getLoadBalancerEndpointFromNode(*newNode, []coreV1.IPFamily{}),
+			)
+		},
+		GenericFunc: func(_ event.GenericEvent) bool {
+			return false
+		},
+	}
 }
 
 func (r *NodeReconciler) patchEndpointsToLB(

@@ -63,6 +63,8 @@ func main() {
 	var lbSetController bool
 	var lbMachineController bool
 
+	var yawolletRequeueTime int
+
 	var openstackTimeout time.Duration
 
 	// settings for leases
@@ -94,6 +96,11 @@ func main() {
 		"Enable loadbalancer-set controller manager. ")
 	flag.BoolVar(&lbMachineController, "enable-loadbalancermachine-controller", false,
 		"Enable loadbalancer-machine controller manager. ")
+
+	flag.IntVar(&yawolletRequeueTime, "yawollet-requeue-time", 0,
+		"yawollet requeue time in seconds for reconcile if object was successful reconciled. "+
+			"Values less than 5 are set to 5 and greater than 170 are set to 170. "+
+			"If unset the default from yawollet is used.")
 
 	flag.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
@@ -256,19 +263,20 @@ func main() {
 		}
 
 		if err := (&loadbalancermachine.LoadBalancerMachineReconciler{
-			Client:           loadBalancerMachineMgr.GetClient(),
-			WorkerCount:      concurrentWorkersPerReconciler,
-			APIHost:          loadBalancerMachineMgr.GetConfig().Host,
-			CACert:           loadBalancerMachineMgr.GetConfig().CAData,
-			Log:              ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
-			Recorder:         loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
-			RecorderLB:       loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
-			Scheme:           loadBalancerMachineMgr.GetScheme(),
-			APIEndpoint:      apiEndpoint,
-			Metrics:          &helpermetrics.LoadBalancerMachineMetrics,
-			OpenstackTimeout: openstackTimeout,
-			DiscoveryClient:  discoveryClient,
-			RateLimiter:      rateLimiter,
+			Client:              loadBalancerMachineMgr.GetClient(),
+			WorkerCount:         concurrentWorkersPerReconciler,
+			APIHost:             loadBalancerMachineMgr.GetConfig().Host,
+			CACert:              loadBalancerMachineMgr.GetConfig().CAData,
+			Log:                 ctrl.Log.WithName("controller").WithName("LoadBalancerMachine"),
+			Recorder:            loadBalancerMachineMgr.GetEventRecorderFor("LoadBalancerMachine"),
+			RecorderLB:          loadBalancerMachineMgr.GetEventRecorderFor("yawol-service"),
+			Scheme:              loadBalancerMachineMgr.GetScheme(),
+			APIEndpoint:         apiEndpoint,
+			Metrics:             &helpermetrics.LoadBalancerMachineMetrics,
+			OpenstackTimeout:    openstackTimeout,
+			YawolletRequeueTime: yawolletRequeueTime,
+			DiscoveryClient:     discoveryClient,
+			RateLimiter:         rateLimiter,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerMachine")
 			os.Exit(1)

@@ -236,26 +236,38 @@ func isValidMachine(set *yawolv1beta1.LoadBalancerSet, machine *yawolv1beta1.Loa
 var (
 	conditions = []v1.NodeCondition{
 		{
-			Message:            "envoy config is already up to date",
-			Reason:             "EnvoyConfigurationCreated",
-			Status:             "True",
-			Type:               "ConfigReady",
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.ConfigReady),
 			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 			LastTransitionTime: metav1.Time{Time: time.Now()},
 		},
 		{
-			Message:            "envoy response with 200",
-			Reason:             "EnvoyReady",
-			Status:             "True",
-			Type:               "EnvoyReady",
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.EnvoyReady),
 			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 			LastTransitionTime: metav1.Time{Time: time.Now()},
 		},
 		{
-			Message:            "envoy snapshot version is up to date",
-			Reason:             "EnvoySnapshotUpToDate",
-			Status:             "True",
-			Type:               "EnvoyUpToDate",
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.EnvoyUpToDate),
+			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Time{Time: time.Now()},
+		},
+		{
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.KeepalivedStatsFile),
+			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Time{Time: time.Now()},
+		},
+		{
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.KeepalivedProcess),
+			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Time{Time: time.Now()},
+		},
+		{
+			Status:             v1.ConditionStatus(helper.ConditionTrue),
+			Type:               v1.NodeConditionType(helper.KeepalivedMaster),
 			LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 			LastTransitionTime: metav1.Time{Time: time.Now()},
 		},
@@ -285,8 +297,8 @@ func TestIsMachineReady(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
 			if string(condition.Type) == string(helper.ConfigReady) {
-				cons[index].Status = "False"
-				cons[index].LastTransitionTime = metav1.Time{Time: time.Now().Add(-290 * time.Second)}
+				cons[index].Status = v1.ConditionStatus(helper.ConditionFalse)
+				cons[index].LastTransitionTime = metav1.Time{Time: time.Now().Add(-10 * time.Second)}
 			}
 		}
 		got := isMachineReady(machine)
@@ -297,27 +309,11 @@ func TestIsMachineReady(t *testing.T) {
 		}
 	})
 
-	t.Run("Heartbeat older than 60 seconds should result in not ready machine", func(t *testing.T) {
+	t.Run("Heartbeat older than 180 seconds should result in not ready machine", func(t *testing.T) {
 		for index, condition := range *machine.Status.Conditions {
 			cons := *machine.Status.Conditions
 			if string(condition.Type) == string(helper.ConfigReady) {
-				cons[index].LastHeartbeatTime = metav1.Time{Time: time.Now().Add(-60 * time.Second)}
-			}
-		}
-		got := isMachineReady(machine)
-		want := false
-
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Expected %v got %v", want, got)
-		}
-	})
-
-	t.Run("Failed condition older than 5 min should result in not ready machine", func(t *testing.T) {
-		for index, condition := range *machine.Status.Conditions {
-			cons := *machine.Status.Conditions
-			if string(condition.Type) == string(helper.ConfigReady) {
-				cons[index].Status = "False"
-				cons[index].LastTransitionTime = metav1.Time{Time: time.Now().Add(-300 * time.Second)}
+				cons[index].LastHeartbeatTime = metav1.Time{Time: time.Now().Add(-180 * time.Second)}
 			}
 		}
 		got := isMachineReady(machine)
@@ -410,9 +406,7 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				CreationTimestamp: &metav1.Time{Time: time.Now()},
 				Conditions: &[]v1.NodeCondition{
 					{
-						Message:           "reconcile is running",
-						Reason:            "ConfigReady",
-						Status:            "True",
+						Status:            v1.ConditionStatus(helper.ConditionTrue),
 						Type:              v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
 					},
@@ -438,9 +432,7 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				CreationTimestamp: &metav1.Time{Time: time.Now()},
 				Conditions: &[]v1.NodeCondition{
 					{
-						Message:            "reconcile is running",
-						Reason:             "ConfigReady",
-						Status:             "False",
+						Status:             v1.ConditionStatus(helper.ConditionFalse),
 						Type:               v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},

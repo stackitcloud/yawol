@@ -126,6 +126,10 @@ issues:
         - gocritic
       text: "unnecessaryDefer:"
 
+  # silence stupid linter errors
+  exclude:
+  - directive `// nolint.*` should be written without leading space
+
 run:
   timeout: 10m
   issues-exit-code: 1

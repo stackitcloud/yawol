@@ -4,6 +4,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -12,10 +13,12 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 )
@@ -44,105 +47,138 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	lb := &yawolv1beta1.LoadBalancer{}
-	err := r.Client.Get(ctx, req.NamespacedName, lb)
-	if err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, lb); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	lbm := &yawolv1beta1.LoadBalancerMachine{}
-	err = r.Client.Get(ctx, client.ObjectKey{Name: r.LoadbalancerMachineName, Namespace: req.Namespace}, lbm)
+	if err := r.Client.Get(
+		ctx, client.ObjectKey{Name: r.LoadbalancerMachineName, Namespace: req.Namespace}, lbm,
+	); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	conditionsMap := map[corev1.NodeConditionType]corev1.NodeCondition{}
+	if lbm.Status.Conditions != nil {
+		for _, v := range *lbm.Status.Conditions {
+			conditionsMap[v.Type] = *v.DeepCopy()
+		}
+	}
+
+	// this error will be returned later in order to always
+	// keep metrics and conditions up-to-date
+	reconcileError := r.reconcile(ctx, lb, lbm, conditionsMap)
+
+	metrics, err := helper.GetMetrics(r.KeepalivedStatsFile)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	// convert conditions back to slice for LoadBalancerMachine status
+	var conditions []corev1.NodeCondition
+	for _, con := range conditionsMap {
+		conditions = append(conditions, con)
+	}
+
+	// keep conditions in stable order for convenience
+	sort.Slice(conditions, func(i, j int) bool {
+		return conditions[i].Type < conditions[j].Type
+	})
+
+	patch := client.MergeFrom(lbm.DeepCopy())
+	lbm.Status.Conditions = &conditions
+	lbm.Status.Metrics = &metrics
+
+	if err := r.Client.Status().Patch(ctx, lbm, patch); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, reconcileError
+}
+
+func (r *LoadBalancerReconciler) reconcile(
+	ctx context.Context,
+	lb *yawolv1beta1.LoadBalancer,
+	lbm *yawolv1beta1.LoadBalancerMachine,
+	conditions map[corev1.NodeConditionType]corev1.NodeCondition,
+) error {
 	// enable ad hoc debugging if configured
 	if err := helper.EnableAdHocDebugging(lb, lbm, r.Recorder, r.LoadbalancerMachineName); err != nil {
-		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
+		return kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
 	}
 
 	// current snapshot
 	oldSnapshot, err := r.EnvoyCache.GetSnapshot("lb-id")
 	if err != nil {
-		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
+		return kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to get current snapshot", err), lbm)
 	}
 
 	// create new snapshot
 	changed, snapshot, err := helper.CreateEnvoyConfig(r.RecorderLB, oldSnapshot, lb, r.ListenAddress)
 	if err != nil {
-		_ = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
-			helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant create successful")
-		return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to create new snapshot", err), lbm)
+		helper.UpdateLBMConditions(
+			conditions, helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant create successful",
+		)
+		return kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to create new snapshot", err), lbm)
 	}
 
 	// update envoy snapshot if changed
 	if changed {
-		if err = snapshot.Consistent(); err != nil {
-			_ = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
-				helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot is not Consistent")
-			return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: new snapshot is not consistent", err), lbm)
+		if err := snapshot.Consistent(); err != nil {
+			helper.UpdateLBMConditions(
+				conditions, helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot is not Consistent",
+			)
+			return kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: new snapshot is not consistent", err), lbm)
 		}
 
-		err = r.EnvoyCache.SetSnapshot(ctx, "lb-id", &snapshot)
-		if err != nil {
-			_ = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
-				helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant set to envoy envoycache")
-			return ctrl.Result{}, kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to set new snapshot", err), lbm)
+		if err := r.EnvoyCache.SetSnapshot(ctx, "lb-id", &snapshot); err != nil {
+			helper.UpdateLBMConditions(
+				conditions, helper.ConfigReady, helper.ConditionFalse, "EnvoyConfigurationFailed", "new snapshot cant set to envoy envoycache",
+			)
+			return kubernetes.SendErrorAsEvent(r.Recorder, fmt.Errorf("%w: unable to set new snapshot", err), lbm)
 		}
-		err = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
-			helper.ConfigReady, helper.ConditionTrue, "EnvoyConfigurationUpToDate", "envoy config is successfully updated")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+
+		helper.UpdateLBMConditions(
+			conditions, helper.ConfigReady, helper.ConditionTrue, "EnvoyConfigurationUpToDate", "envoy config is successfully updated",
+		)
+
 		r.Log.Info("Envoy snapshot updated", "snapshot version", snapshot.GetVersion(resource.ClusterType))
 		r.Recorder.Event(lbm,
 			"Normal",
 			"Update",
 			fmt.Sprintf("Envoy is updated to new snapshot version: %v", snapshot.GetVersion(resource.ClusterType)))
 	} else {
-		err = helper.UpdateLBMConditions(ctx, r.Status(), lbm,
-			helper.ConfigReady, helper.ConditionTrue, "EnvoyConfigurationCreated", "envoy config is already up to date")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		helper.UpdateLBMConditions(
+			conditions, helper.ConfigReady, helper.ConditionTrue, "EnvoyConfigurationCreated", "envoy config is already up to date",
+		)
 	}
 
 	// update envoy status condition
-	err = helper.UpdateEnvoyStatus(ctx, r.Status(), lbm)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	helper.UpdateEnvoyStatus(conditions)
 
 	// check envoy snapshot and update condition
 	if changed {
-		err = helper.CheckEnvoyVersion(ctx, r.Status(), lbm, &snapshot)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		helper.CheckEnvoyVersion(conditions, &snapshot)
 	} else {
-		err = helper.CheckEnvoyVersion(ctx, r.Status(), lbm, oldSnapshot)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		helper.CheckEnvoyVersion(conditions, oldSnapshot)
 	}
 
 	// update keepalived status condition
-	err = helper.UpdateKeepalivedStatus(ctx, r.Status(), r.KeepalivedStatsFile, lbm)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	helper.UpdateKeepalivedStatus(conditions, r.KeepalivedStatsFile)
 
-	// update Metrics
-	err = helper.WriteLBMMetrics(ctx, r.Status(), r.KeepalivedStatsFile, lbm)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, nil
+	return nil
 }
 
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
+		WithEventFilter(predicate.And(
+			predicate.NewPredicateFuncs(func(obj client.Object) bool { return obj.GetName() == r.LoadbalancerName }),
+			predicate.Or(
+				predicate.AnnotationChangedPredicate{},
+				predicate.GenerationChangedPredicate{},
+			),
+		)).
 		Complete(r)
 }
