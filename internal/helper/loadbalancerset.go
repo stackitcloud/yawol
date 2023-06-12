@@ -2,57 +2,56 @@ package helper
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateLoadBalancerSet(
-	ctx context.Context,
-	c client.Client,
-	lb *yawolv1beta1.LoadBalancer,
-	machineSpec *yawolv1beta1.LoadBalancerMachineSpec,
-	hash string,
-	revision int,
-) error {
-	lbsetLabels := GetLoadBalancerSetLabelsFromLoadBalancer(lb)
-	lbsetLabels[HashLabel] = hash
+func NewLoadBalancerSetForLoadBalancer(lb *yawolv1beta1.LoadBalancer, hash string, revision int) *yawolv1beta1.LoadBalancerSet {
+	setLabels := GetLoadBalancerSetLabelsFromLoadBalancer(lb)
+	setLabels[HashLabel] = hash
 
-	lbset := yawolv1beta1.LoadBalancerSet{
+	return &yawolv1beta1.LoadBalancerSet{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:      lb.Name + "-" + hash,
 			Namespace: lb.Namespace,
 			OwnerReferences: []metaV1.OwnerReference{
 				GetOwnersReferenceForLB(lb),
 			},
-			Labels: lbsetLabels,
+			Labels: setLabels,
 			Annotations: map[string]string{
 				RevisionAnnotation: strconv.Itoa(revision),
 			},
 		},
 		Spec: yawolv1beta1.LoadBalancerSetSpec{
 			Selector: metaV1.LabelSelector{
-				MatchLabels: lbsetLabels,
+				MatchLabels: setLabels,
 			},
 			Template: yawolv1beta1.LoadBalancerMachineTemplateSpec{
-				Labels: lbsetLabels,
-				Spec:   *machineSpec,
+				Labels: setLabels,
+				Spec: yawolv1beta1.LoadBalancerMachineSpec{
+					Infrastructure: lb.Spec.Infrastructure,
+					PortID:         *lb.Status.PortID,
+					ServerGroupID:  pointer.StringDeref(lb.Status.ServerGroupID, ""),
+					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
+						Namespace: lb.Namespace,
+						Name:      lb.Name,
+					},
+				},
 			},
 			Replicas: lb.Spec.Replicas,
 		},
 	}
-	return c.Create(ctx, &lbset)
 }
 
 // PatchLoadBalancerSetReplicas sets replicas in LoadBalancerSet
@@ -61,74 +60,22 @@ func PatchLoadBalancerSetReplicas(ctx context.Context, c client.Client, lbs *yaw
 	return c.Patch(ctx, lbs, client.RawPatch(types.MergePatchType, patch))
 }
 
-// ScaleDownAllLoadBalancerSetsForLBBut Scales down all LoadBalancerSets deriving from a LB but the one with the name of exceptionName
-// This will use getLoadBalancerSetsForLoadBalancer to identify the LBS deriving from the given LB
-// See error handling getLoadBalancerSetsForLoadBalancer
-// See error handling patchLoadBalancerSetReplicas
-// Requests requeue when a LBS has been downscaled
-func ScaleDownAllLoadBalancerSetsForLBBut(
+// ScaleDownOldLoadBalancerSets scales down all LoadBalancerSets in the given list except the one with the given name.
+func ScaleDownOldLoadBalancerSets(
 	ctx context.Context,
 	c client.Client,
-	lb *yawolv1beta1.LoadBalancer,
-	exceptionName string,
-) (ctrl.Result, error) {
-	loadBalancerSetList, err := GetLoadBalancerSetsForLoadBalancer(ctx, c, lb)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	var scaledDown bool
-	for i := range loadBalancerSetList.Items {
-		if loadBalancerSetList.Items[i].Name != exceptionName && loadBalancerSetList.Items[i].Spec.Replicas > 0 {
-			if err := PatchLoadBalancerSetReplicas(ctx, c, &loadBalancerSetList.Items[i], 0); err != nil {
-				return ctrl.Result{}, err
+	setList *yawolv1beta1.LoadBalancerSetList,
+	currentSetName string,
+) error {
+	for _, set := range setList.Items {
+		if set.Name != currentSetName && set.Spec.Replicas > 0 {
+			if err := PatchLoadBalancerSetReplicas(ctx, c, &set, 0); err != nil {
+				return err
 			}
-			scaledDown = true
 		}
 	}
 
-	if scaledDown {
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-	return ctrl.Result{}, nil
-}
-
-func LoadBalancerSetIsReady(
-	ctx context.Context,
-	c client.Client,
-	lb *yawolv1beta1.LoadBalancer,
-	currentSet *yawolv1beta1.LoadBalancerSet,
-) (bool, error) {
-	loadBalancerSetList, err := GetLoadBalancerSetsForLoadBalancer(ctx, c, lb)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range loadBalancerSetList.Items {
-		if loadBalancerSetList.Items[i].Name != currentSet.Name {
-			continue
-		}
-
-		desiredReplicas := currentSet.Spec.Replicas
-
-		if loadBalancerSetList.Items[i].Spec.Replicas != desiredReplicas {
-			return false, nil
-		}
-
-		if loadBalancerSetList.Items[i].Status.Replicas == nil ||
-			loadBalancerSetList.Items[i].Status.ReadyReplicas == nil {
-			return false, nil
-		}
-
-		if *loadBalancerSetList.Items[i].Status.Replicas != desiredReplicas ||
-			*loadBalancerSetList.Items[i].Status.ReadyReplicas != desiredReplicas {
-			return false, nil
-		}
-
-		return true, nil
-	}
-
-	return false, fmt.Errorf("active LoadBalancerSet not found")
+	return nil
 }
 
 // LBSetHasKeepalivedMaster returns true one of the following conditions are met:
@@ -152,36 +99,14 @@ func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) bool {
 	return set.CreationTimestamp.Before(&before15Minutes)
 }
 
-// Checks if LoadBalancerSets deriving from LoadBalancers are downscaled except for the LoadBalancerSet with the name of exceptionName
-// Returns true if all are downscaled; false if not
-// Follows error contract of getLoadBalancerSetsForLoadBalancer
-func AreAllLoadBalancerSetsForLBButDownscaled(
-	ctx context.Context,
-	c client.Client,
-	lb *yawolv1beta1.LoadBalancer,
-	exceptionName string,
-) (bool, error) {
-	loadBalancerSetList, err := GetLoadBalancerSetsForLoadBalancer(ctx, c, lb)
-	if err != nil {
-		return false, err
+// StatusReplicasFromSetList returns the total replicas and ready replicas based on the given list of LoadBalancerSets.
+func StatusReplicasFromSetList(setList *yawolv1beta1.LoadBalancerSetList) (replicas, readyReplicas int) {
+	for _, set := range setList.Items {
+		replicas += pointer.IntDeref(set.Status.Replicas, 0)
+		readyReplicas += pointer.IntDeref(set.Status.ReadyReplicas, 0)
 	}
 
-	for i := range loadBalancerSetList.Items {
-		if loadBalancerSetList.Items[i].Name == exceptionName {
-			continue
-		}
-		if loadBalancerSetList.Items[i].Spec.Replicas != 0 {
-			return false, nil
-		}
-		if loadBalancerSetList.Items[i].Status.Replicas != nil && *loadBalancerSetList.Items[i].Status.Replicas != 0 {
-			return false, nil
-		}
-		if loadBalancerSetList.Items[i].Status.ReadyReplicas != nil && *loadBalancerSetList.Items[i].Status.ReadyReplicas != 0 {
-			return false, nil
-		}
-	}
-
-	return true, nil
+	return
 }
 
 // This returns all LoadBalancerSets for a given LoadBalancer
@@ -219,43 +144,27 @@ func GetLoadBalancerSetLabelsFromLoadBalancer(lb *yawolv1beta1.LoadBalancer) map
 
 // Returns nil if no matching exists
 // If there are multiple: Returns one with highest RevisionAnnotation annotation
-// If there is a single one: returns the one fetched
 func GetLoadBalancerSetForHash(
-	ctx context.Context,
-	c client.Client,
-	filterLabels map[string]string,
-	hash string,
+	loadBalancerSetList *yawolv1beta1.LoadBalancerSetList,
+	currentHash string,
 ) (*yawolv1beta1.LoadBalancerSet, error) {
-	filterLabels = copyLabelMap(filterLabels)
-	filterLabels[HashLabel] = hash
-	var loadBalancerSetList yawolv1beta1.LoadBalancerSetList
+	var (
+		highestGen    int
+		highestGenLBS *yawolv1beta1.LoadBalancerSet
+	)
 
-	if err := c.List(ctx, &loadBalancerSetList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(filterLabels),
-	}); err != nil {
-		return nil, err
-	}
+	for _, set := range loadBalancerSetList.Items {
+		if set.Labels[HashLabel] != currentHash {
+			continue
+		}
 
-	if len(loadBalancerSetList.Items) == 0 {
-		return nil, nil
-	}
-
-	if len(loadBalancerSetList.Items) == 1 {
-		return &loadBalancerSetList.Items[0], nil
-	}
-
-	var highestGen int
-	var highestGenLBS yawolv1beta1.LoadBalancerSet
-	if len(loadBalancerSetList.Items) > 1 {
-		for i := range loadBalancerSetList.Items {
-			if gen, err := strconv.Atoi(loadBalancerSetList.Items[i].Annotations[RevisionAnnotation]); err == nil && highestGen < gen {
-				highestGen = gen
-				highestGenLBS = loadBalancerSetList.Items[i]
-			}
+		if gen, err := strconv.Atoi(set.Annotations[RevisionAnnotation]); err == nil && highestGen < gen {
+			highestGen = gen
+			highestGenLBS = set.DeepCopy()
 		}
 	}
 
-	return &highestGenLBS, nil
+	return highestGenLBS, nil
 }
 
 func copyLabelMap(lbs map[string]string) map[string]string {

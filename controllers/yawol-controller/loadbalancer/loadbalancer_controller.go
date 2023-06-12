@@ -4,6 +4,14 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 	"github.com/stackitcloud/yawol/internal/openstack"
@@ -14,12 +22,13 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	openstackhelper "github.com/stackitcloud/yawol/internal/helper/openstack"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -53,7 +62,8 @@ type Reconciler struct {
 
 // Reconcile function for LoadBalancer object
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("loadbalancer", req.NamespacedName)
+	log := logf.FromContext(ctx)
+
 	if r.skipReconciles || (r.skipAllButNN != nil && r.skipAllButNN.Name != req.Name && r.skipAllButNN.Namespace != req.Namespace) {
 		r.Log.Info("Skip reconciles enabled.. requeuing", "lb", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -106,7 +116,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
-	if res, err = r.reconcileLoadBalancerSet(ctx, &lb); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil {
 		return res, err
 	}
 
@@ -127,11 +137,58 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
+		// we can't use Owns because it filters for ownerReference.controller==true which is not the case for our objects (as of now)
+		Watches(
+			&source.Kind{Type: &yawolv1beta1.LoadBalancerSet{}},
+			&handler.EnqueueRequestForOwner{OwnerType: &yawolv1beta1.LoadBalancer{}},
+			builder.WithPredicates(LoadBalancerSetPredicate()),
+		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,
 		}).
 		Complete(r)
+}
+
+// LoadBalancerSetPredicate is the predicate that this controller uses for watching LoadBalancerSets.
+// TODO: add unit tests
+func LoadBalancerSetPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			// On restart of the controller, we already reconcile all LoadBalancers.
+			// When triggered by creation of a LoadBalancerSet by this controller, we don't need to reconcile immediately again.
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldLBS, ok := e.ObjectOld.(*yawolv1beta1.LoadBalancerSet)
+			if !ok {
+				return false
+			}
+			newLBS, ok := e.ObjectNew.(*yawolv1beta1.LoadBalancerSet)
+			if !ok {
+				return false
+			}
+
+			// this controller only needs to reconcile the LoadBalancer if a status of an owned LoadBalancerSet changes
+			return !equality.Semantic.DeepEqual(oldLBS.Status, newLBS.Status)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			lbs, ok := e.Object.(*yawolv1beta1.LoadBalancerSet)
+			if !ok {
+				return false
+			}
+
+			// a delete event is only relevant if a LoadBalancerSet was deleted that is supposed to have replicas or still has replicas
+			// otherwise, a deletion doesn't need to be reconciled by this controller
+			return lbs.Spec.Replicas > 0 ||
+				pointer.IntDeref(lbs.Status.Replicas, 0) > 0 ||
+				pointer.IntDeref(lbs.Status.ReadyReplicas, 0) > 0 ||
+				pointer.IntDeref(lbs.Status.AvailableReplicas, 0) > 0
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return false
+		},
+	}
 }
 
 //nolint:staticcheck // migration function
@@ -864,132 +921,117 @@ func (r *Reconciler) reconcileFIPAssociate(
 
 func (r *Reconciler) reconcileLoadBalancerSet(
 	ctx context.Context,
+	log logr.Logger,
 	lb *yawolv1beta1.LoadBalancer,
-) (ctrl.Result, error) {
+) error {
 	// Make sure LoadBalancer has revision number
 	currentRevision, err := helper.ReadCurrentRevisionFromLB(lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
+	log = log.WithValues("revision", currentRevision)
 
 	if currentRevision == 0 {
 		if err := helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1); err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
+		return nil
 	}
 
 	// Get the labels LBS will receive on creation from this lb
 	lbsLabels := helper.GetLoadBalancerSetLabelsFromLoadBalancer(lb)
 
+	loadBalancerSetList := &yawolv1beta1.LoadBalancerSetList{}
+	if err := r.Client.List(ctx, loadBalancerSetList, client.MatchingLabels(lbsLabels)); err != nil {
+		return err
+	}
+
 	// Get Hash for current LoadBalancerMachineSpec
 	var hash string
 	hash, err = helper.GetHashForLoadBalancerMachineSet(lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
+	log = log.WithValues("hash", hash)
 
 	// Get LoadBalancerSet for current hash
-	var loadBalancerSet *yawolv1beta1.LoadBalancerSet
-	if loadBalancerSet, err = helper.GetLoadBalancerSetForHash(ctx, r.Client, lbsLabels, hash); err != nil {
-		return ctrl.Result{}, err
+	var currentSet *yawolv1beta1.LoadBalancerSet
+	if currentSet, err = helper.GetLoadBalancerSetForHash(loadBalancerSetList, hash); err != nil {
+		return err
 	}
+	log = log.WithValues("loadBalancerSet", currentSet.Name)
 
-	// set to empty object to prevent nil pointer exception
-	if loadBalancerSet == nil {
-		loadBalancerSet = &yawolv1beta1.LoadBalancerSet{}
-	}
-
-	// create new lbset if hash changed
-	if loadBalancerSet.Name == "" {
-		var newRevision int
-		newRevision, err = helper.GetNextRevisionFromLB(ctx, r.Client, lb)
+	// create new LBS if hash changed or LB was newly created
+	if currentSet == nil {
+		nextRevision, err := helper.GetNextRevisionForLoadBalancer(loadBalancerSetList)
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 
 		if lb.Status.PortID == nil {
-			return ctrl.Result{}, helper.ErrLBPortNotSet
+			return helper.ErrLBPortNotSet
 		}
 
-		var serverGroupID string
-		if lb.Status.ServerGroupID != nil {
-			serverGroupID = *lb.Status.ServerGroupID
+		if err := helper.PatchLoadBalancerRevision(ctx, r.Client, lb, nextRevision); err != nil {
+			return err
 		}
 
-		if err := helper.CreateLoadBalancerSet(ctx, r.Client, lb, &yawolv1beta1.LoadBalancerMachineSpec{
-			Infrastructure: lb.Spec.Infrastructure,
-			PortID:         *lb.Status.PortID,
-			ServerGroupID:  serverGroupID,
-			LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
-				Namespace: lb.Namespace,
-				Name:      lb.Name,
-			},
-		}, hash, newRevision); err != nil {
-			return ctrl.Result{}, err
-		}
+		currentSet = helper.NewLoadBalancerSetForLoadBalancer(lb, hash, nextRevision)
+		log = log.WithValues("loadBalancerSet", currentSet.Name)
+		log.Info("Creating new LoadBalancerSet")
 
-		err = helper.PatchLoadBalancerRevision(ctx, r.Client, lb, newRevision)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
-	}
-
-	// loadBalancerSet is never a newly created one from here on
-	// because we early return with a requeue after creation
-
-	// update lb revision to lbset revision
-	// in order to show the correct status on the lb object
-	lbsRevision, err := helper.ReadRevisionFromLBS(loadBalancerSet)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if lbsRevision != currentRevision {
-		r.Log.Info("patch lb revision to match lbs revision", "revision", lbsRevision)
-		err = helper.PatchLoadBalancerRevision(ctx, r.Client, lb, lbsRevision)
-		if err != nil {
-			return ctrl.Result{}, err
+		if err := r.Client.Create(ctx, currentSet); err != nil {
+			return err
 		}
 	}
 
-	// update replicas
-	if loadBalancerSet.Spec.Replicas != lb.Spec.Replicas {
-		err := helper.PatchLoadBalancerSetReplicas(ctx, r.Client, loadBalancerSet, lb.Spec.Replicas)
-		if err != nil {
-			return ctrl.Result{}, err
+	// update LB status according to observed LBS status
+	patch := client.MergeFrom(lb.DeepCopy())
+	statusReplicas, statusReadyReplicas := helper.StatusReplicasFromSetList(loadBalancerSetList)
+	lb.Status.Replicas, lb.Status.ReadyReplicas = &statusReplicas, &statusReadyReplicas
+	if err := r.Client.Status().Patch(ctx, lb, patch); err != nil {
+		return err
+	}
+
+	// update LoadBalancerSet replicas if required
+	desiredReplicas := lb.Spec.Replicas
+	if currentSet.Spec.Replicas != desiredReplicas {
+		log.Info("Setting replicas of current LoadBalancerSet", "replicas", desiredReplicas)
+		if err := helper.PatchLoadBalancerSetReplicas(ctx, r.Client, currentSet, desiredReplicas); err != nil {
+			return err
 		}
-		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
 	}
 
-	// check if all replicas from current lbset are ready and requeue if current lbset is not fully ready
-	ready, err := helper.LoadBalancerSetIsReady(ctx, r.Client, lb, loadBalancerSet)
-	if err != nil {
-		return ctrl.Result{}, err
+	var (
+		currentReplicas      = pointer.IntDeref(currentSet.Status.Replicas, 0)
+		currentReadyReplicas = pointer.IntDeref(currentSet.Status.ReadyReplicas, 0)
+	)
+	log = log.WithValues("replicas", currentReplicas, "readyReplicas", currentReadyReplicas)
+
+	// check if all replicas from current LBS are ready and requeue if not ready
+	if currentReplicas != desiredReplicas || currentReadyReplicas != desiredReplicas {
+		log.V(1).Info("Current LoadBalancerSet is not ready yet")
+		return nil
 	}
 
-	if !ready {
-		return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
+	log.Info("Current LoadBalancerSet is ready")
+
+	// check if in current loadbalancerset is a keepalived master
+	if !helper.LBSetHasKeepalivedMaster(currentSet) {
+		log.V(1).Info("Current LoadBalancerSet has no keepalived master yet")
+		return nil
 	}
 
-	r.Log.Info("current lbset is ready", "lbs", loadBalancerSet.Name)
+	log.Info("Current LoadBalancerSet has keepalived master")
 
-	// scale down all other existing lbsets for the LoadBalancer after upscale to ensure no downtime
-	downscaled, err := helper.AreAllLoadBalancerSetsForLBButDownscaled(ctx, r.Client, lb, loadBalancerSet.Name)
-	if err != nil {
-		return ctrl.Result{}, err
+
+	// scale down all other existing LoadBalancerSets for the LoadBalancer after upscale to ensure no downtime
+	log.Info("Scale down old LoadBalancerSets")
+	if err := helper.ScaleDownOldLoadBalancerSets(ctx, r.Client, loadBalancerSetList, currentSet.Name); err != nil {
+		return nil
 	}
 
-	if !downscaled {
-		if !helper.LBSetHasKeepalivedMaster(loadBalancerSet) {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		r.Log.Info("scale down all lbsets except of", "lbs", loadBalancerSet.Name)
-		return helper.ScaleDownAllLoadBalancerSetsForLBBut(ctx, r.Client, lb, loadBalancerSet.Name)
-	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *Reconciler) deletionRoutine(
@@ -1214,7 +1256,7 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
-	//nolint: dupl // we can't extract this code because of generics
+	// nolint: dupl //we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
