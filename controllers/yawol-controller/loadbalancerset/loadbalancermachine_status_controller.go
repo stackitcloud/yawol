@@ -39,6 +39,10 @@ func (r *LoadBalancerMachineStatusReconciler) Reconcile(ctx context.Context, req
 	}
 
 	if shouldBeDeleted, reason := shouldMachineBeDeleted(loadBalancerMachine); shouldBeDeleted {
+		if loadBalancerMachine.DeletionTimestamp != nil {
+			r.Log.Info("LoadBalancerMachine failed ReadyChecks and is already deleted", "lbm", req, "Reason:", reason)
+			return ctrl.Result{}, nil
+		}
 		if err := r.Client.Delete(ctx, &loadBalancerMachine); err != nil {
 			return ctrl.Result{}, err
 		}
