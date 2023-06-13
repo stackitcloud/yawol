@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"reflect"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -177,27 +177,34 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 	}
 
 	// Write set contains master condition
-	var conditions []v1.Condition
-	if set.Status.Conditions != nil {
-		conditions = set.Status.Conditions
-		for _, condition := range conditions {
-			if condition.Type == helper.ContainsKeepAlivedMaster {
-				if condition.Status == v1.ConditionStatus(strconv.FormatBool(setContainsMaster)) {
-					return ctrl.Result{}, nil
-				}
-			}
-		}
-	} else {
-		conditions = []v1.Condition{}
+	status := v1.ConditionFalse
+	reason := "NoKeepalivedMasterInSet"
+
+	if setContainsMaster {
+		status = v1.ConditionTrue
+		reason = "KeepalivedMasterInSet"
 	}
 
-	status := strconv.FormatBool(setContainsMaster)
-	lastTransitionTime := v1.Time{Time: time.Now()}
-	conditions = append(conditions, v1.Condition{
-		Type:               helper.ContainsKeepAlivedMaster,
-		Status:             v1.ConditionStatus(status),
-		LastTransitionTime: lastTransitionTime,
-	})
+	transitionTime := v1.Now()
+	for _, condition := range set.Status.Conditions {
+		if condition.Type == helper.ContainsKeepalivedMaster && condition.Status == status {
+			transitionTime = condition.LastTransitionTime
+		}
+	}
+
+	conditions := []v1.Condition{
+		{
+			Type:               helper.ContainsKeepalivedMaster,
+			Status:             status,
+			LastTransitionTime: transitionTime,
+			Reason:             reason,
+		},
+	}
+
+	if reflect.DeepEqual(set.Status.Conditions, conditions) {
+		return ctrl.Result{}, nil
+	}
+
 	if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{Conditions: conditions}); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -344,9 +351,7 @@ func isMachineMaster(machine yawolv1beta1.LoadBalancerMachine) bool {
 	if machine.Status.Conditions != nil {
 		for _, condition := range *machine.Status.Conditions {
 			if condition.Type == corev1.NodeConditionType(helper.KeepalivedMaster) {
-				if condition.Status == corev1.ConditionTrue {
-					return true
-				}
+				return condition.Status == corev1.ConditionTrue
 			}
 		}
 	}

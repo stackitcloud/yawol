@@ -106,6 +106,30 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 			machine := getChildMachines(ctx, &setStub)[0]
 			Eventually(isValidMachine(&setStub, &machine)).Should(BeTrue())
 		})
+		It("Should eventually have a master", func() {
+			By("setting LBM as master")
+			machine := getChildMachines(ctx, &setStub)[0]
+			machine.Status.Conditions = &[]v1.NodeCondition{
+				{
+					Type:   v1.NodeConditionType(helper.KeepalivedMaster),
+					Status: v1.ConditionTrue,
+					Reason: "KeepalivedStatus",
+				},
+			}
+			Expect(k8sClient.Status().Update(ctx, &machine)).To(Succeed())
+
+			Eventually(func() metav1.ConditionStatus {
+				var set yawolv1beta1.LoadBalancerSet
+				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(&setStub), &set)).To(Succeed())
+				Expect(set.Status.Conditions).To(Not(BeNil()))
+				for _, condition := range set.Status.Conditions {
+					if condition.Type == helper.ContainsKeepalivedMaster {
+						return condition.Status
+					}
+				}
+				return metav1.ConditionFalse
+			}, timeout, interval).Should(Equal(metav1.ConditionTrue))
+		})
 	})
 
 	// patch
