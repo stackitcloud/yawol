@@ -561,7 +561,7 @@ func UpdateLBMConditions(
 	t := corev1.NodeConditionType(condition)
 
 	lastTransitionTime := v1.Now()
-	if old, exists := conditions[t]; exists {
+	if old, exists := conditions[t]; exists && old.Status == corev1.ConditionStatus(status) {
 		lastTransitionTime = old.LastTransitionTime
 	}
 
