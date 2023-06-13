@@ -1,7 +1,9 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -887,4 +889,23 @@ func EnableAdHocDebugging(
 		"Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. "+
 			"Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
 	return nil
+}
+
+func UpdateKeepalivedFile(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
+	if lbmIsLatestRevision(lb, lbm) {
+		//file should exist
+		f, err := os.Create(YawolKeepalivedFile)
+		defer f.Close()
+		return err
+	}
+	//file should not exist
+	err := os.Remove(YawolKeepalivedFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func lbmIsLatestRevision(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) bool {
+	return lb.Annotations[RevisionAnnotation] == lbm.Annotations[RevisionAnnotation]
 }

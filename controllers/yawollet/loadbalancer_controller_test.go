@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"io"
+	"io/fs"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -46,6 +49,9 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      nameLBM,
 					Namespace: Namespace,
+					Annotations: map[string]string{
+						helper.RevisionAnnotation: "1",
+					},
 				},
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					PortID:          "",
@@ -58,6 +64,9 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      nameLB,
 					Namespace: Namespace,
+					Annotations: map[string]string{
+						helper.RevisionAnnotation: "1",
+					},
 				},
 				Spec: yawolv1beta1.LoadBalancerSpec{
 					Selector: metav1.LabelSelector{},
@@ -441,7 +450,32 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				)
 			})
 		})
+		When("lb and lbm revision annotation are the same", func() {
+			It("should create yawolKeepalivedFile", func() {
+				Eventually(func() error {
+					_, err := os.Stat(helper.YawolKeepalivedFile)
+					return err
+				}, TIMEOUT, INTERVAL).Should(Succeed())
 
+			})
+		})
+		When("lb and lbm revision annotation are the same", func() {
+			BeforeEach(func() {
+				lb.Annotations = map[string]string{
+					helper.RevisionAnnotation: "2",
+				}
+			})
+			It("should not create or delete yawolKeepalivedFile", func() {
+				Eventually(func() error {
+					_, err := os.Stat(helper.YawolKeepalivedFile)
+					if err == nil || !errors.Is(err, fs.ErrNotExist) {
+						return errors.New("keepalived file still exists")
+					}
+					return nil
+				}, TIMEOUT, INTERVAL).Should(Succeed())
+
+			})
+		})
 		When("envoy gets killed and restarted", func() {
 			It("should set the correct conditions", func() {
 				By("killing the envoy process")

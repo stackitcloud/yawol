@@ -315,6 +315,11 @@ vrrp_track_process envoy {
 	weight 100
 }
 
+vrrp_track_file yawolfile {
+	file "` + YawolKeepalivedFile + `"
+	weight 10
+}
+
 vrrp_instance ` + VRRPInstanceName + ` {
 	state BACKUP
 	interface eth0
@@ -334,6 +339,10 @@ vrrp_instance ` + VRRPInstanceName + ` {
 
 	track_process {
 		envoy
+	}
+
+	track_file {
+		yawolfile
 	}
 }`
 }

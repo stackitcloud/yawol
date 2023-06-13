@@ -93,6 +93,10 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	if err := helper.UpdateKeepalivedFile(lb, lbm); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, reconcileError
 }
 
