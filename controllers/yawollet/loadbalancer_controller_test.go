@@ -451,6 +451,17 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				By("checking if EnvoyUpToDate is False")
 				eventuallyCheckConditions(ctx, "", "", helper.ConditionFalse, "")
 
+				By("get transition time")
+				lbmBeforeTransition, err := getCurrentLBM(ctx)
+				Expect(err).To(BeNil())
+				Expect(lbmBeforeTransition.Status.Conditions).NotTo(BeNil())
+				var lbmBeforeTransitionTime metav1.Time
+				for _, condition := range *lbmBeforeTransition.Status.Conditions {
+					if string(condition.Type) == string(helper.EnvoyReady) {
+						lbmBeforeTransitionTime = condition.LastTransitionTime
+					}
+				}
+
 				By("starting the envoy process")
 				envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
 				Expect(envoyCmd.Start()).To(Succeed())
@@ -459,6 +470,21 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				eventuallyCheckConditions(
 					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
 				)
+
+				By("get transition time")
+				lbmAfterTransition, err := getCurrentLBM(ctx)
+				Expect(err).To(BeNil())
+				Expect(lbmAfterTransition.Status.Conditions).NotTo(BeNil())
+				var lbmAfterTransitionTime metav1.Time
+				for _, condition := range *lbmAfterTransition.Status.Conditions {
+					if string(condition.Type) == string(helper.EnvoyReady) {
+						lbmAfterTransitionTime = condition.LastTransitionTime
+					}
+				}
+
+				By("compare transition time")
+				Expect(lbmAfterTransitionTime.After(lbmBeforeTransitionTime.Time)).To(BeTrue())
+
 			})
 		})
 
@@ -497,10 +523,7 @@ func checkConditions(
 	configReady, envoyReady, envoyUpToDate helper.LoadbalancerConditionStatus,
 	listener string,
 ) error {
-	name := nameLBM
-	namespace := Namespace
-	var curLbm yawolv1beta1.LoadBalancerMachine
-	err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &curLbm)
+	curLbm, err := getCurrentLBM(ctx)
 	if err != nil {
 		return err
 	}
@@ -552,4 +575,13 @@ func checkConditions(
 		return helper.ErrEnvoyListenerNotFound
 	}
 	return nil
+}
+
+func getCurrentLBM(ctx context.Context) (yawolv1beta1.LoadBalancerMachine, error) {
+	var curLbm yawolv1beta1.LoadBalancerMachine
+	err := k8sClient.Get(ctx, types.NamespacedName{Name: nameLBM, Namespace: Namespace}, &curLbm)
+	if err != nil {
+		return yawolv1beta1.LoadBalancerMachine{}, err
+	}
+	return curLbm, nil
 }
