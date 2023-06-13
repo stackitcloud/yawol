@@ -269,7 +269,8 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, err
 				if helper.LoadBalancerSetConditionIsFalse(condition) {
 					return true, fmt.Errorf(
 						"condition: %v, reason: %v, status: %v, message: %v, lastTransitionTime: %v - %w",
-						condition.Type, condition.Reason, condition.Status, condition.Message, condition.LastTransitionTime, helper.ErrConditionsNotInCorrectState,
+						condition.Type, condition.Reason, condition.Status, condition.Message, condition.LastTransitionTime,
+						helper.ErrConditionsNotInCorrectState,
 					)
 				}
 			}
