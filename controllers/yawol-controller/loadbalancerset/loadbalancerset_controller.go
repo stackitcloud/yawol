@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -75,7 +76,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	var (
 		readyMachineCount   int
 		deletedMachineCount int
-		setContainsMaster bool
+		setContainsMaster   bool
 	)
 
 	for i := range childMachines.Items {
@@ -176,16 +177,29 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 	}
 
 	// Write set contains master condition
-	if setContainsMaster {
-	
+	var conditions []v1.Condition
+	if set.Status.Conditions != nil {
+		conditions = set.Status.Conditions
+		for _, condition := range conditions {
+			if condition.Type == helper.ContainsKeepAlivedMaster {
+				if condition.Status == v1.ConditionStatus(strconv.FormatBool(setContainsMaster)) {
+					return ctrl.Result{}, nil
+				}
+			}
+		}
+	} else {
+		conditions = []v1.Condition{}
+	}
 
-		r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{
-			Conditions: []v1.Condition{
-				v1.Condition{
-					Type: helper.ContainsKeepAlivedMaster,
-				},
-			},
-		})
+	status := strconv.FormatBool(setContainsMaster)
+	lastTransitionTime := v1.Time{Time: time.Now()}
+	conditions = append(conditions, v1.Condition{
+		Type:               helper.ContainsKeepAlivedMaster,
+		Status:             v1.ConditionStatus(status),
+		LastTransitionTime: lastTransitionTime,
+	})
+	if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{Conditions: conditions}); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
