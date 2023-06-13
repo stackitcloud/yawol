@@ -10,4 +10,5 @@ const (
 	HashLabel              = "lbm-template-hash"
 	LoadBalancerKind       = "LoadBalancer"
 	VRRPInstanceName       = "ENVOY"
+	ContainsKeepAlivedMaster = "ContainsKeepAlivedMaster"
 )

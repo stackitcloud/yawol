@@ -48,6 +48,9 @@ type LoadBalancerSetStatus struct {
 	// AvailableReplicas are the current running replicas.
 	// +optional
 	AvailableReplicas *int `json:"availableReplicas,omitempty"`
+	// Conditions contains condition information for a LoadBalancerSet.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// ReadyReplicas are the current ready replicas.
 	// +optional
 	ReadyReplicas *int `json:"readyReplicas,omitempty"`

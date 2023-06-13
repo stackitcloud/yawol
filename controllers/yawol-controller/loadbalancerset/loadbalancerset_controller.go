@@ -13,7 +13,7 @@ import (
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"github.com/go-logr/logr"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -75,6 +75,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	var (
 		readyMachineCount   int
 		deletedMachineCount int
+		setContainsMaster bool
 	)
 
 	for i := range childMachines.Items {
@@ -82,13 +83,17 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			deletedMachineCount++
 			continue
 		}
+		if isMachineMaster(childMachines.Items[i]) {
+			setContainsMaster = true
+		}
+
 		if isMachineReady(childMachines.Items[i]) {
 			readyMachineCount++
 			continue
 		}
 	}
 
-	if res, err := r.reconcileStatus(ctx, &set, readyMachineCount); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err := r.reconcileStatus(ctx, &set, readyMachineCount, setContainsMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
@@ -146,6 +151,7 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 	ctx context.Context,
 	set *yawolv1beta1.LoadBalancerSet,
 	readyMachinesCount int,
+	setContainsMaster bool,
 ) (ctrl.Result, error) {
 	// Write replicas into status
 	if set.Status.Replicas == nil || *set.Status.Replicas != set.Spec.Replicas {
@@ -167,6 +173,19 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
+	}
+
+	// Write set contains master condition
+	if setContainsMaster {
+	
+
+		r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{
+			Conditions: []v1.Condition{
+				v1.Condition{
+					Type: helper.ContainsKeepAlivedMaster,
+				},
+			},
+		})
 	}
 
 	return ctrl.Result{}, nil
@@ -307,6 +326,19 @@ func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 	return true
 }
 
+func isMachineMaster(machine yawolv1beta1.LoadBalancerMachine) bool {
+	if machine.Status.Conditions != nil {
+		for _, condition := range *machine.Status.Conditions {
+			if condition.Type == corev1.NodeConditionType(helper.KeepalivedMaster) {
+				if condition.Status == corev1.ConditionTrue {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func (r *LoadBalancerSetReconciler) createMachine(ctx context.Context, set *yawolv1beta1.LoadBalancerSet) error {
 	machineLabels := r.getMachineLabelsFromSet(set)
 	revision := set.Annotations[helper.RevisionAnnotation]
@@ -351,7 +383,7 @@ func (r *LoadBalancerSetReconciler) deleteAllMachines(ctx context.Context, set *
 		if err := r.Client.Delete(ctx, &childMachines.Items[i]); err != nil {
 			return err
 		}
-		r.Recorder.Event(set, v12.EventTypeNormal, "Deleted", "Deleted loadBalancerMachine "+childMachines.Items[i].Name)
+		r.Recorder.Event(set, corev1.EventTypeNormal, "Deleted", "Deleted loadBalancerMachine "+childMachines.Items[i].Name)
 	}
 	r.Log.Info("finished cleaning up old loadBalancerMachines")
 	return nil
