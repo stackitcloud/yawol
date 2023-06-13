@@ -309,6 +309,7 @@ func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 
 func (r *LoadBalancerSetReconciler) createMachine(ctx context.Context, set *yawolv1beta1.LoadBalancerSet) error {
 	machineLabels := r.getMachineLabelsFromSet(set)
+	revision := set.Annotations[helper.RevisionAnnotation]
 	machine := yawolv1beta1.LoadBalancerMachine{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      set.Name + "-" + randomString(5),
@@ -322,6 +323,9 @@ func (r *LoadBalancerSetReconciler) createMachine(ctx context.Context, set *yawo
 				},
 			},
 			Labels: machineLabels,
+			Annotations: map[string]string{
+				helper.RevisionAnnotation: revision,
+			},
 		},
 		Spec: set.Spec.Template.Spec,
 	}
