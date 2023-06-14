@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -177,22 +177,22 @@ func (r *LoadBalancerSetReconciler) reconcileStatus(
 	}
 
 	// Write set contains master condition
-	status := v1.ConditionFalse
+	status := metav1.ConditionFalse
 	reason := "NoKeepalivedMasterInSet"
 
 	if setContainsMaster {
-		status = v1.ConditionTrue
+		status = metav1.ConditionTrue
 		reason = "KeepalivedMasterInSet"
 	}
 
-	transitionTime := v1.Now()
+	transitionTime := metav1.Now()
 	for _, condition := range set.Status.Conditions {
 		if condition.Type == helper.ContainsKeepalivedMaster && condition.Status == status {
 			transitionTime = condition.LastTransitionTime
 		}
 	}
 
-	conditions := []v1.Condition{
+	conditions := []metav1.Condition{
 		{
 			Type:               helper.ContainsKeepalivedMaster,
 			Status:             status,
@@ -283,8 +283,8 @@ func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(
 // True if LastHeartbeatTime is > 5 minutes
 // True if a condition is not good for 5 minutes
 func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, error) {
-	before5Minutes := v1.Time{Time: time.Now().Add(-5 * time.Minute)}
-	before10Minutes := v1.Time{Time: time.Now().Add(-10 * time.Minute)}
+	before5Minutes := metav1.Time{Time: time.Now().Add(-5 * time.Minute)}
+	before10Minutes := metav1.Time{Time: time.Now().Add(-10 * time.Minute)}
 
 	// to handle the initial 10 minutes
 	if machine.CreationTimestamp.Before(&before10Minutes) &&
@@ -325,7 +325,7 @@ func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, err
 // False if LastHeartbeatTime is older than 180sec
 // False if ConfigReady, EnvoyReady or EnvoyUpToDate are false
 func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
-	before180seconds := v1.Time{Time: time.Now().Add(-180 * time.Second)}
+	before180seconds := metav1.Time{Time: time.Now().Add(-180 * time.Second)}
 
 	// not ready if no conditions are available
 	if machine.Status.Conditions == nil || len(*machine.Status.Conditions) < 6 {
@@ -362,10 +362,10 @@ func (r *LoadBalancerSetReconciler) createMachine(ctx context.Context, set *yawo
 	machineLabels := r.getMachineLabelsFromSet(set)
 	revision := set.Annotations[helper.RevisionAnnotation]
 	machine := yawolv1beta1.LoadBalancerMachine{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      set.Name + "-" + randomString(5),
 			Namespace: set.Namespace,
-			OwnerReferences: []v1.OwnerReference{
+			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: set.APIVersion,
 					Kind:       set.Kind,
