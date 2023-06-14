@@ -123,7 +123,7 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(&setStub), &set)).To(Succeed())
 				Expect(set.Status.Conditions).To(Not(BeNil()))
 				for _, condition := range set.Status.Conditions {
-					if condition.Type == helper.ContainsKeepalivedMaster {
+					if condition.Type == helper.HasKeepalivedMaster {
 						return condition.Status
 					}
 				}

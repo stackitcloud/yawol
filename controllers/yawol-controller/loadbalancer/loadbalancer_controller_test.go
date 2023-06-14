@@ -318,7 +318,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
 				lbs.Status.Conditions = []metav1.Condition{
 					{
-						Type:               helper.ContainsKeepalivedMaster,
+						Type:               helper.HasKeepalivedMaster,
 						Status:             metav1.ConditionTrue,
 						LastTransitionTime: metav1.Time{Time: metav1.Now().Add(-120 * time.Second)},
 						Reason:             "ready",

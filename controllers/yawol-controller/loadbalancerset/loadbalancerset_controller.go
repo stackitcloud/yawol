@@ -78,7 +78,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	var (
 		readyMachineCount   int
 		deletedMachineCount int
-		setContainsMaster   bool
+		hasKeepalivedMaster bool
 	)
 
 	for i := range childMachines.Items {
@@ -87,7 +87,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			continue
 		}
 		if isMachineMaster(childMachines.Items[i]) {
-			setContainsMaster = true
+			hasKeepalivedMaster = true
 		}
 
 		if isMachineReady(childMachines.Items[i]) {
@@ -97,7 +97,7 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// TODO: patchStatus *after* we've reconciled the replicas
-	if res, err := r.patchStatus(ctx, &set, readyMachineCount, setContainsMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err := r.patchStatus(ctx, &set, readyMachineCount, hasKeepalivedMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
@@ -155,7 +155,7 @@ func (r *LoadBalancerSetReconciler) patchStatus(
 	ctx context.Context,
 	set *yawolv1beta1.LoadBalancerSet,
 	readyMachinesCount int,
-	setContainsMaster bool,
+	hasKeepalivedMaster bool,
 ) (ctrl.Result, error) {
 
 	setCopy := set.DeepCopy()
@@ -166,19 +166,19 @@ func (r *LoadBalancerSetReconciler) patchStatus(
 	// Write ready replicas into status
 	set.Status.ReadyReplicas = pointer.Int(readyMachinesCount)
 
-	// Write set contains master condition
+	// Write HasKeepalivedMaster condition
 	status := metav1.ConditionFalse
 	reason := "NoKeepalivedMasterInSet"
-	message := "LoadBalancerSet doesn't contain a master machine"
+	message := "LoadBalancerSet doesn't have a master machine"
 
-	if setContainsMaster {
+	if hasKeepalivedMaster {
 		status = metav1.ConditionTrue
 		reason = "KeepalivedMasterInSet"
-		message = "LoadBalancerSet contains a master machine"
+		message = "LoadBalancerSet has a master machine"
 	}
 
 	meta.SetStatusCondition(&set.Status.Conditions, metav1.Condition{
-		Type:    helper.ContainsKeepalivedMaster,
+		Type:    helper.HasKeepalivedMaster,
 		Status:  status,
 		Reason:  reason,
 		Message: message,
