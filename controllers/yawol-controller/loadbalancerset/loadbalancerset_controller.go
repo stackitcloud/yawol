@@ -3,7 +3,6 @@ package loadbalancerset
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -157,7 +155,6 @@ func (r *LoadBalancerSetReconciler) patchStatus(
 	readyMachinesCount int,
 	hasKeepalivedMaster bool,
 ) (ctrl.Result, error) {
-
 	setCopy := set.DeepCopy()
 
 	// Write replicas into status
@@ -242,19 +239,6 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (y
 		return yawolv1beta1.LoadBalancerMachine{}, helper.ErrNoLBMFoundForScaleDown
 	}
 	return machines[0], nil
-}
-
-func (r *LoadBalancerSetReconciler) patchLoadBalancerSetStatus(
-	ctx context.Context,
-	lbs *yawolv1beta1.LoadBalancerSet,
-	status yawolv1beta1.LoadBalancerSetStatus,
-) error {
-	statusJSON, err := json.Marshal(status)
-	if err != nil {
-		return err
-	}
-	patch := []byte(`{"status":` + string(statusJSON) + `}`)
-	return r.Client.Status().Patch(ctx, lbs, client.RawPatch(types.MergePatchType, patch))
 }
 
 // Decides whether the machine should be deleted or not
