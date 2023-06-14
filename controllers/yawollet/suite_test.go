@@ -43,13 +43,13 @@ const (
 )
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	envoyCmd  *exec.Cmd
-	ctx       context.Context
-	cancel    context.CancelFunc
-	aferoFs   afero.Fs
+	cfg        *rest.Config
+	k8sClient  client.Client
+	testEnv    *envtest.Environment
+	envoyCmd   *exec.Cmd
+	ctx        context.Context
+	cancel     context.CancelFunc
+	filesystem afero.Fs
 )
 
 func TestAPIs(t *testing.T) {
@@ -61,7 +61,7 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	aferoFs = afero.NewMemMapFs()
+	filesystem = afero.NewMemMapFs()
 
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -142,7 +142,7 @@ var _ = BeforeSuite(func() {
 		EnvoyCache:              cache,
 		ListenAddress:           "127.0.0.1",
 		RequeueTime:             1,
-		AferoFs:                 aferoFs,
+		Filesystem:              filesystem,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

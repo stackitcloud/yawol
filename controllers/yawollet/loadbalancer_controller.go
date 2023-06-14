@@ -4,7 +4,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/spf13/afero"
 	"sort"
 	"time"
 
@@ -12,16 +11,16 @@ import (
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
 
+	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/go-logr/logr"
+	"github.com/spf13/afero"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 )
 
 // LoadBalancerReconciler reconciles service Objects with type LoadBalancer
@@ -37,7 +36,7 @@ type LoadBalancerReconciler struct {
 	ListenAddress           string
 	RequeueTime             int
 	KeepalivedStatsFile     string
-	AferoFs                 afero.Fs
+	Filesystem              afero.Fs
 }
 
 // Reconcile handles reconciliation of loadbalancer object
@@ -95,7 +94,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	if err := helper.ReconcileLatestRevisionFile(r.AferoFs, lb, lbm); err != nil {
+	if err := helper.ReconcileLatestRevisionFile(r.Filesystem, lb, lbm); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -177,8 +176,8 @@ func (r *LoadBalancerReconciler) reconcile(
 
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if r.AferoFs == nil {
-		r.AferoFs = afero.NewOsFs()
+	if r.Filesystem == nil {
+		r.Filesystem = afero.NewOsFs()
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
