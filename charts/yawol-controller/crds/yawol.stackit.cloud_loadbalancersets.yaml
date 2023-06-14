@@ -27,6 +27,9 @@ spec:
     - jsonPath: .status.readyReplicas
       name: READY
       type: string
+    - jsonPath: .status.conditions[?(@.type=="HasKeepalivedMaster")].status
+      name: HasKeepalivedMaster
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
