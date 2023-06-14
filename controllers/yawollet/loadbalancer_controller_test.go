@@ -452,7 +452,7 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 		When("lb and lbm revision annotation are the same", func() {
 			It("should create yawolKeepalivedFile", func() {
 				Eventually(func() error {
-					_, err := filesystem.Stat(helper.YawolKeepalivedFile)
+					_, err := filesystem.Stat(helper.YawolSetIsLatestRevisionFile)
 					return err
 				}, TIMEOUT, INTERVAL).Should(Succeed())
 
@@ -466,7 +466,7 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 			})
 			It("should not create or delete yawolKeepalivedFile", func() {
 				Eventually(func() error {
-					_, err := filesystem.Stat(helper.YawolKeepalivedFile)
+					_, err := filesystem.Stat(helper.YawolSetIsLatestRevisionFile)
 					if err == nil || !errors.Is(err, fs.ErrNotExist) {
 						return errors.New("keepalived file still exists")
 					}

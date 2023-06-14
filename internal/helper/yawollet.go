@@ -892,23 +892,23 @@ func EnableAdHocDebugging(
 	return nil
 }
 
-// ReconcileLatestRevisionFile makes sure that the YawolKeepalivedFile exists if the lbm is from the current revision.
+// ReconcileLatestRevisionFile makes sure that the YawolSetIsLatestRevisionFile exists if the lbm is from the current revision.
 // Otherwise, make sure that the file is deleted.
 // Use aferoFs to use it in tests.
 func ReconcileLatestRevisionFile(filesystem afero.Fs, lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
-	if err := filesystem.MkdirAll(YawolKeepalivedDir, 0755); err != nil {
+	if err := filesystem.MkdirAll(YawolLibDir, 0755); err != nil {
 		return err
 	}
 	if lbmIsLatestRevision(lb, lbm) {
 		// file should exist
-		f, err := filesystem.Create(YawolKeepalivedFile)
+		f, err := filesystem.Create(YawolSetIsLatestRevisionFile)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 	// file should not exist
-	err := filesystem.Remove(YawolKeepalivedFile)
+	err := filesystem.Remove(YawolSetIsLatestRevisionFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

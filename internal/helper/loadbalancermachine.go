@@ -317,7 +317,7 @@ vrrp_track_process envoy {
 
 # the yawolfile is used to change priority if loadbalancermachine is from current revision
 vrrp_track_file yawolfile {
-	file "` + YawolKeepalivedFile + `"
+	file "` + YawolSetIsLatestRevisionFile + `"
 	weight 10
 }
 
