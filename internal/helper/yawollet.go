@@ -893,12 +893,14 @@ func EnableAdHocDebugging(
 
 func UpdateKeepalivedFile(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
 	if lbmIsLatestRevision(lb, lbm) {
-		//file should exist
+		// file should exist
 		f, err := os.Create(YawolKeepalivedFile)
-		defer f.Close()
-		return err
+		if err != nil {
+			return err
+		}
+		return f.Close()
 	}
-	//file should not exist
+	// file should not exist
 	err := os.Remove(YawolKeepalivedFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
