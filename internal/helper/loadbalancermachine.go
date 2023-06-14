@@ -323,7 +323,6 @@ vrrp_track_file yawolfile {
 vrrp_instance ` + VRRPInstanceName + ` {
 	state BACKUP
 	interface eth0
-	nopreempt
 	virtual_router_id 100
 	priority 50
 	advert_int 4
