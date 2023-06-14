@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -15,11 +14,14 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -94,7 +96,8 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}
 
-	if res, err := r.reconcileStatus(ctx, &set, readyMachineCount, setContainsMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	// TODO: patchStatus *after* we've reconciled the replicas
+	if res, err := r.patchStatus(ctx, &set, readyMachineCount, setContainsMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
 		return res, err
 	}
 
@@ -148,68 +151,44 @@ func (r *LoadBalancerSetReconciler) deletionRoutine(
 	return ctrl.Result{}, nil
 }
 
-func (r *LoadBalancerSetReconciler) reconcileStatus(
+func (r *LoadBalancerSetReconciler) patchStatus(
 	ctx context.Context,
 	set *yawolv1beta1.LoadBalancerSet,
 	readyMachinesCount int,
 	setContainsMaster bool,
 ) (ctrl.Result, error) {
+
+	setCopy := set.DeepCopy()
+
 	// Write replicas into status
-	if set.Status.Replicas == nil || *set.Status.Replicas != set.Spec.Replicas {
-		replicas := set.Spec.Replicas
-		if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{
-			Replicas: &replicas,
-		}); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
+	set.Status.Replicas = pointer.Int(set.Spec.Replicas)
 
 	// Write ready replicas into status
-	if set.Status.ReadyReplicas == nil || *set.Status.ReadyReplicas != readyMachinesCount {
-		replicas := readyMachinesCount
-		if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{
-			ReadyReplicas: &replicas,
-		}); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 2}, nil
-	}
+	set.Status.ReadyReplicas = pointer.Int(readyMachinesCount)
 
 	// Write set contains master condition
 	status := metav1.ConditionFalse
 	reason := "NoKeepalivedMasterInSet"
+	message := "LoadBalancerSet doesn't contain a master machine"
 
 	if setContainsMaster {
 		status = metav1.ConditionTrue
 		reason = "KeepalivedMasterInSet"
+		message = "LoadBalancerSet contains a master machine"
 	}
 
-	transitionTime := metav1.Now()
-	for _, condition := range set.Status.Conditions {
-		if condition.Type == helper.ContainsKeepalivedMaster && condition.Status == status {
-			transitionTime = condition.LastTransitionTime
-		}
-	}
+	meta.SetStatusCondition(&set.Status.Conditions, metav1.Condition{
+		Type:    helper.ContainsKeepalivedMaster,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
+	})
 
-	conditions := []metav1.Condition{
-		{
-			Type:               helper.ContainsKeepalivedMaster,
-			Status:             status,
-			LastTransitionTime: transitionTime,
-			Reason:             reason,
-		},
-	}
-
-	if reflect.DeepEqual(set.Status.Conditions, conditions) {
+	if equality.Semantic.DeepEqual(set, setCopy) {
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.patchLoadBalancerSetStatus(ctx, set, yawolv1beta1.LoadBalancerSetStatus{Conditions: conditions}); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, r.Client.Status().Patch(ctx, set, client.MergeFrom(setCopy))
 }
 
 func (r *LoadBalancerSetReconciler) reconcileReplicas(
