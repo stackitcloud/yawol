@@ -905,10 +905,11 @@ func ReconcileLatestRevisionFile(filesystem afero.Fs, lb *yawolv1beta1.LoadBalan
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		if _, err = f.WriteString("1"); err != nil {
 			return err
 		}
-		return f.Close()
+		return nil
 	}
 	// file should not exist
 	err := filesystem.Remove(YawolSetIsLatestRevisionFile)
