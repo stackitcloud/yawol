@@ -288,17 +288,17 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				return nil
 			})
 
-			By("Make both lbsets available by path status", func() {
-				var lbsetList yawolv1beta1.LoadBalancerSetList
-				Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-				for _, lbs := range lbsetList.Items {
-					lbs.Status.ReadyReplicas = &lbs.Spec.Replicas
-					lbs.Status.Replicas = &lbs.Spec.Replicas
-					Expect(k8sClient.Status().Update(ctx, &lbs)).Should(Succeed())
-				}
-			})
+			By("Make both lbsets available by patching status")
+			var lbsetList yawolv1beta1.LoadBalancerSetList
+			Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
+				LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
+			})).Should(Succeed())
+			for _, lbs := range lbsetList.Items {
+				patch := runtimeClient.MergeFrom(lbs.DeepCopy())
+				lbs.Status.ReadyReplicas = &lbs.Spec.Replicas
+				lbs.Status.Replicas = &lbs.Spec.Replicas
+				Expect(k8sClient.Status().Patch(ctx, &lbs, patch)).Should(Succeed())
+			}
 
 			By("Old lbset should be scaled up because keepalived is not ready now")
 			Consistently(func() error {
@@ -313,20 +313,47 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				return nil
 			}, time.Second*8).Should(Succeed())
 
-			By("Make latest lbsets keepalived condition true by path status", func() {
+			By("Make latest lbsets keepalived condition true by patching status")
+			var lbs yawolv1beta1.LoadBalancerSet
+			Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
+			patch := runtimeClient.MergeFrom(lbs.DeepCopy())
+			lbs.Status.Conditions = []metav1.Condition{
+				{
+					Type:               helper.HasKeepalivedMaster,
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             "ready",
+					Message:            "ready",
+				},
+			}
+			Expect(k8sClient.Status().Patch(ctx, &lbs, patch)).Should(Succeed())
+
+			By("Old lbset should be scaled up because keepalived is not ready long enough")
+			Consistently(func() error {
 				var lbs yawolv1beta1.LoadBalancerSet
-				Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
-				lbs.Status.Conditions = []metav1.Condition{
-					{
-						Type:               helper.HasKeepalivedMaster,
-						Status:             metav1.ConditionTrue,
-						LastTransitionTime: metav1.Time{Time: metav1.Now().Add(-120 * time.Second)},
-						Reason:             "ready",
-						Message:            "ready",
-					},
+				if err := k8sClient.Get(ctx, oldLbs, &lbs); err != nil {
+					return err
 				}
-				Expect(k8sClient.Status().Update(ctx, &lbs)).Should(Succeed())
-			})
+				if lbs.Spec.Replicas == 0 {
+					return errors.New("already down scaled")
+				}
+
+				return nil
+			}, time.Second*8).Should(Succeed())
+
+			By("Make latest lbsets keepalived condition true since longer")
+			Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
+			patch = runtimeClient.MergeFrom(lbs.DeepCopy())
+			lbs.Status.Conditions = []metav1.Condition{
+				{
+					Type:               helper.HasKeepalivedMaster,
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Time{Time: metav1.Now().Add(-120 * time.Second)},
+					Reason:             "ready",
+					Message:            "ready",
+				},
+			}
+			Expect(k8sClient.Status().Patch(ctx, &lbs, patch)).Should(Succeed())
 
 			By("Old lbs should be downscaled")
 			hopefully(lbNN, func(g Gomega, act LB) error {

@@ -109,6 +109,7 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 		It("Should eventually have a master", func() {
 			By("setting LBM as master")
 			machine := getChildMachines(ctx, &setStub)[0]
+			patch := client.MergeFrom(machine.DeepCopy())
 			machine.Status.Conditions = &[]v1.NodeCondition{
 				{
 					Type:   v1.NodeConditionType(helper.KeepalivedMaster),
@@ -116,7 +117,7 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 					Reason: "KeepalivedStatus",
 				},
 			}
-			Expect(k8sClient.Status().Update(ctx, &machine)).To(Succeed())
+			Expect(k8sClient.Status().Patch(ctx, &machine, patch)).To(Succeed())
 
 			Eventually(func() metav1.ConditionStatus {
 				var set yawolv1beta1.LoadBalancerSet
@@ -155,8 +156,9 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 		It("Should be successfully", func() {
 			childMachines := getChildMachines(ctx, &setStub)
 			for _, machine := range childMachines {
+				patch := client.MergeFrom(machine.DeepCopy())
 				machine.Status.Conditions = &cpy
-				err := k8sClient.Status().Update(ctx, &machine)
+				err := k8sClient.Status().Patch(ctx, &machine, patch)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
@@ -185,8 +187,9 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 			childMachines := getChildMachines(ctx, &setStub)
 
 			for _, machine := range childMachines {
+				patch := client.MergeFrom(machine.DeepCopy())
 				machine.Status.Conditions = &conditions
-				err := k8sClient.Status().Update(ctx, &machine)
+				err := k8sClient.Status().Patch(ctx, &machine, patch)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
