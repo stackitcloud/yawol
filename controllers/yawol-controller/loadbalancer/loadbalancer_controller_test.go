@@ -26,7 +26,6 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -178,10 +177,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		It("should create a loadbalancerset", func() {
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				// prevent later panic
@@ -206,10 +202,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("waiting for lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -229,10 +222,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("checking for a new lbset")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(2))
 
 				By("testing if the new set got a different hash")
@@ -255,10 +245,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("waiting for lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 				oldLbs = runtimeClient.ObjectKeyFromObject(&lbsetList.Items[0])
 				return nil
@@ -275,14 +262,11 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("checking for a new lbset")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(2))
-				for i := range lbsetList.Items {
-					if lbsetList.Items[i].Annotations[helper.RevisionAnnotation] == "2" {
-						newLbs = runtimeClient.ObjectKeyFromObject(&lbsetList.Items[i])
+				for _, lbs := range lbsetList.Items {
+					if lbs.Annotations[helper.RevisionAnnotation] == "2" {
+						newLbs = runtimeClient.ObjectKeyFromObject(&lbs)
 					}
 				}
 				return nil
@@ -290,9 +274,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			By("Make both lbsets available by patching status")
 			var lbsetList yawolv1beta1.LoadBalancerSetList
-			Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-				LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-			})).Should(Succeed())
+			Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 			for _, lbs := range lbsetList.Items {
 				patch := runtimeClient.MergeFrom(lbs.DeepCopy())
 				lbs.Status.ReadyReplicas = &lbs.Spec.Replicas
@@ -368,10 +350,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("waiting for lb and lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -386,10 +365,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -403,10 +379,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
-					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
-				})).Should(Succeed())
-
+				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
