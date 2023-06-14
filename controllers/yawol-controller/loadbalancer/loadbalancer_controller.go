@@ -983,6 +983,9 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	}
 
 	if !downscaled {
+		if !helper.LBSetContainsKeepalivedMaster(loadBalancerSet) {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 		r.Log.Info("scale down all lbsets except of", "lbs", loadBalancerSet.Name)
 		return helper.ScaleDownAllLoadBalancerSetsForLBBut(ctx, r.Client, lb, loadBalancerSet.Name)
 	}

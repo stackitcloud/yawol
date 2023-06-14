@@ -3,6 +3,7 @@ package loadbalancer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/openstack"
 	"github.com/stackitcloud/yawol/internal/openstack/testing"
 	v1 "k8s.io/api/core/v1"
@@ -244,6 +246,93 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 				By("checking that new lbset is scaled up")
 				g.Expect(lbset.Spec.Replicas).To(Equal(act.Spec.Replicas))
+				return nil
+			})
+		})
+
+		It("should scale down old lbset after new one has ready keepalived", func() {
+			var oldLbs runtimeClient.ObjectKey
+			By("waiting for lbset creation")
+			hopefully(lbNN, func(g Gomega, act LB) error {
+				var lbsetList yawolv1beta1.LoadBalancerSetList
+				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
+					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
+				})).Should(Succeed())
+
+				g.Expect(len(lbsetList.Items)).Should(Equal(1))
+				oldLbs = runtimeClient.ObjectKeyFromObject(&lbsetList.Items[0])
+				return nil
+			})
+
+			By("changing flavorid")
+			updateLB(lbNN, func(act *LB) {
+				act.Spec.Infrastructure.Flavor = yawolv1beta1.OpenstackFlavorRef{
+					FlavorID: pointer.String("somenewid"),
+				}
+			})
+
+			var newLbs runtimeClient.ObjectKey
+			By("checking for a new lbset")
+			hopefully(lbNN, func(g Gomega, act LB) error {
+				var lbsetList yawolv1beta1.LoadBalancerSetList
+				g.Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
+					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
+				})).Should(Succeed())
+
+				g.Expect(len(lbsetList.Items)).Should(Equal(2))
+				for i := range lbsetList.Items {
+					if lbsetList.Items[i].Annotations[helper.RevisionAnnotation] == "2" {
+						newLbs = runtimeClient.ObjectKeyFromObject(&lbsetList.Items[i])
+					}
+				}
+				return nil
+			})
+
+			By("Make both lbsets available by path status", func() {
+				var lbsetList yawolv1beta1.LoadBalancerSetList
+				Expect(k8sClient.List(ctx, &lbsetList, &runtimeClient.ListOptions{
+					LabelSelector: labels.SelectorFromSet(lb.Spec.Selector.MatchLabels),
+				})).Should(Succeed())
+				for _, lbs := range lbsetList.Items {
+					lbs.Status.ReadyReplicas = &lbs.Spec.Replicas
+					lbs.Status.Replicas = &lbs.Spec.Replicas
+					Expect(k8sClient.Status().Update(ctx, &lbs)).Should(Succeed())
+				}
+			})
+
+			By("Old lbset should be scaled up because keepalived is not ready now")
+			Consistently(func() error {
+				var lbs yawolv1beta1.LoadBalancerSet
+				if err := k8sClient.Get(ctx, oldLbs, &lbs); err != nil {
+					return err
+				}
+				if lbs.Spec.Replicas == 0 {
+					return errors.New("already down scaled")
+				}
+
+				return nil
+			}, time.Second*8).Should(Succeed())
+
+			By("Make latest lbsets keepalived condition true by path status", func() {
+				var lbs yawolv1beta1.LoadBalancerSet
+				Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
+				lbs.Status.Conditions = []metav1.Condition{
+					{
+						Type:               helper.ContainsKeepalivedMaster,
+						Status:             metav1.ConditionTrue,
+						LastTransitionTime: metav1.Time{Time: metav1.Now().Add(-120 * time.Second)},
+						Reason:             "ready",
+						Message:            "ready",
+					},
+				}
+				Expect(k8sClient.Status().Update(ctx, &lbs)).Should(Succeed())
+			})
+
+			By("Old lbs should be downscaled")
+			hopefully(lbNN, func(g Gomega, act LB) error {
+				var lbs yawolv1beta1.LoadBalancerSet
+				g.Expect(k8sClient.Get(ctx, oldLbs, &lbs)).Should(Succeed())
+				g.Expect(lbs.Spec.Replicas).To(Equal(0))
 				return nil
 			})
 		})
