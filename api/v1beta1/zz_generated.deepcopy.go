@@ -529,6 +529,13 @@ func (in *LoadBalancerSetStatus) DeepCopyInto(out *LoadBalancerSetStatus) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.ReadyReplicas != nil {
 		in, out := &in.ReadyReplicas, &out.ReadyReplicas
 		*out = new(int)

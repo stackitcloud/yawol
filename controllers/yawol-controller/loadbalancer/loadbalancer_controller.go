@@ -32,7 +32,6 @@ import (
 
 const (
 	DefaultRequeueTime = 10 * time.Millisecond
-	RevisionAnnotation = "loadbalancer.yawol.stackit.cloud/revision"
 	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
 )
 
@@ -983,6 +982,9 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	}
 
 	if !downscaled {
+		if !helper.LBSetHasKeepalivedMaster(loadBalancerSet) {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 		r.Log.Info("scale down all lbsets except of", "lbs", loadBalancerSet.Name)
 		return helper.ScaleDownAllLoadBalancerSetsForLBBut(ctx, r.Client, lb, loadBalancerSet.Name)
 	}

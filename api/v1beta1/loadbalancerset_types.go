@@ -11,6 +11,7 @@ import (
 // +kubebuilder:printcolumn:name="DESIRED",type=string,JSONPath=`.spec.replicas`
 // +kubebuilder:printcolumn:name="CURRENT",type=string,JSONPath=`.status.replicas`
 // +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="HasKeepalivedMaster",type=string,JSONPath=`.status.conditions[?(@.type=="HasKeepalivedMaster")].status`
 // +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // LoadBalancerSet is the Schema for the LoadBalancerSet's API.
@@ -48,6 +49,9 @@ type LoadBalancerSetStatus struct {
 	// AvailableReplicas are the current running replicas.
 	// +optional
 	AvailableReplicas *int `json:"availableReplicas,omitempty"`
+	// Conditions contains condition information for a LoadBalancerSet.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// ReadyReplicas are the current ready replicas.
 	// +optional
 	ReadyReplicas *int `json:"readyReplicas,omitempty"`

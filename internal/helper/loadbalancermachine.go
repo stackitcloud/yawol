@@ -315,10 +315,15 @@ vrrp_track_process envoy {
 	weight 100
 }
 
+# the yawolfile is used to change priority if loadbalancermachine is from current revision
+track_file yawolfile {
+	file "` + YawolSetIsLatestRevisionFile + `"
+	weight 10
+}
+
 vrrp_instance ` + VRRPInstanceName + ` {
 	state BACKUP
 	interface eth0
-	nopreempt
 	virtual_router_id 100
 	priority 50
 	advert_int 4
@@ -334,6 +339,10 @@ vrrp_instance ` + VRRPInstanceName + ` {
 
 	track_process {
 		envoy
+	}
+
+	track_file {
+		yawolfile
 	}
 }`
 }

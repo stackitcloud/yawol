@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -128,6 +129,27 @@ func LoadBalancerSetIsReady(
 	}
 
 	return false, fmt.Errorf("active LoadBalancerSet not found")
+}
+
+// LBSetHasKeepalivedMaster returns true one of the following conditions are met:
+// - if the keepalived condition on set is ready for more than 2 min
+// - keepalived condition is not ready for more than 10 min (to make sure this does not block updates)
+// - no keepalived condition is in lbs but lbs is older than 15 min (to make sure this does not block updates)
+func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) bool {
+	before2Minutes := metaV1.Time{Time: time.Now().Add(-2 * time.Minute)}
+	before10Minutes := metaV1.Time{Time: time.Now().Add(-10 * time.Minute)}
+	before15Minutes := metaV1.Time{Time: time.Now().Add(-15 * time.Minute)}
+
+	for _, condition := range set.Status.Conditions {
+		if condition.Type != HasKeepalivedMaster {
+			continue
+		}
+		if condition.Status == metaV1.ConditionTrue {
+			return condition.LastTransitionTime.Before(&before2Minutes)
+		}
+		return condition.LastTransitionTime.Before(&before10Minutes)
+	}
+	return set.CreationTimestamp.Before(&before15Minutes)
 }
 
 // Checks if LoadBalancerSets deriving from LoadBalancers are downscaled except for the LoadBalancerSet with the name of exceptionName

@@ -1,7 +1,9 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -21,6 +23,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/shirou/gopsutil/v3/process"
+	"github.com/spf13/afero"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/envoystatus"
@@ -443,7 +446,7 @@ func GetRoleRules(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 ) []rbac.PolicyRule {
 	return []rbac.PolicyRule{{
-		Verbs:     []string{"create"},
+		Verbs:     []string{"create", "patch"},
 		APIGroups: []string{""},
 		Resources: []string{"events"},
 	}, {
@@ -887,4 +890,35 @@ func EnableAdHocDebugging(
 		"Successfully enabled ad-hoc debugging access to LoadBalancerMachine '%s'. "+
 			"Please make sure to disable debug access once you are finished and to roll all LoadBalancerMachines", lbmName)
 	return nil
+}
+
+// ReconcileLatestRevisionFile makes sure that the YawolSetIsLatestRevisionFile exists if the lbm is from the current revision.
+// Otherwise, make sure that the file is deleted.
+// Use aferoFs to use it in tests.
+func ReconcileLatestRevisionFile(filesystem afero.Fs, lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
+	if err := filesystem.MkdirAll(YawolLibDir, 0755); err != nil {
+		return err
+	}
+	if lbmIsLatestRevision(lb, lbm) {
+		// file should exist
+		f, err := filesystem.Create(YawolSetIsLatestRevisionFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err = f.WriteString("1"); err != nil {
+			return err
+		}
+		return nil
+	}
+	// file should not exist
+	err := filesystem.Remove(YawolSetIsLatestRevisionFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func lbmIsLatestRevision(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) bool {
+	return lb.Annotations[RevisionAnnotation] == lbm.Annotations[RevisionAnnotation]
 }
