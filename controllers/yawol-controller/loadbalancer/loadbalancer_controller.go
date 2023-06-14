@@ -32,7 +32,6 @@ import (
 
 const (
 	DefaultRequeueTime = 10 * time.Millisecond
-	RevisionAnnotation = "loadbalancer.yawol.stackit.cloud/revision"
 	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
 )
 

@@ -57,7 +57,7 @@ func (r *LoadBalancerSetStatusReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Not the current revision
-	if lb.Annotations[RevisionAnnotation] != loadBalancerSet.Annotations[RevisionAnnotation] {
+	if lb.Annotations[helper.RevisionAnnotation] != loadBalancerSet.Annotations[helper.RevisionAnnotation] {
 		return ctrl.Result{}, nil
 	}
 
