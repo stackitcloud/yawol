@@ -896,6 +896,9 @@ func EnableAdHocDebugging(
 // Otherwise, make sure that the file is deleted.
 // Use aferoFs to use it in tests.
 func ReconcileLatestRevisionFile(aferoFs afero.Fs, lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
+	if err := aferoFs.MkdirAll(YawolKeepalivedDir, 0755); err != nil {
+		return err
+	}
 	if lbmIsLatestRevision(lb, lbm) {
 		// file should exist
 		f, err := aferoFs.Create(YawolKeepalivedFile)

@@ -6,9 +6,10 @@ const (
 	OpenstackReconcileTime = 5 * time.Minute
 	DefaultRequeueTime     = 10 * time.Millisecond
 	RevisionAnnotation     = "loadbalancer.yawol.stackit.cloud/revision"
-	YawolKeepalivedFile    = "/tmp/yawolKeepalivedLastSet"
+	YawolKeepalivedDir     = "/var/yawol/"
+	YawolKeepalivedFile    = YawolKeepalivedDir + "set_is_latest_revision"
 	HashLabel              = "lbm-template-hash"
-	LoadBalancerKind       = "LoadBalancer"
+    LoadBalancerKind       = "LoadBalancer"
 	VRRPInstanceName       = "ENVOY"
-	HasKeepalivedMaster    = "HasKeepalivedMaster"
+    HasKeepalivedMaster    = "HasKeepalivedMaster"
 )
