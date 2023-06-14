@@ -341,6 +341,8 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			}
 		})
 
+		var hashInital string
+
 		It("should create matching security group rules", func() {
 			By("creating default rules")
 			hopefully(lbNN, func(g Gomega, act LB) error {
@@ -368,6 +370,9 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				g.Expect(err).To(Succeed())
 				g.Expect(len(prts)).To(Equal(1))
 
+				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
+				hashInital = *act.Status.OpenstackReconcileHash
+
 				return nil
 			})
 
@@ -382,6 +387,8 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			var hashBefore string
 
 			hopefully(lbNN, func(g Gomega, act LB) error {
+				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
+				g.Expect(*act.Status.OpenstackReconcileHash).ToNot(Equal(hashInital))
 				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
