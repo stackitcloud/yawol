@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -16,6 +17,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gstruct"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -107,6 +109,17 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 			Eventually(isValidMachine(&setStub, &machine)).Should(BeTrue())
 		})
 		It("Should eventually have a master", func() {
+			By("Check current set condition")
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(&setStub), &setStub)).To(Succeed())
+			Expect(setStub.Status.Conditions).To(HaveLen(1))
+
+			Expect(setStub.Status.Conditions).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+				"Type":   Equal(helper.HasKeepalivedMaster),
+				"Status": Equal(metav1.ConditionFalse),
+			})))
+
+			oldLastTransitionTime := meta.FindStatusCondition(setStub.Status.Conditions, helper.HasKeepalivedMaster).LastTransitionTime
+
 			By("setting LBM as master")
 			machine := getChildMachines(ctx, &setStub)[0]
 			patch := client.MergeFrom(machine.DeepCopy())
@@ -119,17 +132,17 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 			}
 			Expect(k8sClient.Status().Patch(ctx, &machine, patch)).To(Succeed())
 
-			Eventually(func() metav1.ConditionStatus {
+			Eventually(func(g Gomega) {
 				var set yawolv1beta1.LoadBalancerSet
-				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(&setStub), &set)).To(Succeed())
-				Expect(set.Status.Conditions).To(Not(BeNil()))
-				for _, condition := range set.Status.Conditions {
-					if condition.Type == helper.HasKeepalivedMaster {
-						return condition.Status
-					}
-				}
-				return metav1.ConditionFalse
-			}, timeout, interval).Should(Equal(metav1.ConditionTrue))
+				g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(&setStub), &set)).To(Succeed())
+
+				g.Expect(set.Status.Conditions).To(ContainElement(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+					"Type":   Equal(helper.HasKeepalivedMaster),
+					"Status": Equal(metav1.ConditionTrue),
+				})))
+				newLastTransitionTime := meta.FindStatusCondition(set.Status.Conditions, helper.HasKeepalivedMaster).LastTransitionTime
+				g.Expect(newLastTransitionTime).ToNot(Equal(oldLastTransitionTime))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 
