@@ -4,6 +4,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/afero"
 	"sort"
 	"time"
 
@@ -36,6 +37,7 @@ type LoadBalancerReconciler struct {
 	ListenAddress           string
 	RequeueTime             int
 	KeepalivedStatsFile     string
+	AferoFs                 afero.Fs
 }
 
 // Reconcile handles reconciliation of loadbalancer object
@@ -93,7 +95,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	if err := helper.UpdateKeepalivedFile(lb, lbm); err != nil {
+	if err := helper.ReconcileLatestRevisionFile(r.AferoFs, lb, lbm); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -175,6 +177,9 @@ func (r *LoadBalancerReconciler) reconcile(
 
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.AferoFs == nil {
+		r.AferoFs = afero.NewOsFs()
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
 		WithEventFilter(predicate.And(

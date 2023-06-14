@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/shirou/gopsutil/v3/process"
+	"github.com/spf13/afero"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/envoystatus"
@@ -891,17 +892,20 @@ func EnableAdHocDebugging(
 	return nil
 }
 
-func UpdateKeepalivedFile(lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
+// ReconcileLatestRevisionFile makes sure that the YawolKeepalivedFile exists if the lbm is from the current revision.
+// Otherwise, make sure that the file is deleted.
+// Use aferoFs to use it in tests.
+func ReconcileLatestRevisionFile(aferoFs afero.Fs, lb *yawolv1beta1.LoadBalancer, lbm *yawolv1beta1.LoadBalancerMachine) error {
 	if lbmIsLatestRevision(lb, lbm) {
 		// file should exist
-		f, err := os.Create(YawolKeepalivedFile)
+		f, err := aferoFs.Create(YawolKeepalivedFile)
 		if err != nil {
 			return err
 		}
 		return f.Close()
 	}
 	// file should not exist
-	err := os.Remove(YawolKeepalivedFile)
+	err := aferoFs.Remove(YawolKeepalivedFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
