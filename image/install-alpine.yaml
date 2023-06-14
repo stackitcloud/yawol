@@ -79,6 +79,14 @@
         state: directory
         mode: '0755'
 
+    - name: Create a /var/lib directory for yawol
+      file:
+        path: /var/lib/yawol
+        owner: yawol
+        group: yawol
+        state: directory
+        mode: '0755'
+
     - name: add sudoers file for yawol
       copy:
         src: ./yawol-sudoers
