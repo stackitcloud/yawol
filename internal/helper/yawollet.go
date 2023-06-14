@@ -446,7 +446,7 @@ func GetRoleRules(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 ) []rbac.PolicyRule {
 	return []rbac.PolicyRule{{
-		Verbs:     []string{"create"},
+		Verbs:     []string{"create", "patch"},
 		APIGroups: []string{""},
 		Resources: []string{"events"},
 	}, {
