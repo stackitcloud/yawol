@@ -13,6 +13,7 @@ require (
 	github.com/onsi/gomega v1.27.8
 	github.com/prometheus/client_golang v1.15.1
 	github.com/shirou/gopsutil/v3 v3.23.5
+	github.com/spf13/afero v1.9.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.53.0
@@ -87,7 +88,6 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
