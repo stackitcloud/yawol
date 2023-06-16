@@ -57,7 +57,6 @@ func init() {
 func main() {
 	var metricsAddr string
 	var probeAddr string
-	var enableLeaderElection bool
 	var namespace string
 	var loadbalancerName string
 	var loadbalancerMachineName string
@@ -68,9 +67,6 @@ func main() {
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", "0", "The address the probe endpoint binds to. Default is disabled.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
 
 	flag.StringVar(&namespace, "namespace", "", "The namespace from lb und lbm object.")
 	flag.StringVar(&loadbalancerName, "loadbalancer-name", "", "Name of lb object.")
@@ -192,8 +188,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "9df1d9a0.stackit.cloud",
+		LeaderElection:     false,
 		Namespace:          namespace,
 
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {

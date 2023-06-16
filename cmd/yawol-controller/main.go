@@ -151,16 +151,17 @@ func main() {
 	// LoadBalancer Controller
 	if lbController {
 		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                     scheme,
-			MetricsBindAddress:         metricsAddrLb,
-			Port:                       9443,
-			LeaderElection:             enableLeaderElection,
-			LeaderElectionID:           "3a7ac996.stackit.cloud",
-			LeaseDuration:              &leasesDuration,
-			RenewDeadline:              &leasesRenewDeadline,
-			RetryPeriod:                &leasesRetryPeriod,
-			LeaderElectionResourceLock: leasesLeaderElectionResourceLock,
-			Namespace:                  clusterNamespace,
+			Scheme:                        scheme,
+			MetricsBindAddress:            metricsAddrLb,
+			Port:                          9443,
+			LeaderElection:                enableLeaderElection,
+			LeaderElectionReleaseOnCancel: true,
+			LeaderElectionID:              "3a7ac996.stackit.cloud",
+			LeaseDuration:                 &leasesDuration,
+			RenewDeadline:                 &leasesRenewDeadline,
+			RetryPeriod:                   &leasesRetryPeriod,
+			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
+			Namespace:                     clusterNamespace,
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
@@ -196,16 +197,17 @@ func main() {
 	// LoadBalancerSet Controller
 	if lbSetController {
 		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                     scheme,
-			MetricsBindAddress:         metricsAddrLbs,
-			Port:                       9444,
-			LeaderElection:             enableLeaderElection,
-			LeaderElectionID:           "rgp5vg43.stackit.cloud",
-			LeaseDuration:              &leasesDuration,
-			RenewDeadline:              &leasesRenewDeadline,
-			RetryPeriod:                &leasesRetryPeriod,
-			LeaderElectionResourceLock: leasesLeaderElectionResourceLock,
-			Namespace:                  clusterNamespace,
+			Scheme:                        scheme,
+			MetricsBindAddress:            metricsAddrLbs,
+			Port:                          9444,
+			LeaderElection:                enableLeaderElection,
+			LeaderElectionReleaseOnCancel: true,
+			LeaderElectionID:              "rgp5vg43.stackit.cloud",
+			LeaseDuration:                 &leasesDuration,
+			RenewDeadline:                 &leasesRenewDeadline,
+			RetryPeriod:                   &leasesRetryPeriod,
+			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
+			Namespace:                     clusterNamespace,
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
@@ -246,16 +248,17 @@ func main() {
 		discoveryClient := discovery.NewDiscoveryClientForConfigOrDie(cfg)
 
 		loadBalancerMachineMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                     scheme,
-			MetricsBindAddress:         metricsAddrLbm,
-			Port:                       9445,
-			LeaderElection:             enableLeaderElection,
-			LeaderElectionID:           "tanf7ges.stackit.cloud",
-			LeaseDuration:              &leasesDuration,
-			RenewDeadline:              &leasesRenewDeadline,
-			RetryPeriod:                &leasesRetryPeriod,
-			LeaderElectionResourceLock: leasesLeaderElectionResourceLock,
-			Namespace:                  clusterNamespace,
+			Scheme:                        scheme,
+			MetricsBindAddress:            metricsAddrLbm,
+			Port:                          9445,
+			LeaderElection:                enableLeaderElection,
+			LeaderElectionReleaseOnCancel: true,
+			LeaderElectionID:              "tanf7ges.stackit.cloud",
+			LeaseDuration:                 &leasesDuration,
+			RenewDeadline:                 &leasesRenewDeadline,
+			RetryPeriod:                   &leasesRetryPeriod,
+			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
+			Namespace:                     clusterNamespace,
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
