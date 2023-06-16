@@ -25,6 +25,7 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -37,6 +38,106 @@ const (
 	timeout  = time.Second * 30
 	interval = time.Millisecond * 250
 )
+
+var _ = Describe("check controller-runtime predicate", func() {
+	lbSet := yawolv1beta1.LoadBalancerSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "lbs",
+			Namespace: "default",
+		},
+		Spec: yawolv1beta1.LoadBalancerSetSpec{
+			Selector: metav1.LabelSelector{},
+			Replicas: 1,
+			Template: yawolv1beta1.LoadBalancerMachineTemplateSpec{
+				Labels: nil,
+				Spec: yawolv1beta1.LoadBalancerMachineSpec{
+					Infrastructure:  yawolv1beta1.LoadBalancerInfrastructure{},
+					PortID:          "Port",
+					ServerGroupID:   "ServerGroup",
+					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{},
+				},
+			},
+		},
+		Status: yawolv1beta1.LoadBalancerSetStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:               helper.HasKeepalivedMaster,
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             "Reason",
+					Message:            "Message",
+				},
+			},
+			ReadyReplicas: pointer.Int(1),
+			Replicas:      pointer.Int(1),
+		},
+	}
+
+	It("should reconcile", func() {
+		By("change in lbs status", func() {
+			newObj := lbSet.DeepCopy()
+			oldReplicas := pointer.IntDeref(newObj.Status.Replicas, 0)
+			oldReplicas++
+			newObj.Status.Replicas = pointer.Int(oldReplicas)
+
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: lbSet.DeepCopy(),
+				ObjectNew: newObj,
+			}
+			Expect(LoadBalancerSetPredicate().Update(event)).To(BeTrue())
+		})
+		By("delete if set has still replicas in spec", func() {
+			obj := lbSet.DeepCopy()
+			obj.Spec.Replicas = 1
+			obj.Status.Replicas = nil
+			obj.Status.ReadyReplicas = nil
+			event := predicatesEvent.DeleteEvent{
+				Object: obj,
+			}
+			Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
+		})
+		By("delete if set has still replicas in status", func() {
+			obj := lbSet.DeepCopy()
+			obj.Spec.Replicas = 0
+			obj.Status.Replicas = pointer.Int(1)
+			event := predicatesEvent.DeleteEvent{
+				Object: obj,
+			}
+			Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
+		})
+	})
+
+	It("should not reconcile", func() {
+		By("change if no change in lbset", func() {
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: lbSet.DeepCopy(),
+				ObjectNew: lbSet.DeepCopy(),
+			}
+			Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+		})
+		By("change if only change in spec in lbset", func() {
+			newObj := lbSet.DeepCopy()
+			newObj.Spec.Replicas = 3
+			event := predicatesEvent.UpdateEvent{
+				ObjectOld: lbSet.DeepCopy(),
+				ObjectNew: newObj,
+			}
+			Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+		})
+		By("on create event", func() {
+			event := predicatesEvent.CreateEvent{
+				Object: lbSet.DeepCopy(),
+			}
+			Expect(LoadBalancerSetPredicate().Create(event)).To(BeFalse())
+		})
+		By("on generic event", func() {
+			event := predicatesEvent.GenericEvent{
+				Object: lbSet.DeepCopy(),
+			}
+			Expect(LoadBalancerSetPredicate().Generic(event)).To(BeFalse())
+		})
+	})
+})
 
 var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	var (

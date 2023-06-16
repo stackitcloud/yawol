@@ -151,7 +151,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // LoadBalancerSetPredicate is the predicate that this controller uses for watching LoadBalancerSets.
-// TODO: add unit tests
 func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this naming makes more sense
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
