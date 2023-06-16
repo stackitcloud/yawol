@@ -121,15 +121,16 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	targetMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(targetKubeconfig), ctrl.Options{
-		Scheme:                     scheme,
-		MetricsBindAddress:         metricsAddr,
-		Port:                       9443,
-		LeaderElection:             targetEnableLeaderElection,
-		LeaderElectionID:           "4c878ae2.stackit.cloud",
-		LeaseDuration:              &leasesDuration,
-		RenewDeadline:              &leasesRenewDeadline,
-		RetryPeriod:                &leasesRetryPeriod,
-		LeaderElectionResourceLock: leasesLeaderElectionResourceLock,
+		Scheme:                        scheme,
+		MetricsBindAddress:            metricsAddr,
+		Port:                          9443,
+		LeaderElection:                targetEnableLeaderElection,
+		LeaderElectionReleaseOnCancel: true,
+		LeaderElectionID:              "4c878ae2.stackit.cloud",
+		LeaseDuration:                 &leasesDuration,
+		RenewDeadline:                 &leasesRenewDeadline,
+		RetryPeriod:                   &leasesRetryPeriod,
+		LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -137,16 +138,17 @@ func main() {
 	}
 
 	controlMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(controlKubeconfig), ctrl.Options{
-		Scheme:                     scheme,
-		MetricsBindAddress:         "0",
-		Port:                       9443,
-		Namespace:                  *infrastructureDefaults.Namespace,
-		LeaderElection:             controlEnableLeaderElection,
-		LeaderElectionID:           "4c878ae2.stackit.cloud",
-		LeaseDuration:              &leasesDuration,
-		RenewDeadline:              &leasesRenewDeadline,
-		RetryPeriod:                &leasesRetryPeriod,
-		LeaderElectionResourceLock: leasesLeaderElectionResourceLock,
+		Scheme:                        scheme,
+		MetricsBindAddress:            "0",
+		Port:                          9443,
+		Namespace:                     *infrastructureDefaults.Namespace,
+		LeaderElection:                controlEnableLeaderElection,
+		LeaderElectionReleaseOnCancel: true,
+		LeaderElectionID:              "4c878ae2.stackit.cloud",
+		LeaseDuration:                 &leasesDuration,
+		RenewDeadline:                 &leasesRenewDeadline,
+		RetryPeriod:                   &leasesRetryPeriod,
+		LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
