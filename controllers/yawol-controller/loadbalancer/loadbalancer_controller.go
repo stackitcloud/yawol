@@ -959,7 +959,6 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	if currentSet, err = helper.GetLoadBalancerSetForHash(loadBalancerSetList, hash); err != nil {
 		return err
 	}
-	log = log.WithValues("loadBalancerSet", currentSet.Name)
 
 	// create new LBS if hash changed or LB was newly created
 	if currentSet == nil {
@@ -984,6 +983,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			return err
 		}
 	}
+	log = log.WithValues("loadBalancerSet", currentSet.Name)
 
 	// update LB status according to observed LBS status
 	patch := client.MergeFrom(lb.DeepCopy())
@@ -1023,7 +1023,6 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	}
 
 	log.Info("Current LoadBalancerSet has keepalived master")
-
 
 	// scale down all other existing LoadBalancerSets for the LoadBalancer after upscale to ensure no downtime
 	log.Info("Scale down old LoadBalancerSets")
