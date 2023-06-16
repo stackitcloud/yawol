@@ -164,8 +164,8 @@ func ReadCurrentRevisionFromLB(lb *yawolv1beta1.LoadBalancer) (int, error) {
 
 func GetNextRevisionForLoadBalancer(setList *yawolv1beta1.LoadBalancerSetList) (int, error) {
 	var highestRevision int
-	for _, set := range setList.Items {
-		rev, err := ReadRevisionFromLBS(&set)
+	for i := range setList.Items {
+		rev, err := ReadRevisionFromLBS(&setList.Items[i])
 		if err != nil {
 			return 0, err
 		}

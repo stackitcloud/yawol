@@ -67,9 +67,9 @@ func ScaleDownOldLoadBalancerSets(
 	setList *yawolv1beta1.LoadBalancerSetList,
 	currentSetName string,
 ) error {
-	for _, set := range setList.Items {
-		if set.Name != currentSetName && set.Spec.Replicas > 0 {
-			if err := PatchLoadBalancerSetReplicas(ctx, c, &set, 0); err != nil {
+	for i := range setList.Items {
+		if setList.Items[i].Name != currentSetName && setList.Items[i].Spec.Replicas > 0 {
+			if err := PatchLoadBalancerSetReplicas(ctx, c, &setList.Items[i], 0); err != nil {
 				return err
 			}
 		}
@@ -101,9 +101,9 @@ func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) bool {
 
 // StatusReplicasFromSetList returns the total replicas and ready replicas based on the given list of LoadBalancerSets.
 func StatusReplicasFromSetList(setList *yawolv1beta1.LoadBalancerSetList) (replicas, readyReplicas int) {
-	for _, set := range setList.Items {
-		replicas += pointer.IntDeref(set.Status.Replicas, 0)
-		readyReplicas += pointer.IntDeref(set.Status.ReadyReplicas, 0)
+	for i := range setList.Items {
+		replicas += pointer.IntDeref(setList.Items[i].Status.Replicas, 0)
+		readyReplicas += pointer.IntDeref(setList.Items[i].Status.ReadyReplicas, 0)
 	}
 
 	return
@@ -153,14 +153,14 @@ func GetLoadBalancerSetForHash(
 		highestGenLBS *yawolv1beta1.LoadBalancerSet
 	)
 
-	for _, set := range loadBalancerSetList.Items {
-		if set.Labels[HashLabel] != currentHash {
+	for i := range loadBalancerSetList.Items {
+		if loadBalancerSetList.Items[i].Labels[HashLabel] != currentHash {
 			continue
 		}
 
-		if gen, err := strconv.Atoi(set.Annotations[RevisionAnnotation]); err == nil && highestGen < gen {
+		if gen, err := strconv.Atoi(loadBalancerSetList.Items[i].Annotations[RevisionAnnotation]); err == nil && highestGen < gen {
 			highestGen = gen
-			highestGenLBS = set.DeepCopy()
+			highestGenLBS = loadBalancerSetList.Items[i].DeepCopy()
 		}
 	}
 

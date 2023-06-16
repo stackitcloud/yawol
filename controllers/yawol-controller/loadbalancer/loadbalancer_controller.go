@@ -152,7 +152,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // LoadBalancerSetPredicate is the predicate that this controller uses for watching LoadBalancerSets.
 // TODO: add unit tests
-func LoadBalancerSetPredicate() predicate.Predicate {
+func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this naming makes more sense
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			// On restart of the controller, we already reconcile all LoadBalancers.
@@ -932,10 +932,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	log = log.WithValues("revision", currentRevision)
 
 	if currentRevision == 0 {
-		if err := helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1); err != nil {
-			return err
-		}
-		return nil
+		return helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1)
 	}
 
 	// Get the labels LBS will receive on creation from this lb
