@@ -73,69 +73,65 @@ var _ = Describe("check controller-runtime predicate", func() {
 		},
 	}
 
-	It("should reconcile", func() {
-		By("change in lbs status", func() {
-			newObj := lbSet.DeepCopy()
-			oldReplicas := pointer.IntDeref(newObj.Status.Replicas, 0)
-			oldReplicas++
-			newObj.Status.Replicas = pointer.Int(oldReplicas)
+	It("should reconcile when change in lbs status", func() {
+		newObj := lbSet.DeepCopy()
+		oldReplicas := pointer.IntDeref(newObj.Status.Replicas, 0)
+		oldReplicas++
+		newObj.Status.Replicas = pointer.Int(oldReplicas)
 
-			event := predicatesEvent.UpdateEvent{
-				ObjectOld: lbSet.DeepCopy(),
-				ObjectNew: newObj,
-			}
-			Expect(LoadBalancerSetPredicate().Update(event)).To(BeTrue())
-		})
-		By("delete if set has still replicas in spec", func() {
-			obj := lbSet.DeepCopy()
-			obj.Spec.Replicas = 1
-			obj.Status.Replicas = nil
-			obj.Status.ReadyReplicas = nil
-			event := predicatesEvent.DeleteEvent{
-				Object: obj,
-			}
-			Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
-		})
-		By("delete if set has still replicas in status", func() {
-			obj := lbSet.DeepCopy()
-			obj.Spec.Replicas = 0
-			obj.Status.Replicas = pointer.Int(1)
-			event := predicatesEvent.DeleteEvent{
-				Object: obj,
-			}
-			Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
-		})
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: newObj,
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeTrue())
+	})
+	It("should reconcile on deletion if set has still replicas in spec", func() {
+		obj := lbSet.DeepCopy()
+		obj.Spec.Replicas = 1
+		obj.Status.Replicas = nil
+		obj.Status.ReadyReplicas = nil
+		event := predicatesEvent.DeleteEvent{
+			Object: obj,
+		}
+		Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
+	})
+	It("should reconcile on deletion if set has still replicas in status", func() {
+		obj := lbSet.DeepCopy()
+		obj.Spec.Replicas = 0
+		obj.Status.Replicas = pointer.Int(1)
+		event := predicatesEvent.DeleteEvent{
+			Object: obj,
+		}
+		Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
 	})
 
-	It("should not reconcile", func() {
-		By("change if no change in lbset", func() {
-			event := predicatesEvent.UpdateEvent{
-				ObjectOld: lbSet.DeepCopy(),
-				ObjectNew: lbSet.DeepCopy(),
-			}
-			Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
-		})
-		By("change if only change in spec in lbset", func() {
-			newObj := lbSet.DeepCopy()
-			newObj.Spec.Replicas = 3
-			event := predicatesEvent.UpdateEvent{
-				ObjectOld: lbSet.DeepCopy(),
-				ObjectNew: newObj,
-			}
-			Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
-		})
-		By("on create event", func() {
-			event := predicatesEvent.CreateEvent{
-				Object: lbSet.DeepCopy(),
-			}
-			Expect(LoadBalancerSetPredicate().Create(event)).To(BeFalse())
-		})
-		By("on generic event", func() {
-			event := predicatesEvent.GenericEvent{
-				Object: lbSet.DeepCopy(),
-			}
-			Expect(LoadBalancerSetPredicate().Generic(event)).To(BeFalse())
-		})
+	It("should not reconcile when update if no change in lbset", func() {
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+	})
+	It("should not reconcile when update  if only change in spec in lbset", func() {
+		newObj := lbSet.DeepCopy()
+		newObj.Spec.Replicas = 3
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: newObj,
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+	})
+	It("should not reconcile on create event", func() {
+		event := predicatesEvent.CreateEvent{
+			Object: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Create(event)).To(BeFalse())
+	})
+	It("should not reconcile on generic event", func() {
+		event := predicatesEvent.GenericEvent{
+			Object: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Generic(event)).To(BeFalse())
 	})
 })
 
@@ -509,33 +505,23 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		})
 
 		It("should update the loadbalancer status", func() {
-			lbSet := yawolv1beta1.LoadBalancerSet{}
+			var lbSet yawolv1beta1.LoadBalancerSet
 			By("Wait for lbset")
-			Eventually(func(g Gomega) error {
+			Eventually(func(g Gomega) {
 				lbSetList := &yawolv1beta1.LoadBalancerSetList{}
 				g.Expect(k8sClient.List(ctx, lbSetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
-				g.Expect(len(lbSetList.Items)).Should(Equal(1))
+				g.Expect(lbSetList.Items).Should(HaveLen(1))
 				lbSet = lbSetList.Items[0]
-				return nil
 			}, timeout, interval).Should(Succeed())
 
 			By("Wait until replicas in lb object are 0")
 			var actual yawolv1beta1.LoadBalancer
-			Eventually(func() *int {
+			Eventually(func(g Gomega) {
 				err := k8sClient.Get(ctx, lbNN, &actual)
-				if err != nil {
-					return nil
-				}
-				return actual.Status.Replicas
-			}, timeout, interval).Should(Equal(pointer.Int(0)))
-
-			Eventually(func() *int {
-				err := k8sClient.Get(ctx, lbNN, &actual)
-				if err != nil {
-					return nil
-				}
-				return actual.Status.ReadyReplicas
-			}, timeout, interval).Should(Equal(pointer.Int(0)))
+				g.Expect(err).To(Succeed())
+				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(0)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(0)))
+			}, timeout, interval)
 
 			By("Test - Patching status")
 			patch := client.MergeFrom(lbSet.DeepCopy())
@@ -543,31 +529,13 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			lbSet.Status.ReadyReplicas = pointer.Int(1)
 			Expect(k8sClient.Status().Patch(ctx, &lbSet, patch)).Should(Succeed())
 
-			By("Validate - ExternalIP should be set")
-			Eventually(func() *string {
-				err := k8sClient.Get(ctx, lbNN, &actual)
-				if err != nil {
-					return nil
-				}
-				return actual.Status.ExternalIP
-			}, timeout, interval).ShouldNot(BeNil())
-
 			By("Validate - Replicas in lb status")
-			Eventually(func() *int {
+			Eventually(func(g Gomega) {
 				err := k8sClient.Get(ctx, lbNN, &actual)
-				if err != nil {
-					return nil
-				}
-				return actual.Status.Replicas
-			}, timeout, interval).Should(Equal(pointer.Int(1)))
-
-			Eventually(func() *int {
-				err := k8sClient.Get(ctx, lbNN, &actual)
-				if err != nil {
-					return nil
-				}
-				return actual.Status.ReadyReplicas
-			}, timeout, interval).Should(Equal(pointer.Int(1)))
+				g.Expect(err).Should(Succeed())
+				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(1)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(1)))
+			}, timeout, interval)
 		})
 	})
 

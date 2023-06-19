@@ -117,7 +117,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
 	if err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil {
-		return res, err
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
