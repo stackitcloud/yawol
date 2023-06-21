@@ -25,10 +25,11 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type LB = yawolv1beta1.LoadBalancer
@@ -38,10 +39,106 @@ const (
 	interval = time.Millisecond * 250
 )
 
+var _ = Describe("check controller-runtime predicate", func() {
+	lbSet := yawolv1beta1.LoadBalancerSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "lbs",
+			Namespace: "default",
+		},
+		Spec: yawolv1beta1.LoadBalancerSetSpec{
+			Selector: metav1.LabelSelector{},
+			Replicas: 1,
+			Template: yawolv1beta1.LoadBalancerMachineTemplateSpec{
+				Labels: nil,
+				Spec: yawolv1beta1.LoadBalancerMachineSpec{
+					Infrastructure:  yawolv1beta1.LoadBalancerInfrastructure{},
+					PortID:          "Port",
+					ServerGroupID:   "ServerGroup",
+					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{},
+				},
+			},
+		},
+		Status: yawolv1beta1.LoadBalancerSetStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:               helper.HasKeepalivedMaster,
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             "Reason",
+					Message:            "Message",
+				},
+			},
+			ReadyReplicas: pointer.Int(1),
+			Replicas:      pointer.Int(1),
+		},
+	}
+
+	It("should reconcile when change in lbs status", func() {
+		newObj := lbSet.DeepCopy()
+		oldReplicas := pointer.IntDeref(newObj.Status.Replicas, 0)
+		oldReplicas++
+		newObj.Status.Replicas = pointer.Int(oldReplicas)
+
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: newObj,
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeTrue())
+	})
+	It("should reconcile on deletion if set has still replicas in spec", func() {
+		obj := lbSet.DeepCopy()
+		obj.Spec.Replicas = 1
+		obj.Status.Replicas = nil
+		obj.Status.ReadyReplicas = nil
+		event := predicatesEvent.DeleteEvent{
+			Object: obj,
+		}
+		Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
+	})
+	It("should reconcile on deletion if set has still replicas in status", func() {
+		obj := lbSet.DeepCopy()
+		obj.Spec.Replicas = 0
+		obj.Status.Replicas = pointer.Int(1)
+		event := predicatesEvent.DeleteEvent{
+			Object: obj,
+		}
+		Expect(LoadBalancerSetPredicate().Delete(event)).To(BeTrue())
+	})
+
+	It("should not reconcile when update if no change in lbset", func() {
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+	})
+	It("should not reconcile when update  if only change in spec in lbset", func() {
+		newObj := lbSet.DeepCopy()
+		newObj.Spec.Replicas = 3
+		event := predicatesEvent.UpdateEvent{
+			ObjectOld: lbSet.DeepCopy(),
+			ObjectNew: newObj,
+		}
+		Expect(LoadBalancerSetPredicate().Update(event)).To(BeFalse())
+	})
+	It("should not reconcile on create event", func() {
+		event := predicatesEvent.CreateEvent{
+			Object: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Create(event)).To(BeFalse())
+	})
+	It("should not reconcile on generic event", func() {
+		event := predicatesEvent.GenericEvent{
+			Object: lbSet.DeepCopy(),
+		}
+		Expect(LoadBalancerSetPredicate().Generic(event)).To(BeFalse())
+	})
+})
+
 var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	var (
-		lb     *LB
-		client *testing.MockClient
+		lb         *LB
+		mockClient *testing.MockClient
 	)
 
 	lbName := "testlb"
@@ -54,9 +151,9 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	BeforeEach(func() {
 		lb = getMockLB(lbNN)
 
-		client = testing.GetFakeClient()
+		mockClient = testing.GetFakeClient()
 		loadBalancerReconciler.getOsClientForIni = func(_ []byte, _ openstack.OSClientOverwrite) (openstack.Client, error) {
-			return client, nil
+			return mockClient, nil
 		}
 	})
 
@@ -177,7 +274,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		It("should create a loadbalancerset", func() {
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				// prevent later panic
@@ -202,7 +299,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("waiting for lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -222,7 +319,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("checking for a new lbset")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(2))
 
 				By("testing if the new set got a different hash")
@@ -241,13 +338,13 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		})
 
 		It("should scale down old lbset after new one has ready keepalived", func() {
-			var oldLbs runtimeClient.ObjectKey
+			var oldLbs client.ObjectKey
 			By("waiting for lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
-				oldLbs = runtimeClient.ObjectKeyFromObject(&lbsetList.Items[0])
+				oldLbs = client.ObjectKeyFromObject(&lbsetList.Items[0])
 				return nil
 			})
 
@@ -258,15 +355,15 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				}
 			})
 
-			var newLbs runtimeClient.ObjectKey
+			var newLbs client.ObjectKey
 			By("checking for a new lbset")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(2))
 				for _, lbs := range lbsetList.Items {
 					if lbs.Annotations[helper.RevisionAnnotation] == "2" {
-						newLbs = runtimeClient.ObjectKeyFromObject(&lbs)
+						newLbs = client.ObjectKeyFromObject(&lbs)
 					}
 				}
 				return nil
@@ -274,9 +371,9 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			By("Make both lbsets available by patching status")
 			var lbsetList yawolv1beta1.LoadBalancerSetList
-			Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+			Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 			for _, lbs := range lbsetList.Items {
-				patch := runtimeClient.MergeFrom(lbs.DeepCopy())
+				patch := client.MergeFrom(lbs.DeepCopy())
 				lbs.Status.ReadyReplicas = &lbs.Spec.Replicas
 				lbs.Status.Replicas = &lbs.Spec.Replicas
 				Expect(k8sClient.Status().Patch(ctx, &lbs, patch)).Should(Succeed())
@@ -298,7 +395,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("Make latest lbsets keepalived condition true by patching status")
 			var lbs yawolv1beta1.LoadBalancerSet
 			Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
-			patch := runtimeClient.MergeFrom(lbs.DeepCopy())
+			patch := client.MergeFrom(lbs.DeepCopy())
 			lbs.Status.Conditions = []metav1.Condition{
 				{
 					Type:               helper.HasKeepalivedMaster,
@@ -325,7 +422,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			By("Make latest lbsets keepalived condition true since longer")
 			Expect(k8sClient.Get(ctx, newLbs, &lbs)).Should(Succeed())
-			patch = runtimeClient.MergeFrom(lbs.DeepCopy())
+			patch = client.MergeFrom(lbs.DeepCopy())
 			lbs.Status.Conditions = []metav1.Condition{
 				{
 					Type:               helper.HasKeepalivedMaster,
@@ -350,7 +447,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("waiting for lb and lbset creation")
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -365,7 +462,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -379,7 +476,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
-				g.Expect(k8sClient.List(ctx, &lbsetList, runtimeClient.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
 
 				lbset := lbsetList.Items[0]
@@ -387,6 +484,60 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	}) // loadbalancerset context
+
+	When("set is ready", func() {
+		BeforeEach(func() {
+			timeNow := metav1.Now()
+			reconcileHash, err := helper.GetOpenStackReconcileHash(lb)
+			Expect(err).Should(Succeed())
+
+			lb.Status = yawolv1beta1.LoadBalancerStatus{
+				ExternalIP:             pointer.String("8.0.0.1"),
+				FloatingID:             pointer.String("floating-id"),
+				FloatingName:           pointer.String("floating-name"),
+				PortID:                 pointer.String("port-id"),
+				PortName:               pointer.String("port-name"),
+				SecurityGroupID:        pointer.String("sec-group-id"),
+				SecurityGroupName:      pointer.String("sec-group-name"),
+				LastOpenstackReconcile: &timeNow,
+				OpenstackReconcileHash: &reconcileHash,
+			}
+		})
+
+		It("should update the loadbalancer status", func() {
+			var lbSet yawolv1beta1.LoadBalancerSet
+			By("Wait for lbset")
+			Eventually(func(g Gomega) {
+				lbSetList := &yawolv1beta1.LoadBalancerSetList{}
+				g.Expect(k8sClient.List(ctx, lbSetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
+				g.Expect(lbSetList.Items).Should(HaveLen(1))
+				lbSet = lbSetList.Items[0]
+			}, timeout, interval).Should(Succeed())
+
+			By("Wait until replicas in lb object are 0")
+			var actual yawolv1beta1.LoadBalancer
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, lbNN, &actual)
+				g.Expect(err).To(Succeed())
+				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(0)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(0)))
+			}, timeout, interval)
+
+			By("Test - Patching status")
+			patch := client.MergeFrom(lbSet.DeepCopy())
+			lbSet.Status.Replicas = pointer.Int(1)
+			lbSet.Status.ReadyReplicas = pointer.Int(1)
+			Expect(k8sClient.Status().Patch(ctx, &lbSet, patch)).Should(Succeed())
+
+			By("Validate - Replicas in lb status")
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, lbNN, &actual)
+				g.Expect(err).Should(Succeed())
+				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(1)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(1)))
+			}, timeout, interval)
+		})
+	})
 
 	Context("server group", func() {
 		BeforeEach(func() {
@@ -408,7 +559,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					return fmt.Errorf("servergroupname is wrong: %v", *act.Status.ServerGroupName)
 				}
 
-				serverGroup, err := client.ServerGroupClientObj.Get(ctx, *act.Status.ServerGroupID)
+				serverGroup, err := mockClient.ServerGroupClientObj.Get(ctx, *act.Status.ServerGroupID)
 
 				if err != nil {
 					return err
@@ -443,7 +594,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					return fmt.Errorf("secgroupname is wrong: %v", *act.Status.SecurityGroupName)
 				}
 
-				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
+				rls, err := mockClient.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
 
@@ -455,7 +606,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					return fmt.Errorf("wrong amount of secgroup rules were applied %v %v", len(rls), lb.Spec.Ports)
 				}
 
-				prts, err := client.PortClientObj.List(ctx, ports.ListOpts{})
+				prts, err := mockClient.PortClientObj.List(ctx, ports.ListOpts{})
 				g.Expect(err).To(Succeed())
 				g.Expect(len(prts)).To(Equal(1))
 
@@ -478,7 +629,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			hopefully(lbNN, func(g Gomega, act LB) error {
 				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
 				g.Expect(*act.Status.OpenstackReconcileHash).ToNot(Equal(hashInital))
-				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
+				rls, err := mockClient.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
 
@@ -528,7 +679,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				g.Expect(act.Status.OpenstackReconcileHash).ToNot(BeNil())
 				g.Expect(*act.Status.OpenstackReconcileHash).ToNot(Equal(hashBefore))
 
-				rls, err := client.RuleClientObj.List(ctx, rules.ListOpts{
+				rls, err := mockClient.RuleClientObj.List(ctx, rules.ListOpts{
 					SecGroupID: *act.Status.SecurityGroupID,
 				})
 
@@ -550,7 +701,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 	When("openstack is not working", func() {
 		BeforeEach(func() {
-			client.GroupClientObj = &testing.CallbackGroupClient{
+			mockClient.GroupClientObj = &testing.CallbackGroupClient{
 				ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
 					return []groups.SecGroup{}, gophercloud.ErrDefault401{
 						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
@@ -572,7 +723,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					return gophercloud.ErrDefault401{}
 				},
 			}
-			client.FipClientObj = &testing.CallbackFipClient{
+			mockClient.FipClientObj = &testing.CallbackFipClient{
 				GetFunc: func(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
 					return nil, gophercloud.ErrDefault403{}
 				},
@@ -626,7 +777,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		When("there are additional ports", func() {
 			count := 5
 			BeforeEach(func() {
-				c, _ := client.PortClient(ctx)
+				c, _ := mockClient.PortClient(ctx)
 				for i := 0; i < count; i++ {
 					_, err := c.Create(ctx, ports.CreateOpts{Name: lbNN.String()})
 					Expect(err).To(Not(HaveOccurred()))
@@ -647,7 +798,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 				By("checking if one of the ports got used")
 				Eventually(func(g Gomega) {
-					c, _ := client.PortClient(ctx)
+					c, _ := mockClient.PortClient(ctx)
 
 					ports, err := c.List(ctx, ports.ListOpts{Name: lbNN.String()})
 					g.Expect(err).To(Not(HaveOccurred()))
@@ -659,7 +810,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 				By("checking that all ports are deleted")
 				Eventually(func(g Gomega) {
-					c, _ := client.PortClient(ctx)
+					c, _ := mockClient.PortClient(ctx)
 
 					ports, err := c.List(ctx, ports.ListOpts{Name: lbNN.String()})
 					g.Expect(err).To(Not(HaveOccurred()))
@@ -671,7 +822,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		When("there are additional secgroups", func() {
 			count := 5
 			BeforeEach(func() {
-				c, _ := client.GroupClient(ctx)
+				c, _ := mockClient.GroupClient(ctx)
 				for i := 0; i < count; i++ {
 					_, err := c.Create(ctx, groups.CreateOpts{Name: lbNN.String()})
 					Expect(err).To(Not(HaveOccurred()))
@@ -692,7 +843,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 				By("checking if one of the secgroups got used")
 				Eventually(func(g Gomega) {
-					c, _ := client.GroupClient(ctx)
+					c, _ := mockClient.GroupClient(ctx)
 
 					secGroups, err := c.List(ctx, groups.ListOpts{Name: lbNN.String()})
 					g.Expect(err).To(Not(HaveOccurred()))
@@ -704,7 +855,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 				By("checking that all secgroups are deleted")
 				Eventually(func(g Gomega) {
-					c, _ := client.GroupClient(ctx)
+					c, _ := mockClient.GroupClient(ctx)
 
 					secGroups, err := c.List(ctx, groups.ListOpts{Name: lbNN.String()})
 					g.Expect(err).To(Not(HaveOccurred()))
@@ -718,7 +869,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 func cleanupLB(lbNN types.NamespacedName, timeout time.Duration) {
 	// delete LB
-	Expect(runtimeClient.IgnoreNotFound(k8sClient.Delete(ctx, &LB{
+	Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, &LB{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: lbNN.Namespace,
 			Name:      lbNN.Name,
@@ -869,6 +1020,6 @@ func patchStatus(lb *LB, status yawolv1beta1.LoadBalancerStatus) {
 	Expect(k8sClient.Status().Patch(
 		context.Background(),
 		lb,
-		runtimeClient.RawPatch(types.MergePatchType, []byte(`{"status": `+string(jsonData)+`}`)),
+		client.RawPatch(types.MergePatchType, []byte(`{"status": `+string(jsonData)+`}`)),
 	)).To(Succeed())
 }

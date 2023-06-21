@@ -182,16 +182,6 @@ func main() {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
 			os.Exit(1)
 		}
-		if err := (&loadbalancer.LoadBalancerSetStatusReconciler{
-			Client:      loadBalancerMgr.GetClient(),
-			Log:         ctrl.Log.WithName("controller").WithName("LoadBalancerSetStatus"),
-			Scheme:      loadBalancerMgr.GetScheme(),
-			WorkerCount: concurrentWorkersPerReconciler,
-			RateLimiter: rateLimiter,
-		}).SetupWithManager(loadBalancerMgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancer")
-			os.Exit(1)
-		}
 	}
 
 	// LoadBalancerSet Controller
