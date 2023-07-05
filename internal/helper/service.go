@@ -54,21 +54,36 @@ func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1
 	if svc.Annotations[yawolv1beta1.ServiceLoadBalancerSourceRanges] != "" {
 		options.LoadBalancerSourceRanges = strings.Split(svc.Annotations[yawolv1beta1.ServiceLoadBalancerSourceRanges], ",")
 	}
+
 	if svc.Spec.LoadBalancerSourceRanges != nil {
 		options.LoadBalancerSourceRanges = svc.Spec.LoadBalancerSourceRanges
 	}
+
 	if svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocol] != "" {
 		options.TCPProxyProtocol, _ = strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocol])
 	}
+
 	if svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocolPortsFilter] != "" {
 		options.TCPProxyProtocolPortsFilter = getTCPProxyProtocolPortsFilter(
 			svc.Annotations[yawolv1beta1.ServiceTCPProxyProtocolPortsFilter],
 		)
 	}
+
 	if val, _ := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceLogForward]); val {
 		options.LogForward.Enabled = true
 		if svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL] != "" {
 			options.LogForward.LokiURL = svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL]
+		}
+	}
+
+	if svc.Annotations[yawolv1beta1.ServiceLogLabels] != "" {
+		labels := map[string]string{}
+		err := json.Unmarshal([]byte(svc.Annotations[yawolv1beta1.ServiceLogLabels]), &labels)
+		if err != nil {
+			recorder.Event(svc, coreV1.EventTypeWarning, "update",
+				"Could not parse "+yawolv1beta1.ServiceLogLabels+" to map[string]string. Ignoring option.")
+		} else {
+			options.LogForward.Labels = labels
 		}
 	}
 
