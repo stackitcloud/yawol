@@ -272,6 +272,8 @@ metadata:
     # The prefix "logging.yawol.stackit.cloud/" will be trimmed
     # and only "foo": "bar" will be added as a label
     logging.yawol.stackit.cloud/foo: "bar"
+    # Setting multiple labels is also supported.
+    logging.yawol.stackit.cloud/env: "testing"
     # Defines the TCP idle Timeout as duration, default is 1h.
     # Make sure there is a valid unit (like "s", "m", "h"), otherwise this option is ignored.
     yawol.stackit.cloud/tcpIdleTimeout: "5m30s"
