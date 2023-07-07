@@ -52,8 +52,6 @@ const (
 	ServiceLogForward = "yawol.stackit.cloud/logForward"
 	// ServiceLogForwardLokiURL set loki url into LoadBalancer
 	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
-	// ServiceLogLabels set extra labels for loki
-	ServiceLogLabels = "yawol.stackit.cloud/logLabels"
 	// ServiceServerGroupPolicy set openstack server group policy for a LoadBalancer
 	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
 	// ServiceAdditionalNetworks adds additional openstack networks for the loadbalancer (comma separated list)
@@ -67,6 +65,9 @@ const (
 	// LoadBalancerAdHocDebugSSHKey defines the public ssh key for adhoc debugging
 	// All LoadBalancer Machines will add this public SSH key
 	LoadBalancerAdHocDebugSSHKey = "yawol.stackit.cloud/adHocDebugSSHKey"
+	// If logForward is enabled, annotations that are prefixed with this constant
+	// will be used as extra labels for loki
+	LoadBalancerLogLabelPrefix = "logging.yawol.stackit.cloud/"
 )
 
 // +kubebuilder:object:root=true

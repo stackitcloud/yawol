@@ -74,17 +74,31 @@ func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1
 		if svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL] != "" {
 			options.LogForward.LokiURL = svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL]
 		}
-	}
 
-	if svc.Annotations[yawolv1beta1.ServiceLogLabels] != "" {
 		labels := map[string]string{}
-		err := json.Unmarshal([]byte(svc.Annotations[yawolv1beta1.ServiceLogLabels]), &labels)
-		if err != nil {
-			recorder.Event(svc, coreV1.EventTypeWarning, "update",
-				"Could not parse "+yawolv1beta1.ServiceLogLabels+" to map[string]string. Ignoring option.")
-		} else {
-			options.LogForward.Labels = labels
+		for annotation := range svc.Annotations {
+			if !strings.HasPrefix(annotation, yawolv1beta1.LoadBalancerLogLabelPrefix) {
+				continue
+			}
+
+			key := strings.TrimPrefix(annotation, yawolv1beta1.LoadBalancerLogLabelPrefix)
+			if key == "" {
+				recorder.Event(svc, coreV1.EventTypeWarning, "update",
+					"Annotation "+annotation+" does not have a name. Ignoring.")
+				continue
+			}
+
+			value := svc.Annotations[annotation]
+			if value == "" {
+				recorder.Event(svc, coreV1.EventTypeWarning, "update",
+					"Annotation "+annotation+" does not have a value. Ignoring.")
+				continue
+			}
+
+			labels[key] = value
 		}
+
+		options.LogForward.Labels = labels
 	}
 
 	if svc.Annotations[yawolv1beta1.ServiceTCPIdleTimeout] != "" {
