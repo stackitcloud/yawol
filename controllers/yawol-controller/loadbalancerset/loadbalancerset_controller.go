@@ -230,7 +230,7 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (y
 	for i := range machines {
 		for _, c := range *machines[i].Status.Conditions {
 			if string(c.Type) == string(helper.KeepalivedMaster) &&
-				string(c.Status) != string(helper.ConditionFalse) {
+				string(c.Status) != string(helper.ConditionTrue) {
 				return machines[i], nil
 			}
 		}
