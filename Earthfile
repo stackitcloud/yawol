@@ -8,7 +8,7 @@ ARG ENVOY_VERSION=v1.24.7
 ARG PROMTAIL_VERSION=2.7.5
 ARG HELM_VERSION=3.12.0
 ARG GOLANGCI_LINT_VERSION=v1.52.2
-ARG PACKER_VERSION=1.8
+ARG PACKER_VERSION=1.9
 ARG TERRAFORM_VERSION=1.4.6
 
 local-setup:
@@ -324,6 +324,7 @@ golangci-lint:
 
 packer:
     FROM hashicorp/packer:$PACKER_VERSION
+    RUN packer plugins install github.com/hashicorp/openstack
     RUN apk add ansible
     RUN apk add openssh-client
 
