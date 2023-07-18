@@ -65,6 +65,9 @@ const (
 	// LoadBalancerAdHocDebugSSHKey defines the public ssh key for adhoc debugging
 	// All LoadBalancer Machines will add this public SSH key
 	LoadBalancerAdHocDebugSSHKey = "yawol.stackit.cloud/adHocDebugSSHKey"
+	// If logForward is enabled, annotations that are prefixed with this constant
+	// will be used as extra labels for loki
+	LoadBalancerLogLabelPrefix = "logging.yawol.stackit.cloud/"
 )
 
 // +kubebuilder:object:root=true
@@ -164,6 +167,9 @@ type LoadBalancerLogForward struct {
 	// LokiUrl defines the loki push url (Example: http://example.com:3100/loki/api/v1/push).
 	// +optional
 	LokiURL string `json:"lokiUrl"`
+	// Labels define extra labels for loki.
+	// +optional
+	Labels map[string]string `json:"labels"`
 }
 
 // LoadBalancerDebugSettings defines debug settings for the LoadBalancer

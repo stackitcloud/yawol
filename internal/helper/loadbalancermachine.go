@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
+	"gopkg.in/yaml.v2"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -225,7 +227,8 @@ func GenerateUserData(
 	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
 	yawolletRequeueTime int,
-) string {
+) (string, error) {
+	var err error
 	const (
 		openRCDel   = "del"
 		openRCAdd   = "add"
@@ -240,7 +243,13 @@ func GenerateUserData(
 	promtailOpenRC := openRCDel
 	promtailOpenRCState := openRCStop
 	if loadbalancer.Spec.Options.LogForward.Enabled {
-		promtailConfig = generatePromtailConfig(loadbalancer, loadbalancerMachine)
+		promtailConfig, err = generatePromtailConfig(
+			loadbalancer.Name, loadbalancerMachine.Name, loadbalancer.Spec.Options.LogForward,
+		)
+		if err != nil {
+			return "", err
+		}
+
 		promtailOpenRC = openRCAdd
 		promtailOpenRCState = openRCStart
 	}
@@ -293,7 +302,7 @@ runcmd:
   - [ /sbin/rc-service, keepalived, restart ]
   - [ /sbin/rc-service, envoy, restart ]
   - [ /sbin/rc-service, yawollet, restart ]
-`
+`, nil
 }
 
 func generateKeepalivedConfig(vip string) string {
@@ -348,9 +357,25 @@ vrrp_instance ` + VRRPInstanceName + ` {
 }
 
 func generatePromtailConfig(
-	loadBalancer *yawolv1beta1.LoadBalancer,
-	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
-) string {
+	lbName, lbmName string,
+	logForward yawolv1beta1.LoadBalancerLogForward,
+) (string, error) {
+	labels := logForward.Labels
+	if labels == nil {
+		labels = map[string]string{}
+	}
+
+	labels["job"] = "yawol-logs"
+	labels["lbm"] = lbmName
+	labels["lb"] = lbName
+	labels["application"] = "messages"
+	labels["__path__"] = "/var/log/messages"
+
+	labelBytes, err := yaml.Marshal(labels)
+	if err != nil {
+		return "", err
+	}
+
 	return `server:
   disable: true
 
@@ -358,7 +383,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: '` + loadBalancer.Spec.Options.LogForward.LokiURL + `'
+  - url: '` + logForward.LokiURL + `'
 
 scrape_configs:
   - job_name: messages
@@ -366,9 +391,12 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: yawol-logs
-          lbm: ` + loadBalancerMachine.Name + `
-          lb: ` + loadBalancer.Name + `
-          application: messages
-          __path__: /var/log/messages`
+` + string(addRootIndent(labelBytes, 10)), nil
+}
+
+// https://stackoverflow.com/questions/63263936/go-how-do-i-preserve-root-indentation-in-yaml
+func addRootIndent(b []byte, n int) []byte {
+	prefix := append([]byte("\n"), bytes.Repeat([]byte(" "), n)...)
+	b = append(prefix[1:], b...) // indent first line
+	return bytes.ReplaceAll(b, []byte("\n"), prefix)
 }

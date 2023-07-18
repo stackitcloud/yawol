@@ -1379,7 +1379,6 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					}
 					return fmt.Errorf("loadbalancer still exists")
 				}
-				fmt.Println(err)
 				return client.IgnoreNotFound(err)
 			}, time.Second*10, time.Millisecond*500).Should(Succeed())
 
@@ -1510,6 +1509,44 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
+		It("should set the logforward option", func() {
+			By("creating the service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test33",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"yawol.stackit.cloud/logForward":  "true",
+						"logging.yawol.stackit.cloud/env": "testing",
+						"logging.yawol.stackit.cloud/foo": "bar",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30533,
+						},
+					},
+					Type: "LoadBalancer",
+				},
+			}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check LB exists")
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test33", Namespace: "default"}, &lb)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(lb.Spec.Options.LogForward.Labels["foo"]).To(Equal("bar"))
+				g.Expect(lb.Spec.Options.LogForward.Labels["env"]).To(Equal("testing"))
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
 		It("create service with classname and load balancer and await deletion of load balancer", func() {
 			By("create service")
 			service := v1.Service{
@@ -1554,7 +1591,6 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					}
 					return fmt.Errorf("loadbalancer still exists")
 				}
-				fmt.Println(err)
 				return client.IgnoreNotFound(err)
 			}, time.Second*10, time.Millisecond*500).Should(Succeed())
 

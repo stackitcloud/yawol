@@ -673,13 +673,16 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 	}
 
 	// Generate user-data for yawollet VM
-	userData := helper.GenerateUserData(
+	userData, err := helper.GenerateUserData(
 		kubeconfig,
 		loadbalancer,
 		loadBalancerMachine,
 		vip,
 		r.YawolletRequeueTime,
 	)
+	if err != nil {
+		return err
+	}
 
 	var srv *servers.Server
 

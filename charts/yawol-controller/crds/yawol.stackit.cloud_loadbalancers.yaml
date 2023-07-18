@@ -232,6 +232,11 @@ spec:
                       enabled:
                         description: Enabled defines if log forward is enabled
                         type: boolean
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels define extra labels for loki.
+                        type: object
                       lokiUrl:
                         description: 'LokiUrl defines the loki push url (Example:
                           http://example.com:3100/loki/api/v1/push).'
