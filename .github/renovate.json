@@ -3,5 +3,7 @@
   "extends": [
     "config:base"
   ],
-  "postUpdateOptions": ["gomodTidy"]
+  "dependencyDashboard": true,
+  "postUpdateOptions": ["gomodTidy"],
+  "labels": ["kind/upgrade"]
 }
