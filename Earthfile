@@ -262,6 +262,18 @@ test:
         eval `setup-envtest use -p env $KUBERNETES_VERSION` && \
         eval "$GO_TEST ./..."
 
+test-multiple-k8s-versions:
+    BUILD +test --KUBERNETES_VERSION=1.23.5
+    BUILD +test --KUBERNETES_VERSION=1.24.2
+    BUILD +test --KUBERNETES_VERSION=1.25.0
+    BUILD +test --KUBERNETES_VERSION=1.26.1
+    BUILD +test --KUBERNETES_VERSION=1.27.1
+
+list-available-k8s-envtest-versions:
+    FROM +deps
+    COPY +gotools/bin/setup-envtest $BINPATH
+    RUN setup-envtest list
+
 test-output:
     FROM +test --GO_TEST="go test -count 1 -coverprofile=cover.out"
     SAVE ARTIFACT cover.out
@@ -307,7 +319,7 @@ all-except-snyk:
     BUILD +generate
     BUILD +lint
     BUILD +coverage
-    BUILD +test
+    BUILD +test-multiple-k8s-versions
     BUILD +ci
 
 all:
