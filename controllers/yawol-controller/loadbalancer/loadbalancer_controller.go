@@ -10,7 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
@@ -139,8 +138,9 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&yawolv1beta1.LoadBalancer{}).
 		// we can't use Owns because it filters for ownerReference.controller==true which is not the case for our objects (as of now)
 		Watches(
-			&source.Kind{Type: &yawolv1beta1.LoadBalancerSet{}},
-			&handler.EnqueueRequestForOwner{OwnerType: &yawolv1beta1.LoadBalancer{}},
+			&yawolv1beta1.LoadBalancerSet{},
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
+				&yawolv1beta1.LoadBalancer{}),
 			builder.WithPredicates(LoadBalancerSetPredicate()),
 		).
 		WithOptions(controller.Options{

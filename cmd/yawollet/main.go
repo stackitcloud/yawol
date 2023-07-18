@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -187,18 +188,12 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
-		Port:               9443,
 		LeaderElection:     false,
-		Namespace:          namespace,
-
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			opts.SelectorsByObject = cache.SelectorsByObject{
-				&yawolv1beta1.LoadBalancer{}: cache.ObjectSelector{
-					Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerName}),
-				},
-				&yawolv1beta1.LoadBalancerMachine{}: cache.ObjectSelector{
-					Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerMachineName}),
-				},
+			opts.Namespaces = append(opts.Namespaces, namespace)
+			opts.ByObject = map[client.Object]cache.ByObject{
+				&yawolv1beta1.LoadBalancer{}:        {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerName})},
+				&yawolv1beta1.LoadBalancerMachine{}: {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerMachineName})},
 			}
 
 			return cache.New(config, opts)

@@ -13,6 +13,8 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -153,7 +155,6 @@ func main() {
 		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                        scheme,
 			MetricsBindAddress:            metricsAddrLb,
-			Port:                          9443,
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "3a7ac996.stackit.cloud",
@@ -161,7 +162,10 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			Namespace:                     clusterNamespace,
+			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
+				return cache.New(config, opts)
+			},
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
@@ -189,7 +193,6 @@ func main() {
 		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                        scheme,
 			MetricsBindAddress:            metricsAddrLbs,
-			Port:                          9444,
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "rgp5vg43.stackit.cloud",
@@ -197,7 +200,10 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			Namespace:                     clusterNamespace,
+			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
+				return cache.New(config, opts)
+			},
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
@@ -240,7 +246,6 @@ func main() {
 		loadBalancerMachineMgr, err = ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:                        scheme,
 			MetricsBindAddress:            metricsAddrLbm,
-			Port:                          9445,
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "tanf7ges.stackit.cloud",
@@ -248,7 +253,10 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			Namespace:                     clusterNamespace,
+			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
+				return cache.New(config, opts)
+			},
 		})
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
