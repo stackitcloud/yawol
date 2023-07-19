@@ -12,7 +12,7 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
