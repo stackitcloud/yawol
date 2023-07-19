@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.10.0
 	github.com/onsi/gomega v1.27.8
 	github.com/prometheus/client_golang v1.16.0
-	github.com/shirou/gopsutil/v3 v3.23.5
+	github.com/shirou/gopsutil/v3 v3.23.6
 	github.com/spf13/afero v1.9.5
 	go.uber.org/zap v1.24.0
 	golang.org/x/time v0.3.0
@@ -83,7 +83,7 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
