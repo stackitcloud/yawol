@@ -252,6 +252,7 @@ metadata:
     # Reference the name of the SSH key provided to OpenStack for debugging .
     yawol.stackit.cloud/debugsshkey: "OS-keyName"
     # Allows filtering services in cloud-controller.
+    # Deprecated: Use service.spec.loadBalancerClass instead.
     yawol.stackit.cloud/className: "test"
     # Specify the number of LoadBalancer machines to deploy (default 1).
     yawol.stackit.cloud/replicas: "3"
