@@ -16,7 +16,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	go.uber.org/zap v1.24.0
 	golang.org/x/time v0.3.0
-	google.golang.org/grpc v1.56.0
+	google.golang.org/grpc v1.56.2
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
