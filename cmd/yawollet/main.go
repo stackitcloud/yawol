@@ -10,7 +10,6 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -189,14 +188,12 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     false,
-		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			opts.Namespaces = append(opts.Namespaces, namespace)
-			opts.ByObject = map[client.Object]cache.ByObject{
+		Cache: cache.Options{
+			Namespaces: []string{namespace},
+			ByObject: map[client.Object]cache.ByObject{
 				&yawolv1beta1.LoadBalancer{}:        {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerName})},
 				&yawolv1beta1.LoadBalancerMachine{}: {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerMachineName})},
-			}
-
-			return cache.New(config, opts)
+			},
 		},
 	})
 	if err != nil {

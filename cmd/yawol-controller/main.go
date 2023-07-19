@@ -13,7 +13,6 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -162,9 +161,8 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
-				return cache.New(config, opts)
+			Cache: cache.Options{
+				Namespaces: []string{clusterNamespace},
 			},
 		})
 		if err != nil {
@@ -200,9 +198,8 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
-				return cache.New(config, opts)
+			Cache: cache.Options{
+				Namespaces: []string{clusterNamespace},
 			},
 		})
 		if err != nil {
@@ -253,9 +250,8 @@ func main() {
 			RenewDeadline:                 &leasesRenewDeadline,
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
-			NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-				opts.Namespaces = append(opts.Namespaces, clusterNamespace)
-				return cache.New(config, opts)
+			Cache: cache.Options{
+				Namespaces: []string{clusterNamespace},
 			},
 		})
 		if err != nil {

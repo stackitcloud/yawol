@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -136,13 +135,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
-		// we can't use Owns because it filters for ownerReference.controller==true which is not the case for our objects (as of now)
-		Watches(
-			&yawolv1beta1.LoadBalancerSet{},
-			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(),
-				&yawolv1beta1.LoadBalancer{}),
-			builder.WithPredicates(LoadBalancerSetPredicate()),
-		).
+		Owns(&yawolv1beta1.LoadBalancerSet{}, builder.MatchEveryOwner, builder.WithPredicates(LoadBalancerSetPredicate())).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,

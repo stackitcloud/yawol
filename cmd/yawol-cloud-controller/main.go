@@ -141,9 +141,8 @@ func main() {
 	controlMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(controlKubeconfig), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: "0",
-		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			opts.Namespaces = append(opts.Namespaces, *infrastructureDefaults.Namespace)
-			return cache.New(config, opts)
+		Cache: cache.Options{
+			Namespaces: []string{*infrastructureDefaults.Namespace},
 		},
 		LeaderElection:                controlEnableLeaderElection,
 		LeaderElectionReleaseOnCancel: true,
