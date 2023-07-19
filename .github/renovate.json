@@ -5,5 +5,8 @@
   ],
   "dependencyDashboard": true,
   "postUpdateOptions": ["gomodTidy"],
-  "labels": ["kind/upgrade"]
+  "labels": ["kind/upgrade"],
+  "ignoreDeps": [
+    "sigs.k8s.io/controller-runtime/tools/setup-envtest"
+  ]
 }
