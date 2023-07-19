@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -48,12 +47,10 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "charts", "yawol-controller", "crds")},
-		ControlPlaneStartTimeout: time.Second * time.Duration(15),
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "charts", "yawol-controller", "crds")},
 	}
 
 	args := testEnv.ControlPlane.GetAPIServer().Configure()
-	args.Append("feature-gates", "IPv6DualStack=true")
 	args.Append("service-cluster-ip-range", "10.244.0.0/16,fc00::0001:0000/112")
 
 	var err error

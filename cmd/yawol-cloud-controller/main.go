@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/controlcontroller"
@@ -138,10 +139,11 @@ func main() {
 	}
 
 	controlMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(controlKubeconfig), ctrl.Options{
-		Scheme:                        scheme,
-		MetricsBindAddress:            "0",
-		Port:                          9443,
-		Namespace:                     *infrastructureDefaults.Namespace,
+		Scheme:             scheme,
+		MetricsBindAddress: "0",
+		Cache: cache.Options{
+			Namespaces: []string{*infrastructureDefaults.Namespace},
+		},
 		LeaderElection:                controlEnableLeaderElection,
 		LeaderElectionReleaseOnCancel: true,
 		LeaderElectionID:              "4c878ae2.stackit.cloud",
