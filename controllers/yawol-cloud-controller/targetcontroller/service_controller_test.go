@@ -472,11 +472,11 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
-		It("create service with wrong className", func() {
+		It("create service with wrong className in annotation", func() {
 			By("create service")
 			service := v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "service-test8",
+					Name:      "class-name-service-test1",
 					Namespace: "default",
 					Annotations: map[string]string{
 						yawolv1beta1.ServiceClassName: "foo",
@@ -498,7 +498,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 
 			By("check for LB creation")
 			Consistently(func() error {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test8", Namespace: "default"}, &lb)
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--class-name-service-test1", Namespace: "default"}, &lb)
 				if err != nil {
 					return client.IgnoreNotFound(err)
 				}
@@ -506,11 +506,11 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
-		It("create service with correct classname", func() {
+		It("create service with correct classname in annotation", func() {
 			By("create service")
 			service := v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "service-test15",
+					Name:      "class-name-service-test2",
 					Namespace: "default",
 					Annotations: map[string]string{
 						yawolv1beta1.ServiceClassName: "",
@@ -533,7 +533,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			By("check creation of LB")
 			Eventually(func() error {
 				err := k8sClient.Get(ctx, types.NamespacedName{
-					Name:      "default--service-test15",
+					Name:      "default--class-name-service-test2",
 					Namespace: "default",
 				}, &lb)
 				return err
@@ -547,7 +547,88 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					return err
 				}
 				for _, event := range eventList.Items {
-					if event.InvolvedObject.Name == "service-test15" &&
+					if event.InvolvedObject.Name == "class-name-service-test2" &&
+						event.InvolvedObject.Kind == "Service" &&
+						strings.Contains(event.Message, "LoadBalancer is in creation") {
+						return nil
+					}
+				}
+				return helper.ErrNoEventFound
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("create service with wrong className in spec", func() {
+			By("create service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "class-name-service-test3",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					LoadBalancerClass: pointer.String("foo"),
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       65030,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30133,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check for LB creation")
+			Consistently(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--class-name-service-test1", Namespace: "default"}, &lb)
+				if err != nil {
+					return client.IgnoreNotFound(err)
+				}
+				return helper.ErrInvalidClassname
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
+		It("create service with correct classname in spec", func() {
+			By("create service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "class-name-service-test4",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					LoadBalancerClass: pointer.String(helper.DefaultLoadbalancerClass),
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30335,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check creation of LB")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      "default--class-name-service-test4",
+					Namespace: "default",
+				}, &lb)
+				return err
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("Check Event for creation")
+			Eventually(func() error {
+				eventList := v1.EventList{}
+				err := k8sClient.List(ctx, &eventList)
+				if err != nil {
+					return err
+				}
+				for _, event := range eventList.Items {
+					if event.InvolvedObject.Name == "class-name-service-test4" &&
 						event.InvolvedObject.Kind == "Service" &&
 						strings.Contains(event.Message, "LoadBalancer is in creation") {
 						return nil

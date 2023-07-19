@@ -12,4 +12,5 @@ const (
 	LoadBalancerKind             = "LoadBalancer"
 	VRRPInstanceName             = "ENVOY"
 	HasKeepalivedMaster          = "HasKeepalivedMaster"
+	DefaultLoadbalancerClass     = "stackit.cloud/yawol"
 )

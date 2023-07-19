@@ -164,6 +164,29 @@ func GetLoadBalancerNameFromService(service *coreV1.Service) string {
 	return service.Namespace + "--" + service.Name
 }
 
+func getLoadBalancerClass(service *coreV1.Service) string {
+	if className, ok := service.Annotations[yawolv1beta1.ServiceClassName]; ok {
+		return className
+	}
+
+	if service.Spec.LoadBalancerClass != nil {
+		return *service.Spec.LoadBalancerClass
+	}
+
+	return ""
+}
+
+func CheckLoadBalancerClasses(service *coreV1.Service, validClasses []string) bool {
+	serviceClassName := getLoadBalancerClass(service)
+
+	for _, validClass := range validClasses {
+		if validClass == serviceClassName {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidateService checks if the service is valid
 func ValidateService(svc *coreV1.Service) error {
 	for _, port := range svc.Spec.Ports {

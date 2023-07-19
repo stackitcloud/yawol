@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -18,6 +19,7 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/controlcontroller"
 	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
+	"github.com/stackitcloud/yawol/internal/helper"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -32,6 +34,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+type loadbalancerClassNames []string
 
 const (
 	// Namespace in for LoadBalancer CRs
@@ -72,7 +76,8 @@ func main() {
 	var targetEnableLeaderElection bool
 	var targetKubeconfig string
 	var controlKubeconfig string
-	var className string
+	var classNames loadbalancerClassNames
+	var emptyClassName bool
 	// settings for leases
 	var leasesDurationInt int
 	var leasesRenewDeadlineInt int
@@ -94,9 +99,12 @@ func main() {
 		"K8s credentials for watching the Service resources.")
 	flag.StringVar(&controlKubeconfig, "control-kubeconfig", "",
 		"K8s credentials for deploying the LoadBalancer resources.")
-	flag.StringVar(&className, "classname", "",
-		"Only listen to Services with the given className. "+
-			"Default is empty and listen to all services with out className annotation")
+	flag.Var(&classNames, "classname",
+		"Only listen to Services with the given className. Can be set multiple times. "+
+			"Always listen to "+helper.DefaultLoadbalancerClass+"."+
+			"See also --empty-classname.")
+	flag.BoolVar(&emptyClassName, "empty-classname", true,
+		"Listen to services without a loadBalancerClass. Default is true.")
 	flag.IntVar(&leasesDurationInt, "leases-duration", 60,
 		"Is the time in seconds a non-leader will wait until forcing to acquire leadership.")
 	flag.IntVar(&leasesRenewDeadlineInt, "leases-renew-deadline", 50,
@@ -112,6 +120,11 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	classNames = append(classNames, helper.DefaultLoadbalancerClass)
+	if emptyClassName {
+		classNames = append(classNames, "")
+	}
 
 	leasesDuration = time.Duration(leasesDurationInt) * time.Second
 	leasesRenewDeadline = time.Duration(leasesRenewDeadlineInt) * time.Second
@@ -178,7 +191,7 @@ func main() {
 		Log:                    ctrl.Log.WithName("controller").WithName("Service"),
 		Scheme:                 targetMgr.GetScheme(),
 		Recorder:               targetMgr.GetEventRecorderFor("yawol-cloud-controller"),
-		ClassName:              className,
+		ClassNames:             classNames,
 	}).SetupWithManager(targetMgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
@@ -351,4 +364,13 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		AvailabilityZone: pointer.String(availabilityZone),
 		InternalLB:       pointer.Bool(internalLb),
 	}
+}
+
+func (i *loadbalancerClassNames) String() string {
+	return strings.Join(*i, ",")
+}
+
+func (i *loadbalancerClassNames) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }
