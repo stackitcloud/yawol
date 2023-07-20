@@ -3,5 +3,5 @@ description: Helm chart for yawol-controller
 name: yawol-controller
 sources:
   - https://github.com/stackitcloud/yawol
-version: 0.16.1
-appVersion: v0.16.1
+version: 0.17.0
+appVersion: v0.17.0
