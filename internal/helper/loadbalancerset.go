@@ -200,7 +200,8 @@ func ParseLoadBalancerSetMetrics(
 	if metrics == nil ||
 		metrics.ReplicasMetrics == nil ||
 		metrics.ReplicasCurrentMetrics == nil ||
-		metrics.ReplicasReadyMetrics == nil {
+		metrics.ReplicasReadyMetrics == nil ||
+		metrics.DeletionTimestampMetrics == nil {
 		return
 	}
 
@@ -224,6 +225,12 @@ func ParseLoadBalancerSetMetrics(
 			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
 			Set(float64(*lbs.Status.ReadyReplicas))
 	}
+
+	if lbs.DeletionTimestamp != nil {
+		metrics.DeletionTimestampMetrics.
+			WithLabelValues(lbs.Spec.Template.Spec.LoadBalancerRef.Name, lbs.Name, lbs.Namespace).
+			Set(float64(lbs.DeletionTimestamp.Unix()))
+	}
 }
 
 func RemoveLoadBalancerSetMetrics(
@@ -233,7 +240,8 @@ func RemoveLoadBalancerSetMetrics(
 	if metrics == nil ||
 		metrics.ReplicasMetrics == nil ||
 		metrics.ReplicasCurrentMetrics == nil ||
-		metrics.ReplicasReadyMetrics == nil {
+		metrics.ReplicasReadyMetrics == nil ||
+		metrics.DeletionTimestampMetrics == nil {
 		return
 	}
 
@@ -245,4 +253,5 @@ func RemoveLoadBalancerSetMetrics(
 	metrics.ReplicasMetrics.DeletePartialMatch(l)
 	metrics.ReplicasCurrentMetrics.DeletePartialMatch(l)
 	metrics.ReplicasReadyMetrics.DeletePartialMatch(l)
+	metrics.DeletionTimestampMetrics.DeletePartialMatch(l)
 }

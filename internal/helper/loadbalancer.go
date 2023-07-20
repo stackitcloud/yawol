@@ -320,6 +320,7 @@ func ParseLoadBalancerMetrics(
 	parseLoadBalancerInfoMetric(lb, metrics.InfoMetrics)
 	parseLoadBalancerOpenstackMetric(lb, metrics.OpenstackInfoMetrics)
 	parseLoadBalancerReadyMetric(lb, metrics.ReplicasMetrics, metrics.ReplicasCurrentMetrics, metrics.ReplicasReadyMetrics)
+	parseLoadBalancerDeletionTimestampMetric(lb, metrics.DeletionTimestampMetrics)
 }
 
 func parseLoadBalancerInfoMetric(
@@ -421,6 +422,19 @@ func parseLoadBalancerReadyMetric(
 	}
 }
 
+func parseLoadBalancerDeletionTimestampMetric(
+	lb yawolv1beta1.LoadBalancer,
+	loadBalancerDeletionTimestampMetrics *prometheus.GaugeVec,
+) {
+	if loadBalancerDeletionTimestampMetrics == nil {
+		return
+	}
+
+	if lb.DeletionTimestamp != nil {
+		loadBalancerDeletionTimestampMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(lb.DeletionTimestamp.Unix()))
+	}
+}
+
 func RemoveLoadBalancerMetrics(
 	lb yawolv1beta1.LoadBalancer,
 	metrics *helpermetrics.LoadBalancerMetricList,
@@ -430,7 +444,8 @@ func RemoveLoadBalancerMetrics(
 		metrics.OpenstackInfoMetrics == nil ||
 		metrics.ReplicasMetrics == nil ||
 		metrics.ReplicasCurrentMetrics == nil ||
-		metrics.ReplicasReadyMetrics == nil {
+		metrics.ReplicasReadyMetrics == nil ||
+		metrics.DeletionTimestampMetrics == nil {
 		return
 	}
 	l := map[string]string{
@@ -442,4 +457,5 @@ func RemoveLoadBalancerMetrics(
 	metrics.ReplicasMetrics.DeletePartialMatch(l)
 	metrics.ReplicasCurrentMetrics.DeletePartialMatch(l)
 	metrics.ReplicasReadyMetrics.DeletePartialMatch(l)
+	metrics.DeletionTimestampMetrics.DeletePartialMatch(l)
 }

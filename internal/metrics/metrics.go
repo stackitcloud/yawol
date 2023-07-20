@@ -6,47 +6,53 @@ import (
 )
 
 type LoadBalancerMetricList struct {
-	OpenstackMetrics       *prometheus.CounterVec
-	InfoMetrics            *prometheus.GaugeVec
-	OpenstackInfoMetrics   *prometheus.GaugeVec
-	ReplicasMetrics        *prometheus.GaugeVec
-	ReplicasCurrentMetrics *prometheus.GaugeVec
-	ReplicasReadyMetrics   *prometheus.GaugeVec
+	OpenstackMetrics         *prometheus.CounterVec
+	InfoMetrics              *prometheus.GaugeVec
+	OpenstackInfoMetrics     *prometheus.GaugeVec
+	ReplicasMetrics          *prometheus.GaugeVec
+	ReplicasCurrentMetrics   *prometheus.GaugeVec
+	ReplicasReadyMetrics     *prometheus.GaugeVec
+	DeletionTimestampMetrics *prometheus.GaugeVec
 }
 
 var LoadBalancerMetrics = LoadBalancerMetricList{
-	OpenstackMetrics:       OpenstackMetrics,
-	InfoMetrics:            LoadBalancerInfoMetrics,
-	OpenstackInfoMetrics:   LoadBalancerOpenstackInfoMetrics,
-	ReplicasMetrics:        LoadBalancerReplicasMetrics,
-	ReplicasCurrentMetrics: LoadBalancerReplicasCurrentMetrics,
-	ReplicasReadyMetrics:   LoadBalancerReplicasReadyMetrics,
+	OpenstackMetrics:         OpenstackMetrics,
+	InfoMetrics:              LoadBalancerInfoMetrics,
+	OpenstackInfoMetrics:     LoadBalancerOpenstackInfoMetrics,
+	ReplicasMetrics:          LoadBalancerReplicasMetrics,
+	ReplicasCurrentMetrics:   LoadBalancerReplicasCurrentMetrics,
+	ReplicasReadyMetrics:     LoadBalancerReplicasReadyMetrics,
+	DeletionTimestampMetrics: LoadBalancerDeletionTimestampMetrics,
 }
 
 type LoadBalancerSetMetricList struct {
-	ReplicasMetrics        *prometheus.GaugeVec
-	ReplicasCurrentMetrics *prometheus.GaugeVec
-	ReplicasReadyMetrics   *prometheus.GaugeVec
+	ReplicasMetrics          *prometheus.GaugeVec
+	ReplicasCurrentMetrics   *prometheus.GaugeVec
+	ReplicasReadyMetrics     *prometheus.GaugeVec
+	DeletionTimestampMetrics *prometheus.GaugeVec
 }
 
 var LoadBalancerSetMetrics = LoadBalancerSetMetricList{
-	ReplicasMetrics:        LoadBalancerSetReplicasMetrics,
-	ReplicasCurrentMetrics: LoadBalancerSetReplicasCurrentMetrics,
-	ReplicasReadyMetrics:   LoadBalancerSetReplicasReadyMetrics,
+	ReplicasMetrics:          LoadBalancerSetReplicasMetrics,
+	ReplicasCurrentMetrics:   LoadBalancerSetReplicasCurrentMetrics,
+	ReplicasReadyMetrics:     LoadBalancerSetReplicasReadyMetrics,
+	DeletionTimestampMetrics: LoadBalancerSetDeletionTimestampMetrics,
 }
 
 type LoadBalancerMachineMetricList struct {
-	VM                   *prometheus.GaugeVec
-	Conditions           *prometheus.GaugeVec
-	OpenstackMetrics     *prometheus.CounterVec
-	OpenstackInfoMetrics *prometheus.GaugeVec
+	VM                       *prometheus.GaugeVec
+	Conditions               *prometheus.GaugeVec
+	OpenstackMetrics         *prometheus.CounterVec
+	OpenstackInfoMetrics     *prometheus.GaugeVec
+	DeletionTimestampMetrics *prometheus.GaugeVec
 }
 
 var LoadBalancerMachineMetrics = LoadBalancerMachineMetricList{
-	VM:                   LoadBalancerMachineVMMetrics,
-	Conditions:           LoadBalancerMachineConditionMetrics,
-	OpenstackMetrics:     OpenstackMetrics,
-	OpenstackInfoMetrics: LoadBalancerMachineOpenstackInfoMetrics,
+	VM:                       LoadBalancerMachineVMMetrics,
+	Conditions:               LoadBalancerMachineConditionMetrics,
+	OpenstackMetrics:         OpenstackMetrics,
+	OpenstackInfoMetrics:     LoadBalancerMachineOpenstackInfoMetrics,
+	DeletionTimestampMetrics: LoadBalancerMachineDeletionTimestampMetrics,
 }
 
 var (
@@ -81,6 +87,11 @@ var (
 		Name: "loadbalancer_replicas_ready",
 		Help: "Ready replicas for LoadBalancer (from lb.status.readyReplicas)",
 	}, []string{"lb", "namespace"})
+	// LoadBalancerDeletionTimestampMetrics Deletion timestamp of a LoadBalancer in seconds since epoch
+	LoadBalancerDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "loadbalancer_deletion_timestamp",
+		Help: "Deletion timestamp of a LoadBalancer in seconds since epoch (only present for LoadBalancers in deletion)",
+	}, []string{"lb", "namespace"})
 
 	// LoadBalancerSetReplicasMetrics Replicas for LoadBalancerSet (from lbs.spec.replicas)
 	LoadBalancerSetReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -96,6 +107,11 @@ var (
 	LoadBalancerSetReplicasReadyMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_replicas_ready",
 		Help: "Ready replicas for LoadBalancerSet (from lbs.status.readyReplicas)",
+	}, []string{"lb", "lbs", "namespace"})
+	// LoadBalancerSetDeletionTimestampMetrics Deletion timestamp of a LoadBalancerSet in seconds since epoch
+	LoadBalancerSetDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "loadbalancerset_deletion_timestamp",
+		Help: "Deletion timestamp of a LoadBalancerSet in seconds since epoch (only present for LoadBalancers in deletion)",
 	}, []string{"lb", "lbs", "namespace"})
 
 	// LoadBalancerMachineVMMetrics Metrics of loadbalancermachine (all metrics from lbm.status.metrics)
@@ -113,6 +129,11 @@ var (
 		Name: "loadbalancermachine_openstack_info",
 		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine",
 	}, []string{"lb", "lbm", "namespace", "portID", "serverID", "flavorID"})
+	// LoadBalancerMachineDeletionTimestampMetrics Deletion timestamp of a LoadBalancerMachine in seconds since epoch
+	LoadBalancerMachineDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "loadbalancermachine_deletion_timestamp",
+		Help: "Deletion timestamp of a LoadBalancerMachine in seconds since epoch (only present for LoadBalancers in deletion)",
+	}, []string{"lb", "lbm", "namespace"})
 )
 
 func init() {
@@ -123,10 +144,13 @@ func init() {
 	metrics.Registry.MustRegister(LoadBalancerReplicasMetrics)
 	metrics.Registry.MustRegister(LoadBalancerReplicasCurrentMetrics)
 	metrics.Registry.MustRegister(LoadBalancerReplicasReadyMetrics)
+	metrics.Registry.MustRegister(LoadBalancerDeletionTimestampMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasCurrentMetrics)
 	metrics.Registry.MustRegister(LoadBalancerSetReplicasReadyMetrics)
+	metrics.Registry.MustRegister(LoadBalancerSetDeletionTimestampMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineVMMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineConditionMetrics)
 	metrics.Registry.MustRegister(LoadBalancerMachineOpenstackInfoMetrics)
+	metrics.Registry.MustRegister(LoadBalancerMachineDeletionTimestampMetrics)
 }
