@@ -15,6 +15,7 @@ metadata:
     # yawol.stackit.cloud/tcpProxyProtocol: "false"
     # yawol.stackit.cloud/tcpProxyProtocolPortsFilter: ""
 spec:
+  loadBalancerClass: "test"
   type: LoadBalancer
   selector:
     app: nginx

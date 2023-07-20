@@ -41,7 +41,7 @@ type ServiceReconciler struct {
 	Log                    logr.Logger
 	Scheme                 *runtime.Scheme
 	Recorder               record.EventRecorder
-	ClassName              string
+	ClassNames             []string
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -57,14 +57,9 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	className, ok := svc.Annotations[yawolv1beta1.ServiceClassName]
-	if !ok {
-		className = ""
-	}
-
 	infraDefaults := GetMergedInfrastructureDetails(r.InfrastructureDefaults, svc)
 
-	if className != r.ClassName {
+	if !helper.CheckLoadBalancerClasses(svc, r.ClassNames) {
 		r.Log.WithValues("service", req.NamespacedName).Info("service and controller classname does not match")
 		if err := r.ControlClient.Get(ctx, types.NamespacedName{
 			Namespace: *infraDefaults.Namespace,
@@ -560,11 +555,7 @@ func (r *ServiceReconciler) deletionRoutine(
 	}
 
 	if apierrors.IsNotFound(err) {
-		className, ok := svc.Annotations[yawolv1beta1.ServiceClassName]
-		if !ok {
-			className = ""
-		}
-		if r.ClassName != className {
+		if !helper.CheckLoadBalancerClasses(svc, r.ClassNames) {
 			return ctrl.Result{}, nil
 		}
 

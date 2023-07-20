@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/helper"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -101,7 +102,7 @@ var _ = BeforeSuite(func() {
 		Log:                    ctrl.Log.WithName("controllers").WithName("Service"),
 		Scheme:                 k8sManager.GetScheme(),
 		Recorder:               k8sManager.GetEventRecorderFor("Loadbalancer"),
-		ClassName:              "",
+		ClassNames:             []string{"", helper.DefaultLoadbalancerClass},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

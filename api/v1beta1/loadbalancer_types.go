@@ -32,6 +32,7 @@ const (
 	// ServiceDebugSSHKey set an sshkey
 	ServiceDebugSSHKey = "yawol.stackit.cloud/debugsshkey"
 	// ServiceClassName for filtering services in cloud-controller
+	// Deprecated: use .spec.loadBalancerClass instead
 	ServiceClassName = "yawol.stackit.cloud/className"
 	// ServiceReplicas for setting loadbalancer replicas in cloud-controller
 	ServiceReplicas = "yawol.stackit.cloud/replicas"

@@ -104,7 +104,6 @@ The controllers are using the default kubeconfig ($KUBECONFIG, InCluster or
    # or
    kubectl create deployment --image nginx:latest nginx --replicas 1
    kubectl expose deployment --port 80 --type LoadBalancer nginx --name loadbalancer
-   kubectl annotate service loadbalancer yawol.stackit.cloud/className=test # annotation needs to match the value of the `classname` flag from `run-ycc.sh`
    ```
 
 2. Check if the yawol-cloud-controller created a new `LoadBalancer` object
