@@ -405,7 +405,14 @@ func parseLoadBalancerReadyMetric(
 		return
 	}
 
-	loadBalancerReplicasMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(lb.Spec.Replicas))
+	specReplicas := lb.Spec.Replicas
+	if lb.DeletionTimestamp != nil {
+		// If deletionTimestamp is set, the desired state is to have 0 replicas. Setting this metrics to 0 makes it easier
+		// to define alerts that should not trigger false positives, if a LoadBalancer takes a long time to delete.
+		specReplicas = 0
+	}
+	loadBalancerReplicasMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(specReplicas))
+
 	if lb.Status.Replicas != nil {
 		loadBalancerReplicasCurrentMetrics.WithLabelValues(lb.Name, lb.Namespace).Set(float64(*lb.Status.Replicas))
 	}

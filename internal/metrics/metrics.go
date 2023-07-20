@@ -69,7 +69,7 @@ var (
 	// LoadBalancerReplicasMetrics Replicas for LoadBalancer (from lb.spec.replicas)
 	LoadBalancerReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancer_replicas",
-		Help: "Replicas for LoadBalancer (from lb.spec.replicas)",
+		Help: "Replicas for LoadBalancer (from lb.spec.replicas, 0 if marked for deletion)",
 	}, []string{"lb", "namespace"})
 	// LoadBalancerReplicasCurrentMetrics Current replicas for LoadBalancer (from lb.status.replicas)
 	LoadBalancerReplicasCurrentMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -85,7 +85,7 @@ var (
 	// LoadBalancerSetReplicasMetrics Replicas for LoadBalancerSet (from lbs.spec.replicas)
 	LoadBalancerSetReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_replicas",
-		Help: "Replicas for LoadBalancerSet (from lbs.spec.replicas)",
+		Help: "Replicas for LoadBalancerSet (from lbs.spec.replicas, 0 if marked for deletion)",
 	}, []string{"lb", "lbs", "namespace"})
 	// LoadBalancerSetReplicasCurrentMetrics Current replicas for LoadBalancerSet (from lbs.status.replicas)
 	LoadBalancerSetReplicasCurrentMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
