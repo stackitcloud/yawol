@@ -101,8 +101,8 @@ func main() {
 		"K8s credentials for deploying the LoadBalancer resources.")
 	flag.Var(&classNames, "classname",
 		"Only listen to Services with the given className. Can be set multiple times. "+
-			"Always listen to "+helper.DefaultLoadbalancerClass+"."+
-			"See also --empty-classname.")
+			"If no classname is set it will defaults to "+helper.DefaultLoadbalancerClass+" "+
+			"and services without class. See also --empty-classname.")
 	flag.BoolVar(&emptyClassName, "empty-classname", true,
 		"Listen to services without a loadBalancerClass. Default is true.")
 	flag.IntVar(&leasesDurationInt, "leases-duration", 60,
@@ -121,7 +121,9 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	classNames = append(classNames, helper.DefaultLoadbalancerClass)
+	if len(classNames) == 0 {
+		classNames = append(classNames, helper.DefaultLoadbalancerClass)
+	}
 	if emptyClassName {
 		classNames = append(classNames, "")
 	}

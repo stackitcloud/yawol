@@ -13,6 +13,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -165,7 +166,7 @@ func GetLoadBalancerNameFromService(service *coreV1.Service) string {
 }
 
 func getLoadBalancerClass(service *coreV1.Service) string {
-	if className, ok := service.Annotations[yawolv1beta1.ServiceClassName]; ok {
+	if className := service.Annotations[yawolv1beta1.ServiceClassName]; className != "" {
 		return className
 	}
 
@@ -177,14 +178,7 @@ func getLoadBalancerClass(service *coreV1.Service) string {
 }
 
 func CheckLoadBalancerClasses(service *coreV1.Service, validClasses []string) bool {
-	serviceClassName := getLoadBalancerClass(service)
-
-	for _, validClass := range validClasses {
-		if validClass == serviceClassName {
-			return true
-		}
-	}
-	return false
+	return sets.New(validClasses...).Has(getLoadBalancerClass(service))
 }
 
 // ValidateService checks if the service is valid

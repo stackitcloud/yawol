@@ -638,6 +638,54 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
 
+		It("create service without classname", func() {
+			By("create service")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "class-name-service-test5",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   30360,
+						},
+					},
+					Type: "LoadBalancer",
+				}}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("check creation of LB")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      "default--class-name-service-test5",
+					Namespace: "default",
+				}, &lb)
+				return err
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("Check Event for creation")
+			Eventually(func() error {
+				eventList := v1.EventList{}
+				err := k8sClient.List(ctx, &eventList)
+				if err != nil {
+					return err
+				}
+				for _, event := range eventList.Items {
+					if event.InvolvedObject.Name == "class-name-service-test5" &&
+						event.InvolvedObject.Kind == "Service" &&
+						strings.Contains(event.Message, "LoadBalancer is in creation") {
+						return nil
+					}
+				}
+				return helper.ErrNoEventFound
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+
 		It("create service with existingFloatingIP", func() {
 			By("create service")
 			service := v1.Service{
