@@ -18,4 +18,8 @@ ignore:
     - '*':
         reason: TODO check
         created: 2022-09-07T12:51:20.590Z
+  'snyk:lic:golang:github.com:hashicorp:go-uuid:MPL-2.0':
+    - '*':
+        reason: TODO check
+        created: 2023-07-20T15:30:00.00Z
 patch: {}
