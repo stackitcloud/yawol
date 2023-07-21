@@ -68,6 +68,7 @@ func ParseLoadBalancerMachineMetrics(
 	parseLoadBalancerMachineVMMetrics(loadBalancerMachine, metrics)
 	parseLoadBalancerMachineConditionsMetrics(loadBalancerMachine, metrics)
 	parseLoadBalancerMachineOpenstackInfoMetrics(loadBalancerMachine, metrics)
+	parseLoadBalancerMachineDeletionTimestampMetrics(loadBalancerMachine, metrics)
 }
 
 func parseLoadBalancerMachineVMMetrics(
@@ -150,12 +151,29 @@ func parseLoadBalancerMachineOpenstackInfoMetrics(
 	metrics.OpenstackInfoMetrics.With(labels).Set(1)
 }
 
+func parseLoadBalancerMachineDeletionTimestampMetrics(
+	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
+	metrics *helpermetrics.LoadBalancerMachineMetricList,
+) {
+	if metrics == nil || metrics.DeletionTimestampMetrics == nil {
+		return
+	}
+
+	if loadBalancerMachine.DeletionTimestamp != nil {
+		metrics.DeletionTimestampMetrics.
+			WithLabelValues(loadBalancerMachine.Spec.LoadBalancerRef.Name, loadBalancerMachine.Name, loadBalancerMachine.Namespace).
+			Set(float64(loadBalancerMachine.DeletionTimestamp.Unix()))
+	}
+}
 func RemoveLoadBalancerMachineMetrics(
 	loadBalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	metrics *helpermetrics.LoadBalancerMachineMetricList,
 ) {
 	if metrics == nil ||
-		metrics.VM == nil {
+		metrics.VM == nil ||
+		metrics.Conditions == nil ||
+		metrics.OpenstackMetrics == nil ||
+		metrics.DeletionTimestampMetrics == nil {
 		return
 	}
 
@@ -168,6 +186,7 @@ func RemoveLoadBalancerMachineMetrics(
 	metrics.VM.DeletePartialMatch(labels)
 	metrics.Conditions.DeletePartialMatch(labels)
 	metrics.OpenstackInfoMetrics.DeletePartialMatch(labels)
+	metrics.DeletionTimestampMetrics.DeletePartialMatch(labels)
 }
 
 // RemoveFromLBMStatus removes key from loadbalancermachine status.
