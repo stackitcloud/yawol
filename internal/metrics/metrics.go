@@ -111,7 +111,7 @@ var (
 	// LoadBalancerSetDeletionTimestampMetrics Deletion timestamp of a LoadBalancerSet in seconds since epoch
 	LoadBalancerSetDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancerset_deletion_timestamp",
-		Help: "Deletion timestamp of a LoadBalancerSet in seconds since epoch (only present for LoadBalancers in deletion)",
+		Help: "Deletion timestamp of a LoadBalancerSet in seconds since epoch (only present for LoadBalancerSets in deletion)",
 	}, []string{"lb", "lbs", "namespace"})
 
 	// LoadBalancerMachineVMMetrics Metrics of loadbalancermachine (all metrics from lbm.status.metrics)
@@ -132,7 +132,7 @@ var (
 	// LoadBalancerMachineDeletionTimestampMetrics Deletion timestamp of a LoadBalancerMachine in seconds since epoch
 	LoadBalancerMachineDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine_deletion_timestamp",
-		Help: "Deletion timestamp of a LoadBalancerMachine in seconds since epoch (only present for LoadBalancers in deletion)",
+		Help: "Deletion timestamp of a LoadBalancerMachine in seconds since epoch (only present for LoadBalancerMachines in deletion)",
 	}, []string{"lb", "lbm", "namespace"})
 )
 
