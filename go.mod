@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 	github.com/prometheus/client_golang v1.16.0
-	github.com/shirou/gopsutil/v3 v3.23.6
+	github.com/shirou/gopsutil/v3 v3.23.7
 	github.com/spf13/afero v1.9.5
 	go.uber.org/zap v1.25.0
 	golang.org/x/time v0.3.0
