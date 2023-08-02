@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/shirou/gopsutil/v3 v3.23.6
 	github.com/spf13/afero v1.9.5
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.25.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
@@ -78,8 +78,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
