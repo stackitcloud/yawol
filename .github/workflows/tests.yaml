@@ -13,7 +13,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       FORCE_COLOR: 1
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Put back the git branch into git (Earthly uses it for tagging)
       run: |
         branch=""
