@@ -239,6 +239,28 @@
     - name: enable keepalivedstats
       command: "rc-update add keepalivedstats default"
 
+    - name: add cloud-init config
+      copy:
+        src: ./cloud-init-10_openstack.cfg
+        dest: /etc/cloud/cloud.cfg.d/10_openstack.cfg
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: overwrite cloud-init initd file
+      copy:
+        src: ./cloud-init-initd
+        dest: /etc/init.d/cloud-init
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: disable resizefs in cloud-init
+      ansible.builtin.lineinfile:
+        path: /etc/cloud/cloud.cfg
+        regexp: '^(#)?\s- resizefs.*'
+        line: '# - resizefs'
+
     - name: enable cloud-config
       command: "rc-update add cloud-config default"
     - name: enable cloud-init-local
