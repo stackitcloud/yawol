@@ -241,7 +241,7 @@
 
     - name: add cloud-init config
       copy:
-        src: ./cloud-init.config
+        src: ./cloud-init-10_openstack.cfg
         dest: /etc/cloud/cloud.cfg.d/10_openstack.cfg
         owner: root
         group: root
@@ -254,6 +254,12 @@
         owner: root
         group: root
         mode: 0755
+
+    - name: disable resizefs in cloud-init
+      ansible.builtin.lineinfile:
+        path: /etc/cloud/cloud.cfg
+        regexp: '^(#)?\s- resizefs.*'
+        line: '# - resizefs'
 
     - name: enable cloud-config
       command: "rc-update add cloud-config default"
