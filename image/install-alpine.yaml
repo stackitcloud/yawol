@@ -239,6 +239,14 @@
     - name: enable keepalivedstats
       command: "rc-update add keepalivedstats default"
 
+    - name: add cloud-init config
+      copy:
+        src: ./cloud-init.config
+        dest: /etc/cloud/cloud.cfg.d/10_openstack.cfg
+        owner: root
+        group: root
+        mode: 0644
+
     - name: enable cloud-config
       command: "rc-update add cloud-config default"
     - name: enable cloud-init-local
