@@ -247,6 +247,14 @@
         group: root
         mode: 0644
 
+    - name: overwrite cloud-init initd file
+      copy:
+        src: ./cloud-init-initd
+        dest: /etc/init.d/cloud-init
+        owner: root
+        group: root
+        mode: 0755
+
     - name: enable cloud-config
       command: "rc-update add cloud-config default"
     - name: enable cloud-init-local
