@@ -7,12 +7,12 @@ import (
 	"log"
 	"net"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.

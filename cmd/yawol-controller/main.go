@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"time"
 
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancer"
@@ -24,6 +23,7 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
