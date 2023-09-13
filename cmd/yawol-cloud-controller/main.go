@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"strconv"
 	"strings"
 	"time"
@@ -137,9 +138,10 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	targetMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(targetKubeconfig), ctrl.Options{
-		Scheme:                        scheme,
-		MetricsBindAddress:            metricsAddr,
-		Port:                          9443,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		LeaderElection:                targetEnableLeaderElection,
 		LeaderElectionReleaseOnCancel: true,
 		LeaderElectionID:              "4c878ae2.stackit.cloud",
@@ -154,10 +156,11 @@ func main() {
 	}
 
 	controlMgr, err := ctrl.NewManager(getConfigFromKubeconfigOrDie(controlKubeconfig), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: "0",
+		Scheme: scheme,
 		Cache: cache.Options{
-			Namespaces: []string{*infrastructureDefaults.Namespace},
+			DefaultNamespaces: map[string]cache.Config{
+				*infrastructureDefaults.Namespace: {},
+			},
 		},
 		LeaderElection:                controlEnableLeaderElection,
 		LeaderElectionReleaseOnCancel: true,

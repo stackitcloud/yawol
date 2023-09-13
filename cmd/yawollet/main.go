@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
@@ -185,11 +186,15 @@ func main() {
 	}()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		LeaderElection:     false,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
+		LeaderElection: false,
 		Cache: cache.Options{
-			Namespaces: []string{namespace},
+			DefaultNamespaces: map[string]cache.Config{
+				namespace: {},
+			},
 			ByObject: map[client.Object]cache.ByObject{
 				&yawolv1beta1.LoadBalancer{}:        {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerName})},
 				&yawolv1beta1.LoadBalancerMachine{}: {Field: fields.SelectorFromSet(fields.Set{"metadata.name": loadbalancerMachineName})},
