@@ -10,7 +10,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -565,7 +565,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Namespace: "default",
 				},
 				Spec: v1.ServiceSpec{
-					LoadBalancerClass: pointer.String("foo"),
+					LoadBalancerClass: ptr.To("foo"),
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",
@@ -597,7 +597,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Namespace: "default",
 				},
 				Spec: v1.ServiceSpec{
-					LoadBalancerClass: pointer.String(helper.DefaultLoadbalancerClass),
+					LoadBalancerClass: ptr.To(helper.DefaultLoadbalancerClass),
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",
@@ -1062,7 +1062,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				},
 				Spec: v1.ServiceSpec{
 					IPFamilies:     []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol},
-					IPFamilyPolicy: (*v1.IPFamilyPolicyType)(pointer.String(string(v1.IPFamilyPolicyRequireDualStack))),
+					IPFamilyPolicy: (*v1.IPFamilyPolicyType)(ptr.To(string(v1.IPFamilyPolicyRequireDualStack))),
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",

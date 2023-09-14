@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -95,8 +95,8 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// TODO: patchStatus *after* we've reconciled the replicas
-	if res, err := r.patchStatus(ctx, &set, readyMachineCount, hasKeepalivedMaster); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
+	if err := r.patchStatus(ctx, &set, readyMachineCount, hasKeepalivedMaster); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if res, err := r.reconcileReplicas(
@@ -154,14 +154,14 @@ func (r *LoadBalancerSetReconciler) patchStatus(
 	set *yawolv1beta1.LoadBalancerSet,
 	readyMachinesCount int,
 	hasKeepalivedMaster bool,
-) (ctrl.Result, error) {
+) error {
 	setCopy := set.DeepCopy()
 
 	// Write replicas into status
-	set.Status.Replicas = pointer.Int(set.Spec.Replicas)
+	set.Status.Replicas = ptr.To(set.Spec.Replicas)
 
 	// Write ready replicas into status
-	set.Status.ReadyReplicas = pointer.Int(readyMachinesCount)
+	set.Status.ReadyReplicas = ptr.To(readyMachinesCount)
 
 	// Write HasKeepalivedMaster condition
 	status := metav1.ConditionFalse
@@ -182,10 +182,10 @@ func (r *LoadBalancerSetReconciler) patchStatus(
 	})
 
 	if equality.Semantic.DeepEqual(set, setCopy) {
-		return ctrl.Result{}, nil
+		return nil
 	}
 
-	return ctrl.Result{}, r.Client.Status().Patch(ctx, set, client.MergeFrom(setCopy))
+	return r.Client.Status().Patch(ctx, set, client.MergeFrom(setCopy))
 }
 
 func (r *LoadBalancerSetReconciler) reconcileReplicas(

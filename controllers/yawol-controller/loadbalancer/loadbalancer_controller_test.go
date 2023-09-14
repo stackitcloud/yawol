@@ -25,10 +25,10 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	predicatesEvent "sigs.k8s.io/controller-runtime/pkg/event"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -68,16 +68,16 @@ var _ = Describe("check controller-runtime predicate", func() {
 					Message:            "Message",
 				},
 			},
-			ReadyReplicas: pointer.Int(1),
-			Replicas:      pointer.Int(1),
+			ReadyReplicas: ptr.To(1),
+			Replicas:      ptr.To(1),
 		},
 	}
 
 	It("should reconcile when change in lbs status", func() {
 		newObj := lbSet.DeepCopy()
-		oldReplicas := pointer.IntDeref(newObj.Status.Replicas, 0)
+		oldReplicas := ptr.Deref(newObj.Status.Replicas, 0)
 		oldReplicas++
-		newObj.Status.Replicas = pointer.Int(oldReplicas)
+		newObj.Status.Replicas = ptr.To(oldReplicas)
 
 		event := predicatesEvent.UpdateEvent{
 			ObjectOld: lbSet.DeepCopy(),
@@ -98,7 +98,7 @@ var _ = Describe("check controller-runtime predicate", func() {
 	It("should reconcile on deletion if set has still replicas in status", func() {
 		obj := lbSet.DeepCopy()
 		obj.Spec.Replicas = 0
-		obj.Status.Replicas = pointer.Int(1)
+		obj.Status.Replicas = ptr.To(1)
 		event := predicatesEvent.DeleteEvent{
 			Object: obj,
 		}
@@ -312,7 +312,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("changing flavorid")
 			updateLB(lbNN, func(act *LB) {
 				act.Spec.Infrastructure.Flavor = yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.String("somenewid"),
+					FlavorID: ptr.To("somenewid"),
 				}
 			})
 
@@ -351,7 +351,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			By("changing flavorid")
 			updateLB(lbNN, func(act *LB) {
 				act.Spec.Infrastructure.Flavor = yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.String("somenewid"),
+					FlavorID: ptr.To("somenewid"),
 				}
 			})
 
@@ -492,13 +492,13 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			Expect(err).Should(Succeed())
 
 			lb.Status = yawolv1beta1.LoadBalancerStatus{
-				ExternalIP:             pointer.String("8.0.0.1"),
-				FloatingID:             pointer.String("floating-id"),
-				FloatingName:           pointer.String("floating-name"),
-				PortID:                 pointer.String("port-id"),
-				PortName:               pointer.String("port-name"),
-				SecurityGroupID:        pointer.String("sec-group-id"),
-				SecurityGroupName:      pointer.String("sec-group-name"),
+				ExternalIP:             ptr.To("8.0.0.1"),
+				FloatingID:             ptr.To("floating-id"),
+				FloatingName:           ptr.To("floating-name"),
+				PortID:                 ptr.To("port-id"),
+				PortName:               ptr.To("port-name"),
+				SecurityGroupID:        ptr.To("sec-group-id"),
+				SecurityGroupName:      ptr.To("sec-group-name"),
 				LastOpenstackReconcile: &timeNow,
 				OpenstackReconcileHash: &reconcileHash,
 			}
@@ -519,22 +519,22 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			Eventually(func(g Gomega) {
 				err := k8sClient.Get(ctx, lbNN, &actual)
 				g.Expect(err).To(Succeed())
-				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(0)))
-				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(0)))
+				g.Expect(actual.Status.Replicas).Should(Equal(ptr.To(0)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(ptr.To(0)))
 			}, timeout, interval)
 
 			By("Test - Patching status")
 			patch := client.MergeFrom(lbSet.DeepCopy())
-			lbSet.Status.Replicas = pointer.Int(1)
-			lbSet.Status.ReadyReplicas = pointer.Int(1)
+			lbSet.Status.Replicas = ptr.To(1)
+			lbSet.Status.ReadyReplicas = ptr.To(1)
 			Expect(k8sClient.Status().Patch(ctx, &lbSet, patch)).Should(Succeed())
 
 			By("Validate - Replicas in lb status")
 			Eventually(func(g Gomega) {
 				err := k8sClient.Get(ctx, lbNN, &actual)
 				g.Expect(err).Should(Succeed())
-				g.Expect(actual.Status.Replicas).Should(Equal(pointer.Int(1)))
-				g.Expect(actual.Status.ReadyReplicas).Should(Equal(pointer.Int(1)))
+				g.Expect(actual.Status.Replicas).Should(Equal(ptr.To(1)))
+				g.Expect(actual.Status.ReadyReplicas).Should(Equal(ptr.To(1)))
 			}, timeout, interval)
 		})
 	})
@@ -936,14 +936,14 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 			ExistingFloatingIP: nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
-					FloatingNetID: pointer.String("floatingnet-id"),
+					FloatingNetID: ptr.To("floatingnet-id"),
 					NetworkID:     "network-id",
 				},
 				Flavor: yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.String("flavor-id"),
+					FlavorID: ptr.To("flavor-id"),
 				},
 				Image: yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.String("image-id"),
+					ImageID: ptr.To("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,

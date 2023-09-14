@@ -5,12 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
-
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
+	v1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +41,7 @@ func NewLoadBalancerSetForLoadBalancer(lb *yawolv1beta1.LoadBalancer, hash strin
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					Infrastructure: lb.Spec.Infrastructure,
 					PortID:         *lb.Status.PortID,
-					ServerGroupID:  pointer.StringDeref(lb.Status.ServerGroupID, ""),
+					ServerGroupID:  ptr.Deref(lb.Status.ServerGroupID, ""),
 					LoadBalancerRef: yawolv1beta1.LoadBalancerRef{
 						Namespace: lb.Namespace,
 						Name:      lb.Name,
@@ -102,8 +101,8 @@ func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) bool {
 // StatusReplicasFromSetList returns the total replicas and ready replicas based on the given list of LoadBalancerSets.
 func StatusReplicasFromSetList(setList *yawolv1beta1.LoadBalancerSetList) (replicas, readyReplicas int) {
 	for i := range setList.Items {
-		replicas += pointer.IntDeref(setList.Items[i].Status.Replicas, 0)
-		readyReplicas += pointer.IntDeref(setList.Items[i].Status.ReadyReplicas, 0)
+		replicas += ptr.Deref(setList.Items[i].Status.Replicas, 0)
+		readyReplicas += ptr.Deref(setList.Items[i].Status.ReadyReplicas, 0)
 	}
 
 	return

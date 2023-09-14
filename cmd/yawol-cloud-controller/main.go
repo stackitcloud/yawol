@@ -13,7 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -304,15 +304,15 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	var flavorID *string
-	if flavorID = pointer.String(os.Getenv(EnvFlavorID)); *flavorID == "" {
+	if flavorID = ptr.To(os.Getenv(EnvFlavorID)); *flavorID == "" {
 		flavorID = nil
 	}
 	var flavorName *string
-	if flavorName = pointer.String(os.Getenv(EnvFlavorName)); *flavorName == "" {
+	if flavorName = ptr.To(os.Getenv(EnvFlavorName)); *flavorName == "" {
 		flavorName = nil
 	}
 	var flavorSearch *string
-	if flavorSearch = pointer.String(os.Getenv(EnvFlavorSearch)); *flavorSearch == "" {
+	if flavorSearch = ptr.To(os.Getenv(EnvFlavorSearch)); *flavorSearch == "" {
 		flavorSearch = nil
 	}
 	if flavorID == nil && flavorName == nil && flavorSearch == nil {
@@ -320,15 +320,15 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	var imageID *string
-	if imageID = pointer.String(os.Getenv(EnvImageID)); *imageID == "" {
+	if imageID = ptr.To(os.Getenv(EnvImageID)); *imageID == "" {
 		imageID = nil
 	}
 	var imageName *string
-	if imageName = pointer.String(os.Getenv(EnvImageName)); *imageName == "" {
+	if imageName = ptr.To(os.Getenv(EnvImageName)); *imageName == "" {
 		imageName = nil
 	}
 	var imageSearch *string
-	if imageSearch = pointer.String(os.Getenv(EnvImageSearch)); *imageSearch == "" {
+	if imageSearch = ptr.To(os.Getenv(EnvImageSearch)); *imageSearch == "" {
 		imageSearch = nil
 	}
 	if imageID == nil && imageName == nil && imageSearch == nil {
@@ -352,10 +352,10 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 	}
 
 	return targetcontroller.InfrastructureDefaults{
-		AuthSecretName:    pointer.String(authSecretName),
-		FloatingNetworkID: pointer.String(floatingNetworkID),
-		NetworkID:         pointer.String(networkID),
-		Namespace:         pointer.String(clusterNamespace),
+		AuthSecretName:    ptr.To(authSecretName),
+		FloatingNetworkID: ptr.To(floatingNetworkID),
+		NetworkID:         ptr.To(networkID),
+		Namespace:         ptr.To(clusterNamespace),
 		FlavorRef: &yawolv1beta1.OpenstackFlavorRef{
 			FlavorID:     flavorID,
 			FlavorName:   flavorName,
@@ -366,8 +366,8 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 			ImageName:   imageName,
 			ImageSearch: imageSearch,
 		},
-		AvailabilityZone: pointer.String(availabilityZone),
-		InternalLB:       pointer.Bool(internalLb),
+		AvailabilityZone: ptr.To(availabilityZone),
+		InternalLB:       ptr.To(internalLb),
 	}
 }
 
