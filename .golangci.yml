@@ -57,7 +57,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - depguard
     - dogsled
     - goconst
     - gocritic
@@ -94,6 +93,7 @@ linters:
   # - goerr113 # we have some dynamic errors
   # - exhaustive # missing switch case statements
   # - asciicheck
+  # - depguard
   # - errcheck # Disabled since it detects defers that do not check errors. This is a standard pattern.
   #              see https://github.com/kisielk/errcheck/issues/55
   # - scopelint

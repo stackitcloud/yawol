@@ -5,7 +5,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type InfrastructureDefaults struct {
@@ -82,7 +82,7 @@ func GetInfrastructureDetailsFromService(svc *v1.Service) InfrastructureDefaults
 	}
 	if svc.Annotations[yawolv1beta1.ServiceAvailabilityZone] != "" {
 		az := svc.Annotations[yawolv1beta1.ServiceAvailabilityZone]
-		serviceInfraDefault.AvailabilityZone = pointer.String(az)
+		serviceInfraDefault.AvailabilityZone = ptr.To(az)
 	}
 	if svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer] != "" {
 		internalLB, err := strconv.ParseBool(svc.Annotations[yawolv1beta1.ServiceInternalLoadbalancer])

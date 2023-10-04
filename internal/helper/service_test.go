@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 )
@@ -30,7 +30,7 @@ var _ = Describe("loadbalancerClasses", Serial, Ordered, func() {
 
 	It("should return correct loadbalancerClass from spec", func() {
 		s := svc.DeepCopy()
-		s.Spec.LoadBalancerClass = pointer.String("bar")
+		s.Spec.LoadBalancerClass = ptr.To("bar")
 		expected := "bar"
 		Expect(getLoadBalancerClass(s)).To(Equal(expected))
 	})
@@ -40,7 +40,7 @@ var _ = Describe("loadbalancerClasses", Serial, Ordered, func() {
 		s.Annotations = map[string]string{
 			yawolv1beta1.ServiceClassName: "foo",
 		}
-		s.Spec.LoadBalancerClass = pointer.String("bar")
+		s.Spec.LoadBalancerClass = ptr.To("bar")
 		expected := "foo"
 		Expect(getLoadBalancerClass(s)).To(Equal(expected))
 	})

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
@@ -173,9 +173,9 @@ func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this 
 			// a delete event is only relevant if a LoadBalancerSet was deleted that is supposed to have replicas or still has replicas
 			// otherwise, a deletion doesn't need to be reconciled by this controller
 			return lbs.Spec.Replicas > 0 ||
-				pointer.IntDeref(lbs.Status.Replicas, 0) > 0 ||
-				pointer.IntDeref(lbs.Status.ReadyReplicas, 0) > 0 ||
-				pointer.IntDeref(lbs.Status.AvailableReplicas, 0) > 0
+				ptr.Deref(lbs.Status.Replicas, 0) > 0 ||
+				ptr.Deref(lbs.Status.ReadyReplicas, 0) > 0 ||
+				ptr.Deref(lbs.Status.AvailableReplicas, 0) > 0
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
 			return false
@@ -386,7 +386,7 @@ func (r *Reconciler) reconcileFIP(
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.FloatingName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			FloatingName: pointer.String(req.NamespacedName.String()),
+			FloatingName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -522,7 +522,7 @@ func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity 
 	// Patch Floating Name, so we can reference it later
 	if lb.Status.PortName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			PortName: pointer.String(req.NamespacedName.String()),
+			PortName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -682,7 +682,7 @@ func (r *Reconciler) reconcileSecGroup(
 	// Patch SecurityGroup Name, so we can reference it later
 	if lb.Status.SecurityGroupName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupName: pointer.String(req.NamespacedName.String()),
+			SecurityGroupName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -784,7 +784,7 @@ func (r *Reconciler) reconcileServerGroup(
 	// Patch server group name, so we can reference it later
 	if lb.Status.ServerGroupName == nil {
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
-			ServerGroupName: pointer.String(req.NamespacedName.String()),
+			ServerGroupName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
 			return false, err
 		}
@@ -992,8 +992,8 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	}
 
 	var (
-		currentReplicas      = pointer.IntDeref(currentSet.Status.Replicas, 0)
-		currentReadyReplicas = pointer.IntDeref(currentSet.Status.ReadyReplicas, 0)
+		currentReplicas      = ptr.Deref(currentSet.Status.Replicas, 0)
+		currentReadyReplicas = ptr.Deref(currentSet.Status.ReadyReplicas, 0)
 	)
 	log = log.WithValues("replicas", currentReplicas, "readyReplicas", currentReadyReplicas)
 

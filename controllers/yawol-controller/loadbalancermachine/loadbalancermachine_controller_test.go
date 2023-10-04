@@ -21,8 +21,7 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
+	"k8s.io/utils/ptr"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -414,9 +413,9 @@ func getMockLB() *LB {
 			Namespace: namespace,
 		},
 		Status: yawolv1beta1.LoadBalancerStatus{
-			SecurityGroupID:   pointer.String("secgroup-id"),
-			SecurityGroupName: pointer.String("secgroup-name"),
-			PortID:            pointer.String("0"),
+			SecurityGroupID:   ptr.To("secgroup-id"),
+			SecurityGroupName: ptr.To("secgroup-name"),
+			PortID:            ptr.To("0"),
 		},
 		Spec: yawolv1beta1.LoadBalancerSpec{
 			Selector: metav1.LabelSelector{
@@ -433,14 +432,14 @@ func getMockLB() *LB {
 			Ports:     nil,
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
-					FloatingNetID: pointer.String("floatingnetid"),
+					FloatingNetID: ptr.To("floatingnetid"),
 					NetworkID:     "networkid",
 				},
 				Flavor: yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.String("flavor-id"),
+					FlavorID: ptr.To("flavor-id"),
 				},
 				Image: yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.String("image-id"),
+					ImageID: ptr.To("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,
@@ -466,14 +465,14 @@ func getMockLBM(lb *LB) *LBM {
 			PortID: "0",
 			Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
-					FloatingNetID: pointer.String("floatingnetid"),
+					FloatingNetID: ptr.To("floatingnetid"),
 					NetworkID:     "networkid",
 				},
 				Flavor: yawolv1beta1.OpenstackFlavorRef{
-					FlavorID: pointer.String("flavor-id"),
+					FlavorID: ptr.To("flavor-id"),
 				},
 				Image: yawolv1beta1.OpenstackImageRef{
-					ImageID: pointer.String("image-id"),
+					ImageID: ptr.To("image-id"),
 				},
 				AuthSecretRef: v1.SecretReference{
 					Name:      secretName,

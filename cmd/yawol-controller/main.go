@@ -23,6 +23,7 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
@@ -152,8 +153,10 @@ func main() {
 	// LoadBalancer Controller
 	if lbController {
 		loadBalancerMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                        scheme,
-			MetricsBindAddress:            metricsAddrLb,
+			Scheme: scheme,
+			Metrics: server.Options{
+				BindAddress: metricsAddrLb,
+			},
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "3a7ac996.stackit.cloud",
@@ -162,7 +165,9 @@ func main() {
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
 			Cache: cache.Options{
-				Namespaces: []string{clusterNamespace},
+				DefaultNamespaces: map[string]cache.Config{
+					clusterNamespace: {},
+				},
 			},
 		})
 		if err != nil {
@@ -189,8 +194,10 @@ func main() {
 	// LoadBalancerSet Controller
 	if lbSetController {
 		loadBalancerSetMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                        scheme,
-			MetricsBindAddress:            metricsAddrLbs,
+			Scheme: scheme,
+			Metrics: server.Options{
+				BindAddress: metricsAddrLbs,
+			},
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "rgp5vg43.stackit.cloud",
@@ -199,7 +206,9 @@ func main() {
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
 			Cache: cache.Options{
-				Namespaces: []string{clusterNamespace},
+				DefaultNamespaces: map[string]cache.Config{
+					clusterNamespace: {},
+				},
 			},
 		})
 		if err != nil {
@@ -241,8 +250,10 @@ func main() {
 		discoveryClient := discovery.NewDiscoveryClientForConfigOrDie(cfg)
 
 		loadBalancerMachineMgr, err = ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:                        scheme,
-			MetricsBindAddress:            metricsAddrLbm,
+			Scheme: scheme,
+			Metrics: server.Options{
+				BindAddress: metricsAddrLbm,
+			},
 			LeaderElection:                enableLeaderElection,
 			LeaderElectionReleaseOnCancel: true,
 			LeaderElectionID:              "tanf7ges.stackit.cloud",
@@ -251,7 +262,9 @@ func main() {
 			RetryPeriod:                   &leasesRetryPeriod,
 			LeaderElectionResourceLock:    leasesLeaderElectionResourceLock,
 			Cache: cache.Options{
-				Namespaces: []string{clusterNamespace},
+				DefaultNamespaces: map[string]cache.Config{
+					clusterNamespace: {},
+				},
 			},
 		})
 		if err != nil {

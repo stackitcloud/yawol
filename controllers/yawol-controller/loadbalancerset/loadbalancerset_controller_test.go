@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -62,14 +62,14 @@ var _ = Describe("LoadBalancerSet controller", Serial, Ordered, func() {
 				Spec: yawolv1beta1.LoadBalancerMachineSpec{
 					Infrastructure: yawolv1beta1.LoadBalancerInfrastructure{
 						DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
-							FloatingNetID: pointer.String(FloatingNetID),
+							FloatingNetID: ptr.To(FloatingNetID),
 							NetworkID:     NetworkID,
 						},
 						Flavor: yawolv1beta1.OpenstackFlavorRef{
-							FlavorID: pointer.String(FlavorID),
+							FlavorID: ptr.To(FlavorID),
 						},
 						Image: yawolv1beta1.OpenstackImageRef{
-							ImageID: pointer.String(ImageID),
+							ImageID: ptr.To(ImageID),
 						},
 						AuthSecretRef: v1.SecretReference{
 							Name:      SecretName,
