@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.17.0
 	github.com/shirou/gopsutil/v3 v3.23.9
 	github.com/spf13/afero v1.9.5
-	go.uber.org/zap v1.25.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.58.0
 	google.golang.org/protobuf v1.31.0
