@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/golang/protobuf v1.5.3
 	github.com/gophercloud/gophercloud v1.7.0
-	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
+	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.0
 	github.com/prometheus/client_golang v1.17.0
