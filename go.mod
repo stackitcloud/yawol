@@ -3,7 +3,7 @@ module github.com/stackitcloud/yawol
 go 1.20
 
 require (
-	github.com/cncf/xds/go v0.0.0-20230607035331-e9ce68804cb4
+	github.com/cncf/xds/go v0.0.0-20231016030527-8bd2eac9fb4a
 	github.com/envoyproxy/go-control-plane v0.11.1
 	github.com/go-logr/logr v1.2.4
 	github.com/golang/protobuf v1.5.3
