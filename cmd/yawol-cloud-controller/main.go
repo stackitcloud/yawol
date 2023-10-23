@@ -162,6 +162,9 @@ func main() {
 				*infrastructureDefaults.Namespace: {},
 			},
 		},
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 		LeaderElection:                controlEnableLeaderElection,
 		LeaderElectionReleaseOnCancel: true,
 		LeaderElectionID:              "4c878ae2.stackit.cloud",
