@@ -37,7 +37,7 @@ type LoadBalancerReconciler struct {
 	LoadbalancerMachineName string
 	EnvoyCache              envoycache.SnapshotCache
 	ListenAddress           string
-	RequeueTime             int
+	RequeueDuration         time.Duration
 	KeepalivedStatsFile     string
 	Filesystem              afero.Fs
 }
@@ -101,7 +101,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, reconcileError
+	return ctrl.Result{RequeueAfter: r.RequeueDuration}, reconcileError
 }
 
 func (r *LoadBalancerReconciler) reconcile(
@@ -192,10 +192,12 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			),
 		)).
 		WithOptions(controller.Options{
-			// TODO: do we want to customize this at runtime?
-			// same as default, but exponential rate limiter is limited between 1s and 1m
+			// Cap exponential backoff to the expected reconciliation frequency.
+			// After an API Server outage this should ensure the status is
+			// updated fast enough, before the LoadBalancerMachine is considered
+			// stale/broken.
 			RateLimiter: workqueue.NewMaxOfRateLimiter(
-				workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 1*time.Minute),
+				workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, r.RequeueDuration),
 				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 			),
 		}).
