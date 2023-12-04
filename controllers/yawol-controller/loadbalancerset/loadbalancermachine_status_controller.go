@@ -16,7 +16,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
-// LoadBalancerMachineReconciler reconciles service Objects with type LoadBalancer
+// LBMStatusReconciler watches LoadBalancerMachines and determines if a machine
+// should be deleted. A machine should be deleted if its conditions are either
+// stale, or have been in a not-healthy state for some time.
+//
+// Deletion is not performed immediately, instead a new Condition is added, and
+// after `DeletionGracePeriod` has passed (and the machine is still not ready),
+// the object is actually deleted. This ensures that after an e.g. API Server
+// (where both yawollet and the yawol-controllers cannot update the status), the
+// yawollet is given a chance to update the heartbeat.
 type LBMStatusReconciler struct {
 	client.Client
 	WorkerCount int
@@ -25,9 +33,6 @@ type LBMStatusReconciler struct {
 	DeletionGracePeriod time.Duration
 }
 
-// TODO: add more resources
-
-// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
 func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 
@@ -47,7 +52,6 @@ func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.handleMarkedMachine(ctx, log, loadBalancerMachine, condition); err != nil {
 			return ctrl.Result{}, err
 		}
-		// TODO: do we want to requeue more preciesley?
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
@@ -56,7 +60,7 @@ func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 		log.Info("LoadBalancerMachine failed ReadyChecks and is marked for deletion", "Reason:", reason)
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 	}
 
 	return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
