@@ -3,8 +3,7 @@ name: Container Images
 on:
   push:
     branches:
-    - main
-    - feature/*
+    - '*'
     tags:
     - v*
 
@@ -36,4 +35,3 @@ jobs:
       run: earthly --version
     - name: Run build
       run: earthly --ci --push +ci
-
