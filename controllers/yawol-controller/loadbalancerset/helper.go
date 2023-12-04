@@ -90,4 +90,5 @@ func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, status core
 	cond.Status = status
 	cond.Reason = reason
 	cond.Message = message
+	machine.Status.Conditions = &conditions
 }
