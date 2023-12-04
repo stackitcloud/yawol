@@ -16,7 +16,7 @@ type relCondTest struct {
 	expiration      metav1.Time
 	checkTransition bool
 	expect          bool
-	expectErr       error
+	expectReason    string
 }
 
 var _ = DescribeTable("areRelevantConditionsMet",
@@ -26,9 +26,9 @@ var _ = DescribeTable("areRelevantConditionsMet",
 				Conditions: t.conditions,
 			},
 		}
-		res, err := areRelevantConditionsMet(machine, t.expiration, t.checkTransition)
-		if t.expectErr != nil {
-			Expect(err).To(MatchError(t.expectErr))
+		res, reason := areRelevantConditionsMet(machine, t.expiration, t.checkTransition)
+		if t.expectReason != "" {
+			Expect(reason).To(ContainSubstring(t.expectReason))
 		}
 		Expect(res).To(Equal(t.expect))
 	},
@@ -54,7 +54,8 @@ var _ = DescribeTable("areRelevantConditionsMet",
 			{Type: corev1.NodeConditionType(helper.EnvoyReady), Status: corev1.ConditionTrue},
 			{Type: corev1.NodeConditionType(helper.EnvoyUpToDate), Status: corev1.ConditionTrue},
 		},
-		expect: false,
+		expect:       false,
+		expectReason: "required condition ConfigReady not present on machine",
 	}),
 	Entry("a unrelated condition is fale", relCondTest{
 		conditions: &[]corev1.NodeCondition{
@@ -71,8 +72,8 @@ var _ = DescribeTable("areRelevantConditionsMet",
 			{Type: corev1.NodeConditionType(helper.EnvoyReady), Status: corev1.ConditionTrue},
 			{Type: corev1.NodeConditionType(helper.EnvoyUpToDate), Status: corev1.ConditionTrue},
 		},
-		expect:    false,
-		expectErr: helper.ErrConditionsNotInCorrectState,
+		expect:       false,
+		expectReason: "condition ConfigReady is in status False",
 	}),
 	Entry("a required condition is too old", relCondTest{
 		conditions: &[]corev1.NodeCondition{
@@ -86,7 +87,7 @@ var _ = DescribeTable("areRelevantConditionsMet",
 		},
 		checkTransition: false,
 		expect:          false,
-		expectErr:       helper.ErrConditionsLastHeartbeatTimeToOld,
+		expectReason:    "condition ConfigReady heartbeat is stale",
 	}),
 	Entry("with transition check: a condition is failed, but just happened", relCondTest{
 		conditions: &[]corev1.NodeCondition{
@@ -156,7 +157,6 @@ var _ = Describe("setDeletionCondition", func() {
 			HaveField("Status", corev1.ConditionTrue),
 			HaveField("Reason", "Reason"),
 			HaveField("Message", ""),
-			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
 	})
@@ -182,7 +182,6 @@ var _ = Describe("setDeletionCondition", func() {
 		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionTrue})
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
-			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
 	})
@@ -203,7 +202,6 @@ var _ = Describe("setDeletionCondition", func() {
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", Equal(transitionTime.Time)),
-			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
 	})
 	It("should update the transition time if the status changes", func() {
@@ -223,7 +221,6 @@ var _ = Describe("setDeletionCondition", func() {
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
-			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
 	})
 })

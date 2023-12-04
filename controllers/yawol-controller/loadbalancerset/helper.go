@@ -2,7 +2,6 @@ package loadbalancerset
 
 import (
 	"fmt"
-	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -21,9 +20,13 @@ var relevantLBMConditionslForLBS = []helper.LoadbalancerCondition{
 // to the passed expiration time. If `stableConditions` is set, a condition is
 // only considered `False` if it has been in that state since the expiration
 // time.
-func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expiration metav1.Time, stableConditions bool) (bool, error) {
+func areRelevantConditionsMet(
+	machine *yawolv1beta1.LoadBalancerMachine,
+	expiration metav1.Time,
+	stableConditions bool,
+) (ok bool, reason string) {
 	if machine.Status.Conditions == nil {
-		return false, fmt.Errorf("no conditions set")
+		return false, "no conditions set"
 	}
 
 	// constuct lookup map
@@ -36,7 +39,7 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 	for _, typ := range relevantLBMConditionslForLBS {
 		condition, found := condMap[typ]
 		if !found {
-			return false, fmt.Errorf("required condition %s not present on machine", typ)
+			return false, fmt.Sprintf("required condition %s not present on machine", typ)
 		}
 
 		conditionIsStable := true
@@ -44,21 +47,17 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 			conditionIsStable = condition.LastTransitionTime.Before(&expiration)
 		}
 		if conditionIsStable && condition.Status != corev1.ConditionTrue {
-			return false, fmt.Errorf(
-				"condition: %v, reason: %v, status: %v, message: %v, lastTransitionTime: %v - %w",
-				condition.Type, condition.Reason, condition.Status, condition.Message, condition.LastTransitionTime,
-				helper.ErrConditionsNotInCorrectState,
+			return false, fmt.Sprintf(
+				"condition %s is in status %s with reason: %v, message: %v, lastTransitionTime: %v",
+				condition.Type, condition.Status, condition.Reason, condition.Message, condition.LastTransitionTime,
 			)
 		}
 		if condition.LastHeartbeatTime.Before(&expiration) {
-			return false, fmt.Errorf(
-				"no condition heartbeat in the last 5 min: %w",
-				helper.ErrConditionsLastHeartbeatTimeToOld,
-			)
+			return false, fmt.Sprintf("condition %s heartbeat is stale", condition.Type)
 		}
 	}
 
-	return true, nil
+	return true, ""
 }
 
 func findDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine) *corev1.NodeCondition {
@@ -79,13 +78,12 @@ func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, newConditio
 		machine.Status.Conditions = &[]corev1.NodeCondition{}
 	}
 
-	newCondition.LastHeartbeatTime = metav1.Now()
 	newCondition.Type = helper.DeletionMarkerCondition
 
 	existingCondition := findDeletionCondition(machine)
 	if existingCondition == nil {
 		if newCondition.LastTransitionTime.IsZero() {
-			newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+			newCondition.LastTransitionTime = metav1.Now()
 		}
 		*machine.Status.Conditions = append(*machine.Status.Conditions, newCondition)
 		return
@@ -96,7 +94,7 @@ func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, newConditio
 		if !newCondition.LastTransitionTime.IsZero() {
 			existingCondition.LastTransitionTime = newCondition.LastTransitionTime
 		} else {
-			existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
+			existingCondition.LastTransitionTime = metav1.Now()
 		}
 	}
 

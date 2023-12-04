@@ -2,7 +2,6 @@ package loadbalancerset
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -381,9 +380,9 @@ func TestIsMachineReady(t *testing.T) {
 }
 
 func TestShouldMachineBeDeleted(t *testing.T) {
-	t.Run("Do not delete if creation within the last 5 minutes", func(t *testing.T) {
+	t.Run("Do not delete if there are no conditions shortly after creation", func(t *testing.T) {
 		machine := &yawolv1beta1.LoadBalancerMachine{
-			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Now()},
+			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)}},
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: nil,
 			},
@@ -438,16 +437,16 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				Conditions: nil,
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrNotAllConditionsSet
+		wantReason := "no conditions set"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !reflect.DeepEqual(gotReason, wantReason) {
+			t.Errorf("Expected %v got %v", wantReason, gotReason)
 		}
 	})
 
@@ -478,16 +477,16 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				},
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrConditionsLastHeartbeatTimeToOld
+		wantReason := "condition ConfigReady heartbeat is stale"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !reflect.DeepEqual(gotReason, wantReason) {
+			t.Errorf("Expected %v got %v", wantReason, gotReason)
 		}
 	})
 
@@ -518,16 +517,16 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 				},
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrConditionsNotInCorrectState
+		wantReason := "condition ConfigReady is in status False"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !strings.Contains(gotReason, wantReason) {
+			t.Errorf("Expected %v to contained in %v", wantReason, gotReason)
 		}
 	})
 }

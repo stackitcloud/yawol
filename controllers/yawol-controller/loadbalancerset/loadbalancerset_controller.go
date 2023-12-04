@@ -245,30 +245,23 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (y
 // True if created before 10 minutes and no condition added yet
 // True if LastHeartbeatTime is > 5 minutes
 // True if a condition is not good for 5 minutes
-func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (bool, error) {
-	before5Minutes := metav1.Time{Time: time.Now().Add(-5 * time.Minute)}
+func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDelete bool, reason string) {
+	before3Minutes := metav1.Time{Time: time.Now().Add(-3 * time.Minute)}
 	before10Minutes := metav1.Time{Time: time.Now().Add(-10 * time.Minute)}
 
-	// in the first 5 minutes we never delete
-	if machine.CreationTimestamp.After(before5Minutes.Time) {
-		return false, nil
-	}
-
-	// if we have no conditions at all after 10 minutes, we delete
-	if machine.CreationTimestamp.Before(&before10Minutes) &&
+	// in the first 10 minutes we tolerate empty conditions
+	if machine.CreationTimestamp.After(before10Minutes.Time) &&
 		(machine.Status.Conditions == nil ||
 			len(*machine.Status.Conditions) == 0) {
-		return true, fmt.Errorf("no condition after 10 min: %w",
-			helper.ErrNotAllConditionsSet,
-		)
+		return false, ""
 	}
 
-	ok, err := areRelevantConditionsMet(machine, before5Minutes, true)
+	ok, reason := areRelevantConditionsMet(machine, before3Minutes, true)
 	if !ok {
-		return true, err
+		return true, reason
 	}
 
-	return false, nil
+	return false, ""
 }
 
 // Decides whether the machine is ready or not

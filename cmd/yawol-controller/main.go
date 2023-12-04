@@ -66,6 +66,7 @@ func main() {
 	var lbMachineController bool
 
 	var yawolletRequeueTime int
+	var lbmDeletionGracePeriod time.Duration
 
 	var openstackTimeout time.Duration
 
@@ -103,6 +104,9 @@ func main() {
 		"yawollet requeue time in seconds for reconcile if object was successful reconciled. "+
 			"Values less than 5 are set to 5 and greater than 170 are set to 170. "+
 			"If unset the default from yawollet is used.")
+	flag.DurationVar(&lbmDeletionGracePeriod, "lbm-deletion-grace-period", 2*time.Minute,
+		"Grace period before deleting a load balancer machine AFTER the machine has first been identified as unready.",
+	)
 
 	flag.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
@@ -229,9 +233,10 @@ func main() {
 			os.Exit(1)
 		}
 		if err := (&loadbalancerset.LBMStatusReconciler{
-			Client:      loadBalancerSetMgr.GetClient(),
-			WorkerCount: concurrentWorkersPerReconciler,
-			RateLimiter: rateLimiter,
+			Client:              loadBalancerSetMgr.GetClient(),
+			WorkerCount:         concurrentWorkersPerReconciler,
+			RateLimiter:         rateLimiter,
+			DeletionGracePeriod: lbmDeletionGracePeriod,
 		}).SetupWithManager(loadBalancerSetMgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "LoadBalancerSet")
 			os.Exit(1)

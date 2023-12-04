@@ -52,7 +52,7 @@ func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if shouldBeDeleted, reason := shouldMachineBeDeleted(loadBalancerMachine); shouldBeDeleted {
-		if err := r.markForDeletion(ctx, loadBalancerMachine, reason.Error()); err != nil {
+		if err := r.markForDeletion(ctx, loadBalancerMachine, reason); err != nil {
 			return ctrl.Result{}, err
 		}
 		log.Info("LoadBalancerMachine failed ReadyChecks and is marked for deletion", "Reason:", reason)
