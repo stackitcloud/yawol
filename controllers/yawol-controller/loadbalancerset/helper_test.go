@@ -19,7 +19,7 @@ type relCondTest struct {
 	expectErr       error
 }
 
-var _ = FDescribeTable("areRelevantConditionsMet",
+var _ = DescribeTable("areRelevantConditionsMet",
 	func(t relCondTest) {
 		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
