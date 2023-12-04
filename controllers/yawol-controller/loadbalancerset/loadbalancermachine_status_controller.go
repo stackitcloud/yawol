@@ -2,6 +2,7 @@ package loadbalancerset
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -24,8 +25,6 @@ type LBMStatusReconciler struct {
 	DeletionGracePeriod time.Duration
 }
 
-const deletionMarkerCondition corev1.NodeConditionType = "MarkedForDeletion"
-
 // TODO: add more resources
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
@@ -37,8 +36,7 @@ func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if client.IgnoreNotFound(err) == nil {
 			return ctrl.Result{}, nil
 		}
-		log.Info("error retrieving LoadBalancerMachine", "lbm", req)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("error retrieving LoadBalancerMachine: %w", err)
 	}
 
 	if loadBalancerMachine.DeletionTimestamp != nil {
@@ -75,7 +73,7 @@ func (r *LBMStatusReconciler) handleMarkedMachine(
 		if err := r.Update(ctx, machine); err != nil {
 			return err
 		}
-		log.Info("Reset pending deltion, since machine no longer should be deleted")
+		log.Info("Reset pending deletion, since machine no longer should be deleted")
 		return nil
 	}
 

@@ -138,7 +138,7 @@ var _ = Describe("getDeletionCondition", func() {
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: &[]corev1.NodeCondition{
 					{Type: "Something"},
-					{Type: deletionMarkerCondition, Reason: "a-reason"},
+					{Type: helper.DeletionMarkerCondition, Reason: "a-reason"},
 				},
 			},
 		}
@@ -153,7 +153,7 @@ var _ = Describe("setDeletionCondition", func() {
 		machine := &yawolv1beta1.LoadBalancerMachine{}
 		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
 		Expect(*machine.Status.Conditions).To(ConsistOf(And(
-			HaveField("Type", deletionMarkerCondition),
+			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("Status", corev1.ConditionTrue),
 			HaveField("Reason", "reason"),
 			HaveField("Message", "message"),
@@ -169,7 +169,7 @@ var _ = Describe("setDeletionCondition", func() {
 		}
 		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
 		Expect(*machine.Status.Conditions).To(ConsistOf(
-			HaveField("Type", deletionMarkerCondition),
+			HaveField("Type", helper.DeletionMarkerCondition),
 		))
 	})
 	It("should work when the condition is not present yet", func() {
@@ -182,7 +182,7 @@ var _ = Describe("setDeletionCondition", func() {
 		}
 		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
-			HaveField("Type", deletionMarkerCondition),
+			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
@@ -193,7 +193,7 @@ var _ = Describe("setDeletionCondition", func() {
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: &[]corev1.NodeCondition{
 					{
-						Type:               deletionMarkerCondition,
+						Type:               helper.DeletionMarkerCondition,
 						Status:             corev1.ConditionTrue,
 						LastTransitionTime: transitionTime,
 					},
@@ -202,7 +202,7 @@ var _ = Describe("setDeletionCondition", func() {
 		}
 		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
-			HaveField("Type", deletionMarkerCondition),
+			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", Equal(transitionTime.Time)),
 			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
@@ -213,7 +213,7 @@ var _ = Describe("setDeletionCondition", func() {
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: &[]corev1.NodeCondition{
 					{
-						Type:               deletionMarkerCondition,
+						Type:               helper.DeletionMarkerCondition,
 						Status:             corev1.ConditionTrue,
 						LastTransitionTime: transitionTime,
 					},
@@ -222,7 +222,7 @@ var _ = Describe("setDeletionCondition", func() {
 		}
 		setDeletionCondition(machine, corev1.ConditionFalse, "reason", "message")
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
-			HaveField("Type", deletionMarkerCondition),
+			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))

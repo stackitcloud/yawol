@@ -15,10 +15,12 @@ var relevantLBMConditionslForLBS = []helper.LoadbalancerCondition{
 	helper.EnvoyUpToDate,
 }
 
-// areRelevantConditionsMet returns if all required conditions (from the
+// areRelevantConditionsMet checks if all required conditions (from the
 // perspective of the LoadBalancerSet) are both `True` and up-to-date, according
-// to the passed expiration time.
-func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expiration metav1.Time, checkTransition bool) (bool, error) {
+// to the passed expiration time. If `stableConditions` is set, a condition is
+// only considered `False` if it has been in that state since the expiration
+// time.
+func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expiration metav1.Time, stableConditions bool) (bool, error) {
 	if machine.Status.Conditions == nil {
 		return false, fmt.Errorf("no conditions set")
 	}
@@ -36,11 +38,11 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 			return false, fmt.Errorf("required condition %s not present on machine", typ)
 		}
 
-		transitionCheck := true
-		if checkTransition {
-			transitionCheck = condition.LastTransitionTime.Before(&expiration)
+		conditionIsStable := true
+		if stableConditions {
+			conditionIsStable = condition.LastTransitionTime.Before(&expiration)
 		}
-		if transitionCheck && condition.Status != corev1.ConditionTrue {
+		if conditionIsStable && condition.Status != corev1.ConditionTrue {
 			return false, fmt.Errorf(
 				"condition: %v, reason: %v, status: %v, message: %v, lastTransitionTime: %v - %w",
 				condition.Type, condition.Reason, condition.Status, condition.Message, condition.LastTransitionTime,
@@ -64,7 +66,7 @@ func getDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine) (bool, *cor
 	}
 	conditions := *machine.Status.Conditions
 	for i := range conditions {
-		if conditions[i].Type == deletionMarkerCondition {
+		if conditions[i].Type == helper.DeletionMarkerCondition {
 			return true, &conditions[i]
 		}
 	}
@@ -82,7 +84,7 @@ func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, status core
 	} else {
 		// TODO: do we need to sort the slice again?
 		conditions = append(conditions, corev1.NodeCondition{
-			Type: deletionMarkerCondition,
+			Type: helper.DeletionMarkerCondition,
 		})
 		cond = &(conditions)[len(conditions)-1]
 	}
