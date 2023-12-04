@@ -7,14 +7,13 @@ import (
 	"github.com/stackitcloud/yawol/internal/helper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-var relevantLBMConditionslForLBS = sets.New[helper.LoadbalancerCondition](
+var relevantLBMConditionslForLBS = []helper.LoadbalancerCondition{
 	helper.ConfigReady,
 	helper.EnvoyReady,
 	helper.EnvoyUpToDate,
-)
+}
 
 // areRelevantConditionsMet returns if all required conditions (from the
 // perspective of the LoadBalancerSet) are both `True` and up-to-date, according
@@ -23,12 +22,20 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 	if machine.Status.Conditions == nil {
 		return false, fmt.Errorf("no conditions set")
 	}
-	found := 0
-	for _, condition := range *machine.Status.Conditions {
-		if !relevantLBMConditionslForLBS.Has(helper.LoadbalancerCondition(condition.Type)) {
-			continue
+
+	// constuct lookup map
+	conditions := *machine.Status.Conditions
+	condMap := make(map[helper.LoadbalancerCondition]corev1.NodeCondition, len(conditions))
+	for i := range conditions {
+		condMap[helper.LoadbalancerCondition(conditions[i].Type)] = conditions[i]
+	}
+
+	for _, typ := range relevantLBMConditionslForLBS {
+		condition, found := condMap[typ]
+		if !found {
+			return false, fmt.Errorf("required condition %s not present on machine", typ)
 		}
-		found++
+
 		transitionCheck := true
 		if checkTransition {
 			transitionCheck = condition.LastTransitionTime.Before(&expiration)
@@ -48,9 +55,6 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 		}
 	}
 
-	if found != len(relevantLBMConditionslForLBS) {
-		return false, fmt.Errorf("not all conditions are present")
-	}
 	return true, nil
 }
 
