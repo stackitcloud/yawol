@@ -7,7 +7,6 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
-	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -172,24 +171,6 @@ func copyLabelMap(lbs map[string]string) map[string]string {
 		targetMap[key] = value
 	}
 	return targetMap
-}
-
-func LoadBalancerSetConditionIsFalse(condition v1.NodeCondition) bool {
-	switch string(condition.Type) {
-	case string(ConfigReady):
-		if string(condition.Status) != string(ConditionTrue) {
-			return true
-		}
-	case string(EnvoyReady):
-		if string(condition.Status) != string(ConditionTrue) {
-			return true
-		}
-	case string(EnvoyUpToDate):
-		if string(condition.Status) != string(ConditionTrue) {
-			return true
-		}
-	}
-	return false
 }
 
 func ParseLoadBalancerSetMetrics(
