@@ -2,6 +2,7 @@ package loadbalancerset
 
 import (
 	"fmt"
+	"time"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -60,41 +61,60 @@ func areRelevantConditionsMet(machine *yawolv1beta1.LoadBalancerMachine, expirat
 	return true, nil
 }
 
-func getDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine) (bool, *corev1.NodeCondition) {
+func findDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine) *corev1.NodeCondition {
 	if machine.Status.Conditions == nil {
-		return false, nil
+		return nil
 	}
 	conditions := *machine.Status.Conditions
 	for i := range conditions {
 		if conditions[i].Type == helper.DeletionMarkerCondition {
-			return true, &conditions[i]
+			return &conditions[i]
 		}
 	}
-	return false, nil
+	return nil
 }
 
-func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, status corev1.ConditionStatus, reason, message string) {
+func setDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine, newCondition corev1.NodeCondition) {
 	if machine.Status.Conditions == nil {
 		machine.Status.Conditions = &[]corev1.NodeCondition{}
 	}
-	var cond *corev1.NodeCondition
-	conditions := *machine.Status.Conditions
-	if ok, foundCondition := getDeletionCondition(machine); ok {
-		cond = foundCondition
-	} else {
-		// TODO: do we need to sort the slice again?
-		conditions = append(conditions, corev1.NodeCondition{
-			Type: helper.DeletionMarkerCondition,
-		})
-		cond = &(conditions)[len(conditions)-1]
+
+	newCondition.LastHeartbeatTime = metav1.Now()
+	newCondition.Type = helper.DeletionMarkerCondition
+
+	existingCondition := findDeletionCondition(machine)
+	if existingCondition == nil {
+		if newCondition.LastTransitionTime.IsZero() {
+			newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
+		*machine.Status.Conditions = append(*machine.Status.Conditions, newCondition)
+		return
 	}
 
-	if cond.Status != status {
-		cond.LastTransitionTime = metav1.Now()
+	if existingCondition.Status != newCondition.Status {
+		existingCondition.Status = newCondition.Status
+		if !newCondition.LastTransitionTime.IsZero() {
+			existingCondition.LastTransitionTime = newCondition.LastTransitionTime
+		} else {
+			existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
 	}
-	cond.LastHeartbeatTime = metav1.Now()
-	cond.Status = status
-	cond.Reason = reason
-	cond.Message = message
-	machine.Status.Conditions = &conditions
+
+	existingCondition.Reason = newCondition.Reason
+	existingCondition.Message = newCondition.Message
+	existingCondition.LastHeartbeatTime = newCondition.LastHeartbeatTime
+}
+
+func removeDeletionCondition(machine *yawolv1beta1.LoadBalancerMachine) {
+	if machine.Status.Conditions == nil || len(*machine.Status.Conditions) == 0 {
+		return
+	}
+	newConditions := make([]corev1.NodeCondition, 0, len(*machine.Status.Conditions)-1)
+	for _, condition := range *machine.Status.Conditions {
+		if condition.Type != helper.DeletionMarkerCondition {
+			newConditions = append(newConditions, condition)
+		}
+	}
+
+	*machine.Status.Conditions = newConditions
 }

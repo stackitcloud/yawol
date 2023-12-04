@@ -28,7 +28,7 @@ var _ = DescribeTable("areRelevantConditionsMet",
 		}
 		res, err := areRelevantConditionsMet(machine, t.expiration, t.checkTransition)
 		if t.expectErr != nil {
-			Expect(err).To(MatchError(err))
+			Expect(err).To(MatchError(t.expectErr))
 		}
 		Expect(res).To(Equal(t.expect))
 	},
@@ -117,12 +117,12 @@ var _ = DescribeTable("areRelevantConditionsMet",
 )
 
 var _ = Describe("getDeletionCondition", func() {
-	It("should return false if no conditions are set", func() {
+	It("should return nil if no conditions are set", func() {
 		machine := &yawolv1beta1.LoadBalancerMachine{}
-		found, _ := getDeletionCondition(machine)
-		Expect(found).To(BeFalse())
+		cond := findDeletionCondition(machine)
+		Expect(cond).To(BeNil())
 	})
-	It("should return false if condition is not present", func() {
+	It("should return nil if condition is not present", func() {
 		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: &[]corev1.NodeCondition{
@@ -130,10 +130,10 @@ var _ = Describe("getDeletionCondition", func() {
 				},
 			},
 		}
-		found, _ := getDeletionCondition(machine)
-		Expect(found).To(BeFalse())
+		cond := findDeletionCondition(machine)
+		Expect(cond).To(BeNil())
 	})
-	It("should return false if condition is not present", func() {
+	It("should return the correct condition", func() {
 		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: &[]corev1.NodeCondition{
@@ -142,8 +142,7 @@ var _ = Describe("getDeletionCondition", func() {
 				},
 			},
 		}
-		found, cond := getDeletionCondition(machine)
-		Expect(found).To(BeTrue())
+		cond := findDeletionCondition(machine)
 		Expect(cond.Reason).To(Equal("a-reason"))
 	})
 })
@@ -151,12 +150,12 @@ var _ = Describe("getDeletionCondition", func() {
 var _ = Describe("setDeletionCondition", func() {
 	It("should work on an empty status", func() {
 		machine := &yawolv1beta1.LoadBalancerMachine{}
-		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
+		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionTrue, Reason: "Reason"})
 		Expect(*machine.Status.Conditions).To(ConsistOf(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("Status", corev1.ConditionTrue),
-			HaveField("Reason", "reason"),
-			HaveField("Message", "message"),
+			HaveField("Reason", "Reason"),
+			HaveField("Message", ""),
 			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
 		)))
@@ -167,7 +166,7 @@ var _ = Describe("setDeletionCondition", func() {
 				Conditions: &[]corev1.NodeCondition{},
 			},
 		}
-		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
+		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionTrue})
 		Expect(*machine.Status.Conditions).To(ConsistOf(
 			HaveField("Type", helper.DeletionMarkerCondition),
 		))
@@ -180,7 +179,7 @@ var _ = Describe("setDeletionCondition", func() {
 				},
 			},
 		}
-		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
+		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionTrue})
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastHeartbeatTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),
@@ -200,7 +199,7 @@ var _ = Describe("setDeletionCondition", func() {
 				},
 			},
 		}
-		setDeletionCondition(machine, corev1.ConditionTrue, "reason", "message")
+		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionTrue})
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", Equal(transitionTime.Time)),
@@ -220,7 +219,7 @@ var _ = Describe("setDeletionCondition", func() {
 				},
 			},
 		}
-		setDeletionCondition(machine, corev1.ConditionFalse, "reason", "message")
+		setDeletionCondition(machine, corev1.NodeCondition{Status: corev1.ConditionFalse})
 		Expect(*machine.Status.Conditions).To(ContainElement(And(
 			HaveField("Type", helper.DeletionMarkerCondition),
 			HaveField("LastTransitionTime.Time", BeTemporally("~", time.Now(), 1*time.Second)),

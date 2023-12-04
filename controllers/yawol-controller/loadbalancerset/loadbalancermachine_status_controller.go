@@ -43,7 +43,7 @@ func (r *LBMStatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if ok, condition := getDeletionCondition(loadBalancerMachine); ok && condition.Status == corev1.ConditionTrue {
+	if condition := findDeletionCondition(loadBalancerMachine); condition != nil && condition.Status == corev1.ConditionTrue {
 		if err := r.handleMarkedMachine(ctx, log, loadBalancerMachine, condition); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -69,7 +69,7 @@ func (r *LBMStatusReconciler) handleMarkedMachine(
 	condition *corev1.NodeCondition,
 ) error {
 	if shouldBeDeleted, _ := shouldMachineBeDeleted(machine); !shouldBeDeleted {
-		setDeletionCondition(machine, corev1.ConditionFalse, "NotPendingDeletion", "Machine is not considered for deletion")
+		removeDeletionCondition(machine)
 		if err := r.Update(ctx, machine); err != nil {
 			return err
 		}
@@ -87,7 +87,11 @@ func (r *LBMStatusReconciler) handleMarkedMachine(
 }
 
 func (r *LBMStatusReconciler) markForDeletion(ctx context.Context, machine *yawolv1beta1.LoadBalancerMachine, message string) error {
-	setDeletionCondition(machine, corev1.ConditionTrue, "PendingDeletion", message)
+	setDeletionCondition(machine, corev1.NodeCondition{
+		Status:  corev1.ConditionTrue,
+		Reason:  "PendingDeletion",
+		Message: message,
+	})
 	return r.Update(ctx, machine)
 }
 
