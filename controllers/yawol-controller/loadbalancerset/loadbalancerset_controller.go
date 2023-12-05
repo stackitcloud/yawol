@@ -245,69 +245,34 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (y
 // True if created before 10 minutes and no condition added yet
 // True if LastHeartbeatTime is > 5 minutes
 // True if a condition is not good for 5 minutes
-func shouldMachineBeDeleted(machine yawolv1beta1.LoadBalancerMachine) (bool, error) {
-	before5Minutes := metav1.Time{Time: time.Now().Add(-5 * time.Minute)}
+func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDelete bool, reason string) {
+	before3Minutes := metav1.Time{Time: time.Now().Add(-3 * time.Minute)}
 	before10Minutes := metav1.Time{Time: time.Now().Add(-10 * time.Minute)}
 
-	// to handle the initial 10 minutes
-	if machine.CreationTimestamp.Before(&before10Minutes) &&
+	// in the first 10 minutes we tolerate empty conditions
+	if machine.CreationTimestamp.After(before10Minutes.Time) &&
 		(machine.Status.Conditions == nil ||
 			len(*machine.Status.Conditions) == 0) {
-		return true, fmt.Errorf("no condition after 10 min: %w",
-			helper.ErrNotAllConditionsSet,
-		)
+		return false, ""
 	}
 
-	// As soon as a conditions are set
-	if machine.Status.Conditions != nil {
-		for _, condition := range *machine.Status.Conditions {
-			if condition.LastHeartbeatTime.Before(&before5Minutes) {
-				return true, fmt.Errorf(
-					"no condition heartbeat in the last 5 min: %w",
-					helper.ErrConditionsLastHeartbeatTimeToOld,
-				)
-			}
-
-			if condition.LastTransitionTime.Before(&before5Minutes) {
-				if helper.LoadBalancerSetConditionIsFalse(condition) {
-					return true, fmt.Errorf(
-						"condition: %v, reason: %v, status: %v, message: %v, lastTransitionTime: %v - %w",
-						condition.Type, condition.Reason, condition.Status, condition.Message, condition.LastTransitionTime,
-						helper.ErrConditionsNotInCorrectState,
-					)
-				}
-			}
-		}
+	ok, reason := areRelevantConditionsMet(machine, before3Minutes, true)
+	if !ok {
+		return true, reason
 	}
 
-	return false, nil
+	return false, ""
 }
 
 // Decides whether the machine is ready or not
-// False if not all conditions are set
+// False if no conditions are set
 // False if LastHeartbeatTime is older than 180sec
 // False if ConfigReady, EnvoyReady or EnvoyUpToDate are false
 func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 	before180seconds := metav1.Time{Time: time.Now().Add(-180 * time.Second)}
 
-	// not ready if no conditions are available
-	if machine.Status.Conditions == nil || len(*machine.Status.Conditions) < 6 {
-		return false
-	}
-
-	// As soon as a conditions are set
-	if machine.Status.Conditions != nil {
-		for _, condition := range *machine.Status.Conditions {
-			if condition.LastHeartbeatTime.Before(&before180seconds) {
-				return false
-			}
-			if helper.LoadBalancerSetConditionIsFalse(condition) {
-				return false
-			}
-		}
-	}
-
-	return true
+	ok, _ := areRelevantConditionsMet(&machine, before180seconds, false)
+	return ok
 }
 
 func isMachineKeepalivedMaster(machine yawolv1beta1.LoadBalancerMachine) bool {

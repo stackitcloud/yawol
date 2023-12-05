@@ -79,6 +79,8 @@ const (
 	KeepalivedProcess   LoadbalancerCondition = "KeepalivedProcess"
 	KeepalivedStatsFile LoadbalancerCondition = "KeepalivedStatsFile"
 	KeepalivedMaster    LoadbalancerCondition = "KeepalivedMaster"
+
+	DeletionMarkerCondition corev1.NodeConditionType = "MarkedForDeletion"
 )
 
 // Metric name const

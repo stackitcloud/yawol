@@ -233,7 +233,7 @@ generate:
     COPY +controller-gen/bin/controller-gen $BINPATH
     COPY --dir api/ .
     RUN controller-gen object paths="./..."
-    RUN controller-gen crd rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config="crds"
+    RUN controller-gen crd webhook paths="./..." output:crd:artifacts:config="crds"
     SAVE ARTIFACT ./api/* AS LOCAL api/
     SAVE ARTIFACT ./crds/* AS LOCAL charts/yawol-controller/crds/
 

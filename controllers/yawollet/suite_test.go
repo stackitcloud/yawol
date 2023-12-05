@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
@@ -150,7 +151,7 @@ var _ = BeforeSuite(func() {
 		LoadbalancerMachineName: nameLBM,
 		EnvoyCache:              cache,
 		ListenAddress:           "127.0.0.1",
-		RequeueTime:             1,
+		RequeueDuration:         1 * time.Second,
 		Filesystem:              filesystem,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

@@ -10,6 +10,7 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	"golang.org/x/time/rate"
 
 	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
@@ -18,8 +19,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
@@ -34,7 +37,7 @@ type LoadBalancerReconciler struct {
 	LoadbalancerMachineName string
 	EnvoyCache              envoycache.SnapshotCache
 	ListenAddress           string
-	RequeueTime             int
+	RequeueDuration         time.Duration
 	KeepalivedStatsFile     string
 	Filesystem              afero.Fs
 }
@@ -98,7 +101,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: time.Duration(r.RequeueTime) * time.Second}, reconcileError
+	return ctrl.Result{RequeueAfter: r.RequeueDuration}, reconcileError
 }
 
 func (r *LoadBalancerReconciler) reconcile(
@@ -188,5 +191,15 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
+		WithOptions(controller.Options{
+			// Cap exponential backoff to the expected reconciliation frequency.
+			// After an API Server outage this should ensure the status is
+			// updated fast enough, before the LoadBalancerMachine is considered
+			// stale/broken.
+			RateLimiter: workqueue.NewMaxOfRateLimiter(
+				workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, r.RequeueDuration),
+				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+			),
+		}).
 		Complete(r)
 }

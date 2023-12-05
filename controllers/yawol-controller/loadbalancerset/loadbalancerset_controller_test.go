@@ -2,7 +2,6 @@ package loadbalancerset
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -381,9 +380,9 @@ func TestIsMachineReady(t *testing.T) {
 }
 
 func TestShouldMachineBeDeleted(t *testing.T) {
-	t.Run("Do not delete if creation is not before 5 minutes", func(t *testing.T) {
-		machine := yawolv1beta1.LoadBalancerMachine{
-			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Now()},
+	t.Run("Do not delete if there are no conditions shortly after creation", func(t *testing.T) {
+		machine := &yawolv1beta1.LoadBalancerMachine{
+			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)}},
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: nil,
 			},
@@ -397,15 +396,26 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 	})
 
 	t.Run("Do not delete if failed condition is not older than 5 minutes", func(t *testing.T) {
-		machine := yawolv1beta1.LoadBalancerMachine{
+		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				CreationTimestamp: &metav1.Time{Time: time.Now()},
 				Conditions: &[]v1.NodeCondition{
+					// on required condition is false, but not old
 					{
-						Message:            "reconcile is running",
-						Reason:             "ConfigReady",
 						Status:             "False",
 						Type:               v1.NodeConditionType(helper.ConfigReady),
+						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
+						LastTransitionTime: metav1.Time{Time: time.Now()},
+					},
+					{
+						Status:             "True",
+						Type:               v1.NodeConditionType(helper.EnvoyReady),
+						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
+						LastTransitionTime: metav1.Time{Time: time.Now()},
+					},
+					{
+						Status:             "True",
+						Type:               v1.NodeConditionType(helper.EnvoyUpToDate),
 						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 						LastTransitionTime: metav1.Time{Time: time.Now()},
 					},
@@ -420,76 +430,103 @@ func TestShouldMachineBeDeleted(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete if creation is before 10 minutes and no conditions", func(t *testing.T) {
-		machine := yawolv1beta1.LoadBalancerMachine{
+	t.Run("Delete if creation is more than 10 minutes old and no conditions", func(t *testing.T) {
+		machine := &yawolv1beta1.LoadBalancerMachine{
 			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: time.Now().Add(-11 * time.Minute)}},
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: nil,
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrNotAllConditionsSet
+		wantReason := "no conditions set"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !reflect.DeepEqual(gotReason, wantReason) {
+			t.Errorf("Expected %v got %v", wantReason, gotReason)
 		}
 	})
 
 	t.Run("Delete if heartbeat time is older than 5 minutes", func(t *testing.T) {
-		machine := yawolv1beta1.LoadBalancerMachine{
+		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				CreationTimestamp: &metav1.Time{Time: time.Now()},
 				Conditions: &[]v1.NodeCondition{
+					// one condition is stale, the others are up-to-date
 					{
-						Status:            v1.ConditionStatus(helper.ConditionTrue),
-						Type:              v1.NodeConditionType(helper.ConfigReady),
-						LastHeartbeatTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
+						Status:             v1.ConditionStatus(helper.ConditionTrue),
+						Type:               v1.NodeConditionType(helper.ConfigReady),
+						LastHeartbeatTime:  metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
+						LastTransitionTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
+					},
+					{
+						Status:             v1.ConditionStatus(helper.ConditionTrue),
+						Type:               v1.NodeConditionType(helper.EnvoyReady),
+						LastHeartbeatTime:  metav1.Now(),
+						LastTransitionTime: metav1.Now(),
+					},
+					{
+						Status:             v1.ConditionStatus(helper.ConditionTrue),
+						Type:               v1.NodeConditionType(helper.EnvoyUpToDate),
+						LastHeartbeatTime:  metav1.Now(),
+						LastTransitionTime: metav1.Now(),
 					},
 				},
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrConditionsLastHeartbeatTimeToOld
+		wantReason := "condition ConfigReady heartbeat is stale"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !reflect.DeepEqual(gotReason, wantReason) {
+			t.Errorf("Expected %v got %v", wantReason, gotReason)
 		}
 	})
 
 	t.Run("Delete if failed condition is older than 5 minutes", func(t *testing.T) {
-		machine := yawolv1beta1.LoadBalancerMachine{
+		machine := &yawolv1beta1.LoadBalancerMachine{
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				CreationTimestamp: &metav1.Time{Time: time.Now()},
 				Conditions: &[]v1.NodeCondition{
+					// one condition failed for >5 Minutes
 					{
 						Status:             v1.ConditionStatus(helper.ConditionFalse),
 						Type:               v1.NodeConditionType(helper.ConfigReady),
 						LastHeartbeatTime:  metav1.Time{Time: time.Now()},
 						LastTransitionTime: metav1.Time{Time: time.Now().Add(-6 * time.Minute)},
 					},
+					{
+						Status:             v1.ConditionStatus(helper.ConditionTrue),
+						Type:               v1.NodeConditionType(helper.EnvoyReady),
+						LastHeartbeatTime:  metav1.Now(),
+						LastTransitionTime: metav1.Now(),
+					},
+					{
+						Status:             v1.ConditionStatus(helper.ConditionTrue),
+						Type:               v1.NodeConditionType(helper.EnvoyUpToDate),
+						LastHeartbeatTime:  metav1.Now(),
+						LastTransitionTime: metav1.Now(),
+					},
 				},
 			},
 		}
-		got, gotErr := shouldMachineBeDeleted(machine)
+		got, gotReason := shouldMachineBeDeleted(machine)
 		want := true
-		wantErr := helper.ErrConditionsNotInCorrectState
+		wantReason := "condition ConfigReady is in status False"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
 		}
 
-		if !errors.Is(gotErr, wantErr) {
-			t.Errorf("Expected %v got %v", wantErr, gotErr)
+		if !strings.Contains(gotReason, wantReason) {
+			t.Errorf("Expected %v to contained in %v", wantReason, gotReason)
 		}
 	})
 }

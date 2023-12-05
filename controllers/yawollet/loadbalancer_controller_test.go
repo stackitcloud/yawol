@@ -482,7 +482,7 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("checking if EnvoyUpToDate is False")
-				eventuallyCheckConditions(ctx, "", "", helper.ConditionFalse, "")
+				eventuallyCheckConditions(ctx, "", helper.ConditionFalse, "", "")
 
 				By("get transition time")
 				lbmBeforeTransition, err := getCurrentLBM(ctx)
@@ -496,6 +496,9 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				}
 
 				By("starting the envoy process")
+				// metav1.Time only has second-precision, ensure that we transition to ready again in the next second to
+				// deflake tests
+				time.Sleep(1 * time.Second)
 				envoyCmd = exec.Command("envoy", "-c", "../../image/envoy-config.yaml")
 				Expect(envoyCmd.Start()).To(Succeed())
 
@@ -517,7 +520,6 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 
 				By("compare transition time")
 				Expect(lbmAfterTransitionTime.After(lbmBeforeTransitionTime.Time)).To(BeTrue())
-
 			})
 		})
 

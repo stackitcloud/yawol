@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
@@ -214,7 +215,7 @@ func main() {
 		LoadbalancerMachineName: loadbalancerMachineName,
 		EnvoyCache:              envoyCache,
 		ListenAddress:           listenAddress,
-		RequeueTime:             requeueTime,
+		RequeueDuration:         time.Duration(requeueTime) * time.Second,
 		KeepalivedStatsFile:     keepalivedStatsFile,
 		Recorder:                mgr.GetEventRecorderFor("yawollet"),
 		RecorderLB:              mgr.GetEventRecorderFor("yawol-service"),
