@@ -74,7 +74,7 @@ func (r *LBMStatusReconciler) handleMarkedMachine(
 ) error {
 	if shouldBeDeleted, _ := shouldMachineBeDeleted(machine); !shouldBeDeleted {
 		removeDeletionCondition(machine)
-		if err := r.Update(ctx, machine); err != nil {
+		if err := r.Status().Update(ctx, machine); err != nil {
 			return err
 		}
 		log.Info("Reset pending deletion, since machine no longer should be deleted")
@@ -96,7 +96,7 @@ func (r *LBMStatusReconciler) markForDeletion(ctx context.Context, machine *yawo
 		Reason:  "PendingDeletion",
 		Message: message,
 	})
-	return r.Update(ctx, machine)
+	return r.Status().Update(ctx, machine)
 }
 
 func (r *LBMStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
