@@ -905,8 +905,8 @@ func getDesiredSecGroups(remoteID string) []rules.SecGroupRule {
 				EtherType:    string(etherType),
 				Direction:    string(rules.DirIngress),
 				Protocol:     string(rules.ProtocolICMP),
-				PortRangeMin: 1,
-				PortRangeMax: 8,
+				PortRangeMin: 8,
+				PortRangeMax: 0,
 			},
 		)
 	}
