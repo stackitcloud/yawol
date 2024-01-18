@@ -247,10 +247,18 @@ func findFirstMachineForDeletion(machines []yawolv1beta1.LoadBalancerMachine) (y
 // True if a condition is not good for 5 minutes
 func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDelete bool, reason string) {
 	before3Minutes := metav1.Time{Time: time.Now().Add(-3 * time.Minute)}
-	before10Minutes := metav1.Time{Time: time.Now().Add(-10 * time.Minute)}
+
+	creationTimeoutDuration := 10 * time.Minute
+	if v := machine.Annotations[yawolv1beta1.CreationTimeoutAnnotation]; v != "" {
+		// silently ignore errors
+		if parsed, err := time.ParseDuration(v); err == nil {
+			creationTimeoutDuration = parsed
+		}
+	}
+	creationTimeout := time.Now().Add(-1 * creationTimeoutDuration)
 
 	// in the first 10 minutes we tolerate empty conditions
-	if machine.CreationTimestamp.After(before10Minutes.Time) &&
+	if machine.CreationTimestamp.After(creationTimeout) &&
 		(machine.Status.Conditions == nil ||
 			len(*machine.Status.Conditions) == 0) {
 		return false, ""
