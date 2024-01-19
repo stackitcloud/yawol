@@ -382,13 +382,55 @@ func TestIsMachineReady(t *testing.T) {
 func TestShouldMachineBeDeleted(t *testing.T) {
 	t.Run("Do not delete if there are no conditions shortly after creation", func(t *testing.T) {
 		machine := &yawolv1beta1.LoadBalancerMachine{
-			ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)}},
+			ObjectMeta: metav1.ObjectMeta{
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)},
+			},
 			Status: yawolv1beta1.LoadBalancerMachineStatus{
 				Conditions: nil,
 			},
 		}
 		got, _ := shouldMachineBeDeleted(machine)
 		want := false
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Expected %v got %v", want, got)
+		}
+	})
+
+	t.Run("Do not delete if there are no conditions and the grace period has been adjusted", func(t *testing.T) {
+		machine := &yawolv1beta1.LoadBalancerMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-30 * time.Minute)},
+				Annotations: map[string]string{
+					yawolv1beta1.LoadBalancerMachineCreationTimeoutAnnotation: "1h",
+				},
+			},
+			Status: yawolv1beta1.LoadBalancerMachineStatus{
+				Conditions: nil,
+			},
+		}
+		got, _ := shouldMachineBeDeleted(machine)
+		want := false
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Expected %v got %v", want, got)
+		}
+	})
+
+	t.Run("Delete if there are no conditions after a custom grace period", func(t *testing.T) {
+		machine := &yawolv1beta1.LoadBalancerMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				CreationTimestamp: metav1.Time{Time: time.Now().Add(-30 * time.Minute)},
+				Annotations: map[string]string{
+					yawolv1beta1.LoadBalancerMachineCreationTimeoutAnnotation: "15m",
+				},
+			},
+			Status: yawolv1beta1.LoadBalancerMachineStatus{
+				Conditions: nil,
+			},
+		}
+		got, _ := shouldMachineBeDeleted(machine)
+		want := true
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expected %v got %v", want, got)
