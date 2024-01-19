@@ -2,9 +2,7 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"io"
-	"io/fs"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -22,7 +20,6 @@ import (
 	"github.com/stackitcloud/yawol/internal/helper"
 )
 
-const StatusConditions int = 3
 const (
 	TIMEOUT  = 10 * time.Second
 	INTERVAL = 500 * time.Millisecond
@@ -447,32 +444,6 @@ var _ = Describe("check loadbalancer reconcile", Serial, Ordered, func() {
 				eventuallyCheckConditions(
 					ctx, helper.ConditionTrue, helper.ConditionTrue, helper.ConditionTrue, "",
 				)
-			})
-		})
-		When("lb and lbm revision annotation are the same", func() {
-			It("should create yawolKeepalivedFile", func() {
-				Eventually(func() error {
-					_, err := filesystem.Stat(helper.YawolSetIsLatestRevisionFile)
-					return err
-				}, TIMEOUT, INTERVAL).Should(Succeed())
-
-			})
-		})
-		When("lb and lbm revision annotation are the same", func() {
-			BeforeEach(func() {
-				lb.Annotations = map[string]string{
-					helper.RevisionAnnotation: "2",
-				}
-			})
-			It("should not create or delete yawolKeepalivedFile", func() {
-				Eventually(func() error {
-					_, err := filesystem.Stat(helper.YawolSetIsLatestRevisionFile)
-					if err == nil || !errors.Is(err, fs.ErrNotExist) {
-						return errors.New("keepalived file still exists")
-					}
-					return nil
-				}, TIMEOUT, INTERVAL).Should(Succeed())
-
 			})
 		})
 		When("envoy gets killed and restarted", func() {

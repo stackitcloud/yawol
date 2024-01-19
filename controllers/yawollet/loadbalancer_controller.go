@@ -10,12 +10,11 @@ import (
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
-	"golang.org/x/time/rate"
 
 	envoycache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/go-logr/logr"
-	"github.com/spf13/afero"
+	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -39,7 +38,6 @@ type LoadBalancerReconciler struct {
 	ListenAddress           string
 	RequeueDuration         time.Duration
 	KeepalivedStatsFile     string
-	Filesystem              afero.Fs
 }
 
 // Reconcile handles reconciliation of loadbalancer object
@@ -94,10 +92,6 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	lbm.Status.Metrics = &metrics
 
 	if err := r.Client.Status().Patch(ctx, lbm, patch); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err := helper.ReconcileLatestRevisionFile(r.Filesystem, lb, lbm); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -179,9 +173,6 @@ func (r *LoadBalancerReconciler) reconcile(
 
 // SetupWithManager is used by kubebuilder to init the controller loop
 func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if r.Filesystem == nil {
-		r.Filesystem = afero.NewOsFs()
-	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&yawolv1beta1.LoadBalancer{}).
 		WithEventFilter(predicate.And(

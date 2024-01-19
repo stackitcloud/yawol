@@ -19,7 +19,6 @@ import (
 	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/afero"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -46,13 +45,12 @@ const (
 )
 
 var (
-	cfg        *rest.Config
-	k8sClient  client.Client
-	testEnv    *envtest.Environment
-	envoyCmd   *exec.Cmd
-	ctx        context.Context
-	cancel     context.CancelFunc
-	filesystem afero.Fs
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	envoyCmd  *exec.Cmd
+	ctx       context.Context
+	cancel    context.CancelFunc
 )
 
 func TestAPIs(t *testing.T) {
@@ -63,8 +61,6 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-
-	filesystem = afero.NewMemMapFs()
 
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -152,7 +148,6 @@ var _ = BeforeSuite(func() {
 		EnvoyCache:              cache,
 		ListenAddress:           "127.0.0.1",
 		RequeueDuration:         1 * time.Second,
-		Filesystem:              filesystem,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
