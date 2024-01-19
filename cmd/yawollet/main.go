@@ -11,6 +11,7 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -22,6 +23,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	controllers "github.com/stackitcloud/yawol/controllers/yawollet"
+	yawolhealthz "github.com/stackitcloud/yawol/internal/healthz"
 	"github.com/stackitcloud/yawol/internal/helper"
 
 	"go.uber.org/zap/zapcore"
@@ -227,17 +229,44 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 
+	managerCtx := ctrl.SetupSignalHandler()
+
+	// Create a client-go clientset that can call the `/healthz` endpoint of the API server for testing connectivity
+	// with the API server.
+	healthzClientSet, err := kubernetes.NewForConfigAndClient(mgr.GetConfig(), mgr.GetHTTPClient())
+	if err != nil {
+		setupLog.Error(err, "unable to create client set for readyz checks")
+		os.Exit(1)
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
+
+	// The readyz checks are used by keepalived for increasing the priority of machines that run a healthy yawollet for
+	// the latest LoadBalancer revision (i.e., when the machine belongs to the current LoadBalancerSet).
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+	if err := mgr.AddReadyzCheck("apiserver-healthz", yawolhealthz.NewAPIServerHealthz(managerCtx, healthzClientSet.RESTClient())); err != nil {
+		setupLog.Error(err, "unable to set up API server ready check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("informer-sync", yawolhealthz.NewCacheSyncHealthz(mgr.GetCache())); err != nil {
+		setupLog.Error(err, "unable to set up informer ready check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("loadbalancer-revision", yawolhealthz.NewLoadBalancerRevisionHealthz(
+		managerCtx, mgr.GetCache(), namespace, loadbalancerName, loadbalancerMachineName,
+	)); err != nil {
+		setupLog.Error(err, "unable to set up LoadBalancer revision ready check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(managerCtx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
