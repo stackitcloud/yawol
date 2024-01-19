@@ -68,7 +68,7 @@ func main() {
 	var keepalivedStatsFile string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", "0", "The address the probe endpoint binds to. Default is disabled.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8080", "The address the probe endpoint binds to.")
 
 	flag.StringVar(&namespace, "namespace", "", "The namespace from lb und lbm object.")
 	flag.StringVar(&loadbalancerName, "loadbalancer-name", "", "Name of lb object.")
@@ -191,7 +191,8 @@ func main() {
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
-		LeaderElection: false,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         false,
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{
 				namespace: {},

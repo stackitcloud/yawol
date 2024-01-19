@@ -67,6 +67,13 @@
         group: root
         mode: 0755
 
+    # keepalived-script user (used for yawollet health check script)
+    - name: Creating keepalived_script user
+      user:
+        name: "keepalived_script"
+        shell: /bin/ash
+        password: "*"
+
     # yawol user
     - name: Creating yawol user
       user:
@@ -327,4 +334,3 @@
         path: /home/alpine/.ssh/authorized_keys
         state: absent
         regexp: '.*'
-
