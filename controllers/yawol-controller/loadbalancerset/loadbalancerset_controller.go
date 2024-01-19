@@ -249,7 +249,7 @@ func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDe
 	before3Minutes := metav1.Time{Time: time.Now().Add(-3 * time.Minute)}
 
 	creationTimeoutDuration := 10 * time.Minute
-	if v := machine.Annotations[yawolv1beta1.CreationTimeoutAnnotation]; v != "" {
+	if v := machine.Annotations[yawolv1beta1.LoadBalancerMachineCreationTimeoutAnnotation]; v != "" {
 		// silently ignore errors
 		if parsed, err := time.ParseDuration(v); err == nil {
 			creationTimeoutDuration = parsed

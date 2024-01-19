@@ -4,13 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	// CreationTimeoutAnnotation can be set to override the defaut duration of
-	// 10 minutes, after which a new LoadBalancerMachine is deleted (by the LBM)
-	// if it reports no conditions yet.
-	CreationTimeoutAnnotation = "yawol.stackit.cloud/creationTimeout"
-)
-
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=lbs
 // +kubebuilder:subresource:status
