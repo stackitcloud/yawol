@@ -313,7 +313,7 @@ write_files:
   content: ` + yawolletHealthCheckScriptBase64 + `
   owner: root:root
   path: ` + YawolletHealthCheckScript + `
-  permissions: '0655'
+  permissions: '0755'
 - encoding: b64
   content: ` + promtailConfigBase64 + `
   owner: promtail:promtail
