@@ -14,7 +14,6 @@ import (
 
 // NewLoadBalancerRevisionHealthz returns a new healthz.Checker that will pass if the LoadBalancerMachine belongs to
 // the latest revision of the corresponding LoadBalancer.
-// TODO: unit tests
 func NewLoadBalancerRevisionHealthz(
 	ctx context.Context,
 	reader client.Reader,
@@ -35,10 +34,10 @@ func NewLoadBalancerRevisionHealthz(
 	)
 
 	return func(_ *http.Request) error {
-		if err := reader.Get(ctx, client.ObjectKeyFromObject(lb), lb); err != nil {
+		if err := reader.Get(ctx, lbKey, lb); err != nil {
 			return fmt.Errorf("failed getting LoadBalancer %q", lbKey)
 		}
-		if err := reader.Get(ctx, client.ObjectKeyFromObject(lbm), lbm); err != nil {
+		if err := reader.Get(ctx, lbmKey, lbm); err != nil {
 			return fmt.Errorf("failed getting LoadBalancerMachine %q", lbmKey)
 		}
 

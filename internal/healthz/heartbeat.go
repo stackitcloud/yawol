@@ -23,16 +23,15 @@ func NewHeartbeatHeathz(ctx context.Context,
 	expiration time.Duration,
 	namespace, loadBalancerMachineName string) healthz.Checker {
 	var (
-		lbm = &yawolv1beta1.LoadBalancerMachine{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      loadBalancerMachineName,
-				Namespace: namespace,
-			},
+		lbm    = &yawolv1beta1.LoadBalancerMachine{}
+		lbmKey = client.ObjectKey{
+			Name:      loadBalancerMachineName,
+			Namespace: namespace,
 		}
 	)
 	return func(_ *http.Request) error {
-		if err := reader.Get(ctx, client.ObjectKeyFromObject(lbm), lbm); err != nil {
-			return fmt.Errorf("failed getting LoadBalancerMachine %s/%s: %w", lbm.Namespace, lbm.Name, err)
+		if err := reader.Get(ctx, lbmKey, lbm); err != nil {
+			return fmt.Errorf("failed getting LoadBalancerMachine %q", lbmKey)
 		}
 		expiration := metav1.Time{Time: time.Now().Add(-expiration)}
 
