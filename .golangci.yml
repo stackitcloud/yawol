@@ -128,6 +128,6 @@ issues:
     - directive `// nolint.*` should be written without leading space
 
 run:
-  timeout: 10m
+  timeout: 15m
   issues-exit-code: 1
   tests: true
