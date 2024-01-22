@@ -13,7 +13,8 @@ import (
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"gopkg.in/yaml.v3"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,7 +28,7 @@ func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalance
 
 	// lastOpenstackReconcile is older than 5 min
 	// add some seconds in order to be sure it reconciles
-	if lbm.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
+	if lbm.Status.LastOpenstackReconcile.Before(&metav1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
 		return true
 	}
 
@@ -249,14 +250,16 @@ func GenerateUserData(
 ) (string, error) {
 	var err error
 	const (
-		openRCDel   = "del"
-		openRCAdd   = "add"
-		openRCStart = "start"
-		openRCStop  = "stop"
+		openRCDel    = "del"
+		openRCAdd    = "add"
+		openRCStart  = "start"
+		openRCStop   = "stop"
+		probeAddress = "127.0.0.1:8080"
 	)
 
 	kubeconfigBase64 := base64.StdEncoding.EncodeToString([]byte(kubeconfig))
 	keepalivedConfigBase64 := base64.StdEncoding.EncodeToString([]byte(generateKeepalivedConfig(vip)))
+	yawolletHealthCheckScriptBase64 := base64.StdEncoding.EncodeToString([]byte(generateYawolletHealthCheckScript(probeAddress)))
 
 	promtailConfig := "disabled"
 	promtailOpenRC := openRCDel
@@ -286,6 +289,7 @@ func GenerateUserData(
 	yawolletArgs = yawolletArgs + "-loadbalancer-name=" + loadbalancer.Name + " "
 	yawolletArgs = yawolletArgs + "-loadbalancer-machine-name=" + loadbalancerMachine.Name + " "
 	yawolletArgs = yawolletArgs + "-listen-address=" + vip + " "
+	yawolletArgs = yawolletArgs + "-health-probe-bind-address=" + probeAddress + " "
 	yawolletArgs = yawolletArgs + "-kubeconfig /etc/yawol/kubeconfig" + " "
 
 	if yawolletRequeueTime > 0 {
@@ -305,6 +309,11 @@ write_files:
   owner: root:root
   path: /etc/keepalived/keepalived.conf
   permissions: '0644'
+- encoding: b64
+  content: ` + yawolletHealthCheckScriptBase64 + `
+  owner: root:root
+  path: ` + YawolletHealthCheckScript + `
+  permissions: '0755'
 - encoding: b64
   content: ` + promtailConfigBase64 + `
   owner: promtail:promtail
@@ -336,6 +345,15 @@ global_defs {
 	vrrp_garp_master_refresh 300
 	vrrp_garp_master_refresh_repeat 1
 	vrrp_higher_prio_send_advert true
+
+	# Don't run scripts configured to be run as root if any part of the path
+	# is writable by a non-root user.
+	enable_script_security
+	# Specify the default username/groupname to run scripts under.
+	# If this option is not specified, the user defaults to keepalived_script
+	# if that user exists, otherwise the uid/gid under which keepalived is running.
+	# If groupname is not specified, it defaults to the user's group.
+	# script_user username [groupname] # leave empty for using default keepalived_script user
 }
 
 vrrp_track_process envoy {
@@ -343,9 +361,15 @@ vrrp_track_process envoy {
 	weight 100
 }
 
-# the yawolfile is used to change priority if loadbalancermachine is from current revision
-track_file yawolfile {
-	file "` + YawolSetIsLatestRevisionFile + `"
+# check the yawollet's readyz endpoint
+vrrp_script yawollethealth {
+	script "` + YawolletHealthCheckScript + `"
+	interval 2
+	timeout 10
+	# assume script initially is in failed state
+	init_fail
+	rise 1
+	fall 3
 	weight 10
 }
 
@@ -369,10 +393,27 @@ vrrp_instance ` + VRRPInstanceName + ` {
 		envoy
 	}
 
-	track_file {
-		yawolfile
+	track_script {
+		yawollethealth
 	}
 }`
+}
+
+func generateYawolletHealthCheckScript(probeAddress string) string {
+	return `#!/usr/bin/env sh
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# call the yawollet readyz endpoint
+# This will return exit code 0 if all readyz check are successful, exit code 1 otherwise
+code=$(wget --quiet --server-response --timeout=2 -O /dev/null http://` + probeAddress + `/readyz 2>&1 | awk 'NR==1{print $2}')
+if [[ "$code" -eq 200 ]] ; then
+  exit 0
+else
+  exit 1
+fi
+`
 }
 
 func generatePromtailConfig(
@@ -418,4 +459,55 @@ func addRootIndent(b []byte, n int) []byte {
 	prefix := append([]byte("\n"), bytes.Repeat([]byte(" "), n)...)
 	b = append(prefix[1:], b...) // indent first line
 	return bytes.ReplaceAll(b, []byte("\n"), prefix)
+}
+
+var relevantLBMConditionslForLBS = []LoadbalancerCondition{
+	ConfigReady,
+	EnvoyReady,
+	EnvoyUpToDate,
+}
+
+// AreRelevantConditionsMet checks if all required conditions (from the
+// perspective of the LoadBalancerSet) are both `True` and up-to-date, according
+// to the passed expiration time. If `stableConditions` is set, a condition is
+// only considered `False` if it has been in that state since the expiration
+// time.
+func AreRelevantConditionsMet(
+	machine *yawolv1beta1.LoadBalancerMachine,
+	expiration metav1.Time,
+	stableConditions bool,
+) (ok bool, reason string) {
+	if machine.Status.Conditions == nil {
+		return false, "no conditions set"
+	}
+
+	// constuct lookup map
+	conditions := *machine.Status.Conditions
+	condMap := make(map[LoadbalancerCondition]corev1.NodeCondition, len(conditions))
+	for i := range conditions {
+		condMap[LoadbalancerCondition(conditions[i].Type)] = conditions[i]
+	}
+
+	for _, typ := range relevantLBMConditionslForLBS {
+		condition, found := condMap[typ]
+		if !found {
+			return false, fmt.Sprintf("required condition %s not present on machine", typ)
+		}
+
+		conditionIsStable := true
+		if stableConditions {
+			conditionIsStable = condition.LastTransitionTime.Before(&expiration)
+		}
+		if conditionIsStable && condition.Status != corev1.ConditionTrue {
+			return false, fmt.Sprintf(
+				"condition %s is in status %s with reason: %v, message: %v, lastTransitionTime: %v",
+				condition.Type, condition.Status, condition.Reason, condition.Message, condition.LastTransitionTime,
+			)
+		}
+		if condition.LastHeartbeatTime.Before(&expiration) {
+			return false, fmt.Sprintf("condition %s heartbeat is stale", condition.Type)
+		}
+	}
+
+	return true, ""
 }

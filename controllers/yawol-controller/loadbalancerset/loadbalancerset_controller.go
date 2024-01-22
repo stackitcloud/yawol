@@ -264,7 +264,7 @@ func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDe
 		return false, ""
 	}
 
-	ok, reason := areRelevantConditionsMet(machine, before3Minutes, true)
+	ok, reason := helper.AreRelevantConditionsMet(machine, before3Minutes, true)
 	if !ok {
 		return true, reason
 	}
@@ -279,7 +279,7 @@ func shouldMachineBeDeleted(machine *yawolv1beta1.LoadBalancerMachine) (shouldDe
 func isMachineReady(machine yawolv1beta1.LoadBalancerMachine) bool {
 	before180seconds := metav1.Time{Time: time.Now().Add(-180 * time.Second)}
 
-	ok, _ := areRelevantConditionsMet(&machine, before180seconds, false)
+	ok, _ := helper.AreRelevantConditionsMet(&machine, before180seconds, false)
 	return ok
 }
 

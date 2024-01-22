@@ -22,6 +22,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	controllers "github.com/stackitcloud/yawol/controllers/yawollet"
+	yawolhealthz "github.com/stackitcloud/yawol/internal/healthz"
 	"github.com/stackitcloud/yawol/internal/helper"
 
 	"go.uber.org/zap/zapcore"
@@ -68,7 +69,7 @@ func main() {
 	var keepalivedStatsFile string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", "0", "The address the probe endpoint binds to. Default is disabled.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8080", "The address the probe endpoint binds to.")
 
 	flag.StringVar(&namespace, "namespace", "", "The namespace from lb und lbm object.")
 	flag.StringVar(&loadbalancerName, "loadbalancer-name", "", "Name of lb object.")
@@ -105,6 +106,7 @@ func main() {
 	} else if requeueTime > 170 {
 		requeueTime = 170
 	}
+	requeueDuration := time.Duration(requeueTime) * time.Second
 
 	// set listen address
 	if listenAddress == "" {
@@ -191,7 +193,8 @@ func main() {
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
-		LeaderElection: false,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         false,
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{
 				namespace: {},
@@ -215,7 +218,7 @@ func main() {
 		LoadbalancerMachineName: loadbalancerMachineName,
 		EnvoyCache:              envoyCache,
 		ListenAddress:           listenAddress,
-		RequeueDuration:         time.Duration(requeueTime) * time.Second,
+		RequeueDuration:         requeueDuration,
 		KeepalivedStatsFile:     keepalivedStatsFile,
 		Recorder:                mgr.GetEventRecorderFor("yawollet"),
 		RecorderLB:              mgr.GetEventRecorderFor("yawol-service"),
@@ -226,17 +229,37 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 
+	managerCtx := ctrl.SetupSignalHandler()
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
+
+	// The readyz checks are used by keepalived for increasing the priority of machines that run a healthy yawollet for
+	// the latest LoadBalancer revision (i.e., when the machine belongs to the current LoadBalancerSet).
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+	if err := mgr.AddReadyzCheck("informer-sync", yawolhealthz.NewCacheSyncHealthz(mgr.GetCache())); err != nil {
+		setupLog.Error(err, "unable to set up informer ready check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("loadbalancer-heartbeat", yawolhealthz.NewHeartbeatHealthz(
+		managerCtx, mgr.GetCache(), 2*requeueDuration, namespace, loadbalancerMachineName)); err != nil {
+		setupLog.Error(err, "unable to set up LoadBalancer heartbeat ready check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("loadbalancer-revision", yawolhealthz.NewLoadBalancerRevisionHealthz(
+		managerCtx, mgr.GetCache(), namespace, loadbalancerName, loadbalancerMachineName,
+	)); err != nil {
+		setupLog.Error(err, "unable to set up LoadBalancer revision ready check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(managerCtx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
