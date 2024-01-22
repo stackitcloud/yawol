@@ -6,18 +6,19 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/internal/healthz"
-	"github.com/stackitcloud/yawol/internal/helper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	ctrlHealth "sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/healthz"
+	"github.com/stackitcloud/yawol/internal/helper"
 )
 
-var _ = Describe("NewHeartbeatHeathz", func() {
+var _ = Describe("NewHeartbeatHealthz", func() {
 	var (
 		k8sClient client.Client
 		ctx       context.Context
@@ -46,17 +47,23 @@ var _ = Describe("NewHeartbeatHeathz", func() {
 			},
 		}
 
-		checker = healthz.NewHeartbeatHeathz(ctx, k8sClient, 1*time.Minute, namespace, lbmName)
+		checker = healthz.NewHeartbeatHealthz(ctx, k8sClient, 1*time.Minute, namespace, lbmName)
 	})
 	It("should error, when objects don't exist", func() {
 		Expect(checker(nil)).To(MatchError(ContainSubstring("failed getting LoadBalancerMachine")))
+	})
+	It("should error, when conditions are missing", func() {
+		lbm.Status.Conditions = nil
+		// since we did not tell the fake about the status subresource, create
+		// also persists the status.
+		Expect(k8sClient.Create(ctx, lbm)).To(Succeed())
+
+		Expect(checker(nil)).To(MatchError(ContainSubstring("no conditions set")))
 	})
 	It("should succeed when all conditions are true", func() {
 		addLBMCondition(lbm, helper.ConfigReady, helper.ConditionTrue, now)
 		addLBMCondition(lbm, helper.EnvoyReady, helper.ConditionTrue, now)
 		addLBMCondition(lbm, helper.EnvoyUpToDate, helper.ConditionTrue, now)
-		// since we did not tell the fake about the status subresoure, create
-		// also persists the status.
 		Expect(k8sClient.Create(ctx, lbm)).To(Succeed())
 
 		Expect(checker(nil)).To(Succeed())
@@ -69,7 +76,7 @@ var _ = Describe("NewHeartbeatHeathz", func() {
 
 		Expect(checker(nil)).To(MatchError(ContainSubstring("condition EnvoyUpToDate is in status False")))
 	})
-	It("should error, when not all contitions are there", func() {
+	It("should error, when not all conditions are there", func() {
 		addLBMCondition(lbm, helper.ConfigReady, helper.ConditionTrue, now)
 		addLBMCondition(lbm, helper.EnvoyReady, helper.ConditionTrue, now)
 		Expect(k8sClient.Create(ctx, lbm)).To(Succeed())

@@ -242,13 +242,13 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("loadbalancer-heartbeat", yawolhealthz.NewHeartbeatHeathz(
-		managerCtx, mgr.GetCache(), 2*requeueDuration, namespace, loadbalancerMachineName)); err != nil {
-		setupLog.Error(err, "unable to set up API server ready check")
-		os.Exit(1)
-	}
 	if err := mgr.AddReadyzCheck("informer-sync", yawolhealthz.NewCacheSyncHealthz(mgr.GetCache())); err != nil {
 		setupLog.Error(err, "unable to set up informer ready check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("loadbalancer-heartbeat", yawolhealthz.NewHeartbeatHealthz(
+		managerCtx, mgr.GetCache(), 2*requeueDuration, namespace, loadbalancerMachineName)); err != nil {
+		setupLog.Error(err, "unable to set up LoadBalancer heartbeat ready check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("loadbalancer-revision", yawolhealthz.NewLoadBalancerRevisionHealthz(

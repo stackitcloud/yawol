@@ -346,13 +346,13 @@ global_defs {
 	vrrp_garp_master_refresh_repeat 1
 	vrrp_higher_prio_send_advert true
 
-  # Don't run scripts configured to be run as root if any part of the path
-  # is writable by a non-root user.
-  enable_script_security
-  # Specify the default username/groupname to run scripts under.
-  # If this option is not specified, the user defaults to keepalived_script
-  # if that user exists, otherwise the uid/gid under which keepalived is running.
-  # If groupname is not specified, it defaults to the user's group.
+	# Don't run scripts configured to be run as root if any part of the path
+	# is writable by a non-root user.
+	enable_script_security
+	# Specify the default username/groupname to run scripts under.
+	# If this option is not specified, the user defaults to keepalived_script
+	# if that user exists, otherwise the uid/gid under which keepalived is running.
+	# If groupname is not specified, it defaults to the user's group.
 	# script_user username [groupname] # leave empty for using default keepalived_script user
 }
 
@@ -363,13 +363,13 @@ vrrp_track_process envoy {
 
 # check the yawollet's readyz endpoint
 vrrp_script yawollethealth {
-  script "` + YawolletHealthCheckScript + `"
-  interval 2
-  timeout 10
+	script "` + YawolletHealthCheckScript + `"
+	interval 2
+	timeout 10
 	# assume script initially is in failed state
 	init_fail
-  rise 1
-  fall 3
+	rise 1
+	fall 3
 	weight 10
 }
 

@@ -5,14 +5,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/internal/healthz"
-	"github.com/stackitcloud/yawol/internal/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	ctrlHealth "sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/internal/healthz"
+	"github.com/stackitcloud/yawol/internal/helper"
 )
 
 var _ = Describe("NewLoadBalancerRevisionHealthz", func() {
@@ -46,8 +47,13 @@ var _ = Describe("NewLoadBalancerRevisionHealthz", func() {
 
 		checker = healthz.NewLoadBalancerRevisionHealthz(ctx, k8sClient, namespace, lbName, lbmName)
 	})
-	It("should error, when objects don't exist", func() {
+	It("should error, when LoadBalancer don't exist", func() {
+		Expect(k8sClient.Create(ctx, lbm)).To(Succeed())
 		Expect(checker(nil)).To(MatchError(ContainSubstring("failed getting LoadBalancer")))
+	})
+	It("should error, when LoadBalancerMachine don't exist", func() {
+		Expect(k8sClient.Create(ctx, lb)).To(Succeed())
+		Expect(checker(nil)).To(MatchError(ContainSubstring("failed getting LoadBalancerMachine")))
 	})
 	It("should error, when the annotations don't match", func() {
 		metav1.SetMetaDataAnnotation(&lb.ObjectMeta, helper.RevisionAnnotation, "foo")
