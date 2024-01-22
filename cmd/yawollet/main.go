@@ -11,7 +11,6 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -107,6 +106,7 @@ func main() {
 	} else if requeueTime > 170 {
 		requeueTime = 170
 	}
+	requeueDuration := time.Duration(requeueTime) * time.Second
 
 	// set listen address
 	if listenAddress == "" {
@@ -218,7 +218,7 @@ func main() {
 		LoadbalancerMachineName: loadbalancerMachineName,
 		EnvoyCache:              envoyCache,
 		ListenAddress:           listenAddress,
-		RequeueDuration:         time.Duration(requeueTime) * time.Second,
+		RequeueDuration:         requeueDuration,
 		KeepalivedStatsFile:     keepalivedStatsFile,
 		Recorder:                mgr.GetEventRecorderFor("yawollet"),
 		RecorderLB:              mgr.GetEventRecorderFor("yawol-service"),
@@ -231,14 +231,6 @@ func main() {
 
 	managerCtx := ctrl.SetupSignalHandler()
 
-	// Create a client-go clientset that can call the `/healthz` endpoint of the API server for testing connectivity
-	// with the API server.
-	healthzClientSet, err := kubernetes.NewForConfigAndClient(mgr.GetConfig(), mgr.GetHTTPClient())
-	if err != nil {
-		setupLog.Error(err, "unable to create client set for readyz checks")
-		os.Exit(1)
-	}
-
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
@@ -250,7 +242,8 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("apiserver-healthz", yawolhealthz.NewAPIServerHealthz(managerCtx, healthzClientSet.RESTClient())); err != nil {
+	if err := mgr.AddReadyzCheck("loadbalancer-heartbeat", yawolhealthz.NewHeartbeatHeathz(
+		managerCtx, mgr.GetCache(), 2*requeueDuration, namespace, loadbalancerMachineName)); err != nil {
 		setupLog.Error(err, "unable to set up API server ready check")
 		os.Exit(1)
 	}

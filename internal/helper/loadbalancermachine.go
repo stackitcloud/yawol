@@ -13,7 +13,8 @@ import (
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 
 	"gopkg.in/yaml.v3"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,7 +28,7 @@ func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalance
 
 	// lastOpenstackReconcile is older than 5 min
 	// add some seconds in order to be sure it reconciles
-	if lbm.Status.LastOpenstackReconcile.Before(&metaV1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
+	if lbm.Status.LastOpenstackReconcile.Before(&metav1.Time{Time: time.Now().Add(-OpenstackReconcileTime).Add(2 * time.Second)}) {
 		return true
 	}
 
@@ -458,4 +459,55 @@ func addRootIndent(b []byte, n int) []byte {
 	prefix := append([]byte("\n"), bytes.Repeat([]byte(" "), n)...)
 	b = append(prefix[1:], b...) // indent first line
 	return bytes.ReplaceAll(b, []byte("\n"), prefix)
+}
+
+var relevantLBMConditionslForLBS = []LoadbalancerCondition{
+	ConfigReady,
+	EnvoyReady,
+	EnvoyUpToDate,
+}
+
+// AreRelevantConditionsMet checks if all required conditions (from the
+// perspective of the LoadBalancerSet) are both `True` and up-to-date, according
+// to the passed expiration time. If `stableConditions` is set, a condition is
+// only considered `False` if it has been in that state since the expiration
+// time.
+func AreRelevantConditionsMet(
+	machine *yawolv1beta1.LoadBalancerMachine,
+	expiration metav1.Time,
+	stableConditions bool,
+) (ok bool, reason string) {
+	if machine.Status.Conditions == nil {
+		return false, "no conditions set"
+	}
+
+	// constuct lookup map
+	conditions := *machine.Status.Conditions
+	condMap := make(map[LoadbalancerCondition]corev1.NodeCondition, len(conditions))
+	for i := range conditions {
+		condMap[LoadbalancerCondition(conditions[i].Type)] = conditions[i]
+	}
+
+	for _, typ := range relevantLBMConditionslForLBS {
+		condition, found := condMap[typ]
+		if !found {
+			return false, fmt.Sprintf("required condition %s not present on machine", typ)
+		}
+
+		conditionIsStable := true
+		if stableConditions {
+			conditionIsStable = condition.LastTransitionTime.Before(&expiration)
+		}
+		if conditionIsStable && condition.Status != corev1.ConditionTrue {
+			return false, fmt.Sprintf(
+				"condition %s is in status %s with reason: %v, message: %v, lastTransitionTime: %v",
+				condition.Type, condition.Status, condition.Reason, condition.Message, condition.LastTransitionTime,
+			)
+		}
+		if condition.LastHeartbeatTime.Before(&expiration) {
+			return false, fmt.Sprintf("condition %s heartbeat is stale", condition.Type)
+		}
+	}
+
+	return true, ""
 }
