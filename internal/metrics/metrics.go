@@ -128,7 +128,7 @@ var (
 	LoadBalancerMachineOpenstackInfoMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine_openstack_info",
 		Help: "Openstack Info contains labels with the OpenStackIDs for LoadBalancerMachine",
-	}, []string{"lb", "lbm", "namespace", "portID", "serverID", "flavorID"})
+	}, []string{"lb", "lbm", "namespace", "portID", "serverID", "flavorID", "imageID"})
 	// LoadBalancerMachineDeletionTimestampMetrics Deletion timestamp of a LoadBalancerMachine in seconds since epoch
 	LoadBalancerMachineDeletionTimestampMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loadbalancermachine_deletion_timestamp",

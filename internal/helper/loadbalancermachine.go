@@ -130,10 +130,14 @@ func parseLoadBalancerMachineOpenstackInfoMetrics(
 		"portID":    "nil",
 		"serverID":  "nil",
 		"flavorID":  "nil",
+		"imageID":   "nil",
 	}
 
 	if loadBalancerMachine.Spec.Infrastructure.Flavor.FlavorID != nil {
 		labels["flavorID"] = *loadBalancerMachine.Spec.Infrastructure.Flavor.FlavorID
+	}
+	if loadBalancerMachine.Spec.Infrastructure.Image.ImageID != nil {
+		labels["imageID"] = *loadBalancerMachine.Spec.Infrastructure.Image.ImageID
 	}
 
 	if loadBalancerMachine.Status.DefaultPortID != nil {
