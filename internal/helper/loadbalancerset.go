@@ -7,7 +7,7 @@ import (
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -20,10 +20,10 @@ func NewLoadBalancerSetForLoadBalancer(lb *yawolv1beta1.LoadBalancer, hash strin
 	setLabels[HashLabel] = hash
 
 	return &yawolv1beta1.LoadBalancerSet{
-		ObjectMeta: metaV1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      lb.Name + "-" + hash,
 			Namespace: lb.Namespace,
-			OwnerReferences: []metaV1.OwnerReference{
+			OwnerReferences: []metav1.OwnerReference{
 				GetOwnersReferenceForLB(lb),
 			},
 			Labels: setLabels,
@@ -32,7 +32,7 @@ func NewLoadBalancerSetForLoadBalancer(lb *yawolv1beta1.LoadBalancer, hash strin
 			},
 		},
 		Spec: yawolv1beta1.LoadBalancerSetSpec{
-			Selector: metaV1.LabelSelector{
+			Selector: metav1.LabelSelector{
 				MatchLabels: setLabels,
 			},
 			Template: yawolv1beta1.LoadBalancerMachineTemplateSpec{
@@ -76,25 +76,27 @@ func ScaleDownOldLoadBalancerSets(
 	return nil
 }
 
-// LBSetHasKeepalivedMaster returns true one of the following conditions are met:
+// LBSetHasKeepalivedMaster returns true if one of the following conditions are met:
 // - if the keepalived condition on set is ready for more than 2 min
 // - keepalived condition is not ready for more than 10 min (to make sure this does not block updates)
 // - no keepalived condition is in lbs but lbs is older than 15 min (to make sure this does not block updates)
-func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) bool {
-	before2Minutes := metaV1.Time{Time: time.Now().Add(-2 * time.Minute)}
-	before10Minutes := metaV1.Time{Time: time.Now().Add(-10 * time.Minute)}
-	before15Minutes := metaV1.Time{Time: time.Now().Add(-15 * time.Minute)}
+// When `false` is returned, the second return parameter can be used to requeue again,
+// once the condition that caused the "false" state to be ignored.
+func LBSetHasKeepalivedMaster(set *yawolv1beta1.LoadBalancerSet) (bool, time.Duration) {
+	now := time.Now()
 
+	considerTrueAfter := set.CreationTimestamp.Add(15 * time.Minute)
 	for _, condition := range set.Status.Conditions {
 		if condition.Type != HasKeepalivedMaster {
 			continue
 		}
-		if condition.Status == metaV1.ConditionTrue {
-			return condition.LastTransitionTime.Before(&before2Minutes)
+		if condition.Status == metav1.ConditionTrue {
+			considerTrueAfter = condition.LastTransitionTime.Add(2 * time.Minute)
+			break
 		}
-		return condition.LastTransitionTime.Before(&before10Minutes)
+		considerTrueAfter = condition.LastTransitionTime.Add(10 * time.Minute)
 	}
-	return set.CreationTimestamp.Before(&before15Minutes)
+	return now.After(considerTrueAfter), considerTrueAfter.Sub(now)
 }
 
 // StatusReplicasFromSetList returns the total replicas and ready replicas based on the given list of LoadBalancerSets.
