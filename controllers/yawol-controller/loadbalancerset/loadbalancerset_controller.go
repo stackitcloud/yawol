@@ -3,6 +3,7 @@ package loadbalancerset
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,8 +22,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
 )
 
@@ -94,21 +97,16 @@ func (r *LoadBalancerSetReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}
 
-	// TODO: patchStatus *after* we've reconciled the replicas
-	if err := r.patchStatus(ctx, &set, readyMachineCount, hasKeepalivedMaster); err != nil {
-		return ctrl.Result{}, err
+	res, err := r.reconcileReplicas(ctx, &set, childMachines.Items, deletedMachineCount)
+
+	if patchErr := r.patchStatus(ctx, &set, readyMachineCount, hasKeepalivedMaster); patchErr != nil {
+		return ctrl.Result{}, errors.Join(err, patchErr)
 	}
 
-	if res, err := r.reconcileReplicas(
-		ctx,
-		&set,
-		childMachines.Items,
-		deletedMachineCount,
-	); err != nil || res.Requeue || res.RequeueAfter != 0 {
-		return res, err
+	if res.RequeueAfter == 0 {
+		res.RequeueAfter = 10 * time.Second
 	}
-
-	return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	return res, nil
 }
 
 func (r *LoadBalancerSetReconciler) deletionRoutine(
@@ -345,7 +343,18 @@ func (r *LoadBalancerSetReconciler) deleteAllMachines(ctx context.Context, set *
 
 func (r *LoadBalancerSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&yawolv1beta1.LoadBalancerSet{}).
+		For(
+			&yawolv1beta1.LoadBalancerSet{},
+			builder.WithPredicates(predicate.Or(
+				// Don't react to status updates. We usually reconcile every 10
+				// seconds (2 seconds after updating machines) anyways, and
+				// triggering reconciles after writing the status ourselves is not
+				// necessary.
+				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+				predicate.LabelChangedPredicate{},
+			)),
+		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,
