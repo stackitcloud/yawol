@@ -560,11 +560,17 @@ func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity 
 			networkID = lb.Spec.Infrastructure.DefaultNetwork.NetworkID
 		}
 
+		var subnetworkID string
+		if lb.Spec.Infrastructure.DefaultNetwork.SubnetworkID != nil {
+			subnetworkID = *lb.Spec.Infrastructure.DefaultNetwork.SubnetworkID
+		}
+
 		port, err = openstackhelper.CreatePort(
 			ctx,
 			portClient,
 			*lb.Status.PortName,
 			networkID,
+			subnetworkID,
 		)
 		if err != nil {
 			r.Log.Info("unexpected error occurred claiming a port", "lb", req.NamespacedName)

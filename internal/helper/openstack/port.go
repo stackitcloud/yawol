@@ -38,10 +38,16 @@ func CreatePort(
 	portClient openstack.PortClient,
 	portName string,
 	networkID string,
+	subnetworkID string,
 ) (*ports.Port, error) {
 	opts := ports.CreateOpts{
 		Name:      portName,
 		NetworkID: networkID,
+	}
+	if subnetworkID != "" {
+		opts.FixedIPs = []ports.IP{
+			{SubnetID: subnetworkID},
+		}
 	}
 	port, err := portClient.Create(ctx, opts)
 	if err != nil {

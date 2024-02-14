@@ -471,6 +471,11 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 		return helper.ErrNoNetworkID
 	}
 
+	var subnetworkID string
+	if lbm.Spec.Infrastructure.DefaultNetwork.SubnetworkID != nil {
+		subnetworkID = *lbm.Spec.Infrastructure.DefaultNetwork.SubnetworkID
+	}
+
 	var portClient os.PortClient
 	portClient, err = osClient.PortClient(ctx)
 	if err != nil {
@@ -509,7 +514,8 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 				ctx,
 				portClient,
 				*lbm.Status.DefaultPortName,
-				networkID)
+				networkID,
+				subnetworkID)
 			if err != nil {
 				r.Log.Info("unexpected error occurred claiming a port", "lbm", lbm.Name)
 				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lbm)
