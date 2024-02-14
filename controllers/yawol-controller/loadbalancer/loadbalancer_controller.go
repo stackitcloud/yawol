@@ -4,16 +4,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/stackitcloud/yawol/internal/helper"
+	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
+	"github.com/stackitcloud/yawol/internal/openstack"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"github.com/stackitcloud/yawol/internal/helper"
-	"github.com/stackitcloud/yawol/internal/helper/kubernetes"
-	"github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
@@ -108,14 +107,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	emptyResult := ctrl.Result{}
+
 	// run openstack reconcile if needed
-	if res, err = r.reconcileOpenStackIfNeeded(ctx, &lb, req, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
+	if res, err = r.reconcileOpenStackIfNeeded(ctx, &lb, req, osClient); err != nil || res != emptyResult {
 		return res, err
 	}
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
-	if err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil {
-		return ctrl.Result{}, err
+	if res, err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil || res != emptyResult {
+		return res, err
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -915,16 +916,17 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	ctx context.Context,
 	log logr.Logger,
 	lb *yawolv1beta1.LoadBalancer,
-) error {
+) (ctrl.Result, error) {
+	emptyResult := ctrl.Result{}
 	// Make sure LoadBalancer has revision number
 	currentRevision, err := helper.ReadCurrentRevisionFromLB(lb)
 	if err != nil {
-		return err
+		return emptyResult, err
 	}
 	log = log.WithValues("revision", currentRevision)
 
 	if currentRevision == 0 {
-		return helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1)
+		return emptyResult, helper.PatchLoadBalancerRevision(ctx, r.Client, lb, 1)
 	}
 
 	// Get the labels LBS will receive on creation from this lb
@@ -932,36 +934,36 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 
 	loadBalancerSetList := &yawolv1beta1.LoadBalancerSetList{}
 	if err := r.Client.List(ctx, loadBalancerSetList, client.MatchingLabels(lbsLabels)); err != nil {
-		return err
+		return emptyResult, err
 	}
 
 	// Get Hash for current LoadBalancerMachineSpec
 	var hash string
 	hash, err = helper.GetHashForLoadBalancerMachineSet(lb)
 	if err != nil {
-		return err
+		return emptyResult, err
 	}
 	log = log.WithValues("hash", hash)
 
 	// Get LoadBalancerSet for current hash
 	var currentSet *yawolv1beta1.LoadBalancerSet
 	if currentSet, err = helper.GetLoadBalancerSetForHash(loadBalancerSetList, hash); err != nil {
-		return err
+		return emptyResult, err
 	}
 
 	// create new LBS if hash changed or LB was newly created
 	if currentSet == nil {
 		nextRevision, err := helper.GetNextRevisionForLoadBalancer(loadBalancerSetList)
 		if err != nil {
-			return err
+			return emptyResult, err
 		}
 
 		if lb.Status.PortID == nil {
-			return helper.ErrLBPortNotSet
+			return emptyResult, helper.ErrLBPortNotSet
 		}
 
 		if err := helper.PatchLoadBalancerRevision(ctx, r.Client, lb, nextRevision); err != nil {
-			return err
+			return emptyResult, err
 		}
 
 		currentSet = helper.NewLoadBalancerSetForLoadBalancer(lb, hash, nextRevision)
@@ -969,7 +971,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 		log.Info("Creating new LoadBalancerSet")
 
 		if err := r.Client.Create(ctx, currentSet); err != nil {
-			return err
+			return emptyResult, err
 		}
 	}
 	log = log.WithValues("loadBalancerSet", currentSet.Name)
@@ -979,7 +981,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	statusReplicas, statusReadyReplicas := helper.StatusReplicasFromSetList(loadBalancerSetList)
 	lb.Status.Replicas, lb.Status.ReadyReplicas = &statusReplicas, &statusReadyReplicas
 	if err := r.Client.Status().Patch(ctx, lb, patch); err != nil {
-		return err
+		return emptyResult, err
 	}
 
 	// update LoadBalancerSet replicas if required
@@ -987,7 +989,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	if currentSet.Spec.Replicas != desiredReplicas {
 		log.Info("Setting replicas of current LoadBalancerSet", "replicas", desiredReplicas)
 		if err := helper.PatchLoadBalancerSetReplicas(ctx, r.Client, currentSet, desiredReplicas); err != nil {
-			return err
+			return emptyResult, err
 		}
 	}
 
@@ -1000,15 +1002,20 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	// check if all replicas from current LBS are ready and requeue if not ready
 	if currentReplicas != desiredReplicas || currentReadyReplicas != desiredReplicas {
 		log.V(1).Info("Current LoadBalancerSet is not ready yet")
-		return nil
+		return emptyResult, nil
 	}
 
 	log.Info("Current LoadBalancerSet is ready")
 
 	// check if in current loadbalancerset is a keepalived master
-	if !helper.LBSetHasKeepalivedMaster(currentSet) {
-		log.V(1).Info("Current LoadBalancerSet has no keepalived master yet")
-		return nil
+	if ok, requeueAfter := helper.LBSetHasKeepalivedMaster(currentSet); !ok {
+		// the helper only returns true if the LBSet has the master for some
+		// time, so we want to requeue more frequently to catch that.
+		if requeueAfter > 5*time.Minute {
+			requeueAfter = 5 * time.Minute
+		}
+		log.V(1).Info("Current LoadBalancerSet has no keepalived master yet", "forceCheckAfter", requeueAfter)
+		return ctrl.Result{RequeueAfter: requeueAfter, Requeue: true}, nil
 	}
 
 	log.Info("Current LoadBalancerSet has keepalived master")
@@ -1016,10 +1023,10 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 	// scale down all other existing LoadBalancerSets for the LoadBalancer after upscale to ensure no downtime
 	log.Info("Scale down old LoadBalancerSets")
 	if err := helper.ScaleDownOldLoadBalancerSets(ctx, r.Client, loadBalancerSetList, currentSet.Name); err != nil {
-		return nil
+		return emptyResult, nil
 	}
 
-	return nil
+	return emptyResult, nil
 }
 
 func (r *Reconciler) deletionRoutine(
