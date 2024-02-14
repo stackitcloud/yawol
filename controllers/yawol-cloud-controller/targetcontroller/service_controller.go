@@ -634,6 +634,7 @@ func getDefaultNetwork(
 	defaultNetwork := yawolv1beta1.LoadBalancerDefaultNetwork{
 		FloatingNetID: infraConfig.FloatingNetworkID,
 		NetworkID:     *infraConfig.NetworkID,
+		SubnetID:      infraConfig.SubnetID,
 	}
 
 	if networkID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultNetworkID]; ok {
@@ -642,6 +643,10 @@ func getDefaultNetwork(
 
 	if floatingID, ok := svc.Annotations[yawolv1beta1.ServiceFloatingNetworkID]; ok {
 		defaultNetwork.FloatingNetID = &floatingID
+	}
+
+	if subnetID, ok := svc.Annotations[yawolv1beta1.ServiceDefaultSubnetID]; ok {
+		defaultNetwork.SubnetID = &subnetID
 	}
 	return defaultNetwork
 }

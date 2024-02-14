@@ -15,6 +15,8 @@ const (
 	// If this is set to a different network ID than defined as default in the yawol-cloud-controller
 	// the default from the yawol-cloud-controller will be added to the additionalNetworks
 	ServiceDefaultNetworkID = "yawol.stackit.cloud/defaultNetworkID"
+	// ServiceDefaultSubnetID overwrites the default openstack subnet for the loadbalancer
+	ServiceDefaultSubnetID = "yawol.stackit.cloud/defaultSubnetID"
 	// ServiceSkipCloudControllerDefaultNetworkID if set to true it do not add the default network ID from
 	// the yawol-cloud-controller to the additionalNetworks
 	ServiceSkipCloudControllerDefaultNetworkID = "yawol.stackit.cloud/skipCloudControllerDefaultNetworkID"
@@ -245,6 +247,9 @@ type LoadBalancerDefaultNetwork struct {
 	FloatingNetID *string `json:"floatingNetID,omitempty"`
 	// NetworkID defines an openstack ID for the network.
 	NetworkID string `json:"networkID"`
+	// SubnetID defines an openstack ID for the subnet.
+	// +optional
+	SubnetID *string `json:"subnetID,omitempty"`
 }
 
 // OpenstackImageRef defines a reference to a Openstack image.
