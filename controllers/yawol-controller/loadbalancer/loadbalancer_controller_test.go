@@ -18,7 +18,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/openstack"
 	"github.com/stackitcloud/yawol/internal/openstack/testing"
@@ -783,7 +782,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					Namespace: namespace,
 				}
 				annotatedLB := getMockLB(nn)
-				annotatedLB.Labels = map[string]string{
+				annotatedLB.Annotations = map[string]string{
 					KeepFloatingIPAnnotation:    "true",
 					KeepPortAnnotation:          "true",
 					KeepSecurityGroupAnnotation: "true",

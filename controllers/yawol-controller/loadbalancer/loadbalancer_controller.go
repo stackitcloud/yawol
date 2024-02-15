@@ -1121,7 +1121,7 @@ func (r *Reconciler) deleteFips(
 	var requeue = false
 
 	// skip deletion and release status when annotated
-	if lb.GetLabels()[KeepFloatingIPAnnotation] == "true" {
+	if lb.GetAnnotations()[KeepFloatingIPAnnotation] == "true" {
 		if lb.Status.FloatingID == nil &&
 			lb.Status.FloatingName == nil {
 			return false, nil
@@ -1246,7 +1246,7 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// skip deletion and release status when annotated
-	if lb.GetLabels()[KeepPortAnnotation] == "true" {
+	if lb.GetAnnotations()[KeepPortAnnotation] == "true" {
 		if lb.Status.PortID == nil {
 			return false, nil
 		}
@@ -1348,7 +1348,7 @@ func (r *Reconciler) deleteSecGroups(
 		return false, err
 	}
 	// skip deletion and release status when annotated
-	if lb.GetLabels()[KeepSecurityGroupAnnotation] == "true" {
+	if lb.GetAnnotations()[KeepSecurityGroupAnnotation] == "true" {
 		if lb.Status.SecurityGroupID == nil {
 			return false, nil
 		}
