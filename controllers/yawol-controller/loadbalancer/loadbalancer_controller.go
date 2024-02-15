@@ -37,8 +37,11 @@ import (
 )
 
 const (
-	DefaultRequeueTime = 10 * time.Millisecond
-	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
+	DefaultRequeueTime          = 10 * time.Millisecond
+	ServiceFinalizer            = "yawol.stackit.cloud/controller2"
+	KeepFloatingIPAnnotation    = "yawol.stackit.cloud/keepFloatingIP"
+	KeepPortAnnotation          = "yawol.stackit.cloud/keepPort"
+	KeepSecurityGroupAnnotation = "yawol.stackit.cloud/keepSecurityGroup"
 )
 
 // LoadBalancerReconciler reconciles service Objects with type LoadBalancer
@@ -1117,6 +1120,24 @@ func (r *Reconciler) deleteFips(
 
 	var requeue = false
 
+	// skip deletion and release status when annotated
+	if lb.GetLabels()[KeepFloatingIPAnnotation] == "true" {
+		if lb.Status.FloatingID == nil &&
+			lb.Status.FloatingName == nil {
+			return false, nil
+		}
+		r.Log.Info("FIP released.", "lb", lb.Namespace+"/"+lb.Name)
+		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "floatingID")
+		if err != nil {
+			return false, err
+		}
+		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "floatingName")
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
 	// Remove only from status if lb.Spec.ExistingFloatingIP is set
 	if lb.Spec.ExistingFloatingIP != nil {
 		if lb.Status.FloatingID == nil &&
@@ -1224,6 +1245,19 @@ func (r *Reconciler) deletePorts(
 		return false, err
 	}
 
+	// skip deletion and release status when annotated
+	if lb.GetLabels()[KeepPortAnnotation] == "true" {
+		if lb.Status.PortID == nil {
+			return false, nil
+		}
+		r.Log.Info("Port released", "lb", lb.Namespace+"/"+lb.Name)
+		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "portID")
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
 	var requeue bool
 
 	if lb.Status.PortID != nil {
@@ -1312,6 +1346,15 @@ func (r *Reconciler) deleteSecGroups(
 	err = r.findAndDeleteSecGroupUsages(ctx, portClient, lb)
 	if err != nil {
 		return false, err
+	}
+	// skip deletion and release status when annotated
+	if lb.GetLabels()[KeepSecurityGroupAnnotation] == "true" {
+		if lb.Status.SecurityGroupID == nil {
+			return false, nil
+		}
+		r.Log.Info("security group was released", "lb", lb.Namespace+"/"+lb.Name)
+		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "security_group_id")
+		return err != nil, err
 	}
 
 	var requeue bool

@@ -18,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
 	"github.com/stackitcloud/yawol/internal/helper"
 	"github.com/stackitcloud/yawol/internal/openstack"
 	"github.com/stackitcloud/yawol/internal/openstack/testing"
@@ -774,6 +775,84 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	}) // openstack not working context
 
 	Context("clean up openstack", func() {
+		When("the lb is in annotated with keep flags", func() {
+			var nn types.NamespacedName
+			BeforeEach(func() {
+				nn = types.NamespacedName{
+					Name:      "annotated-lb",
+					Namespace: namespace,
+				}
+				annotatedLB := getMockLB(nn)
+				annotatedLB.Labels = map[string]string{
+					KeepFloatingIPAnnotation:    "true",
+					KeepPortAnnotation:          "true",
+					KeepSecurityGroupAnnotation: "true",
+				}
+				k8sClient.Create(ctx, annotatedLB)
+			})
+
+			It("should not delete the port", func() {
+				By("checking that portname is set")
+				hopefully(nn, func(g Gomega, act LB) error {
+					g.Expect(act.Status.PortName).To(Not(BeNil()))
+					g.Expect(*act.Status.PortName == nn.String())
+					return nil
+				})
+
+				By("deleting the LB")
+				cleanupLB(nn, timeout)
+
+				By("checking that the port is still there")
+				Eventually(func(g Gomega) {
+					c, _ := mockClient.PortClient(ctx)
+
+					ports, err := c.List(ctx, ports.ListOpts{Name: nn.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(ports)).To(Equal(1))
+				}, timeout, interval).Should(Succeed())
+			})
+			It("should not delete the security group", func() {
+				By("checking that secgroup is set")
+				hopefully(nn, func(g Gomega, act LB) error {
+					g.Expect(act.Status.SecurityGroupID).To(Not(BeNil()))
+					g.Expect(*act.Status.SecurityGroupName == nn.String())
+					return nil
+				})
+
+				By("deleting the LB")
+				cleanupLB(nn, timeout)
+
+				By("checking that the sec group is still there")
+				Eventually(func(g Gomega) {
+					c, _ := mockClient.GroupClient(ctx)
+
+					groups, err := c.List(ctx, groups.ListOpts{Name: nn.String()})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(groups)).To(Equal(1))
+				}, timeout, interval).Should(Succeed())
+			})
+			It("should not delete the fip", func() {
+				var fipIP *string
+				By("checking that fip is set")
+				hopefully(nn, func(g Gomega, act LB) error {
+					g.Expect(act.Status.FloatingID).To(Not(BeNil()))
+					fipIP = act.Status.ExternalIP
+					return nil
+				})
+
+				By("deleting the LB")
+				cleanupLB(nn, timeout)
+
+				By("checking that the fip is still there")
+				Eventually(func(g Gomega) {
+					c, _ := mockClient.FipClient(ctx)
+
+					fip, err := c.List(ctx, floatingips.ListOpts{FloatingIP: *fipIP})
+					g.Expect(err).To(Not(HaveOccurred()))
+					g.Expect(len(fip)).To(Equal(1))
+				}, timeout, interval).Should(Succeed())
+			})
+		})
 		When("there are additional ports", func() {
 			count := 5
 			BeforeEach(func() {
