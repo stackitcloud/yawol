@@ -783,9 +783,9 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				}
 				annotatedLB := getMockLB(nn)
 				annotatedLB.Annotations = map[string]string{
-					KeepFloatingIPAnnotation:    "true",
-					KeepPortAnnotation:          "true",
-					KeepSecurityGroupAnnotation: "true",
+					yawolv1beta1.LoadBalancerKeepFloatingIP:    "true",
+					yawolv1beta1.LoadBalancerKeepPort:          "true",
+					yawolv1beta1.LoadBalancerKeepSecurityGroup: "true",
 				}
 				k8sClient.Create(ctx, annotatedLB)
 			})
