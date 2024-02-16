@@ -37,11 +37,8 @@ import (
 )
 
 const (
-	DefaultRequeueTime          = 10 * time.Millisecond
-	ServiceFinalizer            = "yawol.stackit.cloud/controller2"
-	KeepFloatingIPAnnotation    = "yawol.stackit.cloud/keepFloatingIP"
-	KeepPortAnnotation          = "yawol.stackit.cloud/keepPort"
-	KeepSecurityGroupAnnotation = "yawol.stackit.cloud/keepSecurityGroup"
+	DefaultRequeueTime = 10 * time.Millisecond
+	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
 )
 
 // LoadBalancerReconciler reconciles service Objects with type LoadBalancer

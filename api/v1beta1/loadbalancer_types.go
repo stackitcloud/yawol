@@ -69,6 +69,15 @@ const (
 	// If logForward is enabled, annotations that are prefixed with this constant
 	// will be used as extra labels for loki
 	LoadBalancerLogLabelPrefix = "logging.yawol.stackit.cloud/"
+	// KeepFloatingIPAnnotation indicates the controller to not delete the floating ip on lb deletion.
+	// When set to 'true' deleting the annotated loadbalancer will orphan the floating ip.
+	KeepFloatingIPAnnotation = "yawol.stackit.cloud/keepFloatingIP"
+	// KeepPortAnnotation indicates the controller to not delete the port on lb deletion.
+	// When set to 'true' deleting the annotated loadbalancer will orphan the port.
+	KeepPortAnnotation = "yawol.stackit.cloud/keepPort"
+	// KeepSecurityGroupAnnotation indicates the controller to not delete the security group on lb deletion.
+	// When set to 'true' deleting the annotated loadbalancer will orphan the security group.
+	KeepSecurityGroupAnnotation = "yawol.stackit.cloud/keepSecurityGroup"
 )
 
 // +kubebuilder:object:root=true
