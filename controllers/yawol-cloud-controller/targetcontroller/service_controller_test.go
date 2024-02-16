@@ -2482,5 +2482,62 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				return fmt.Errorf("projectID is not correctly set in infrastructure %v", lb.Spec.Infrastructure.ProjectID)
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
 		})
+
+		It("should update subnet from annotation", func() {
+			By("creating a service without overwritten subnet id")
+			service := v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-test34",
+					Namespace: "default",
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Name:       "port1",
+							Protocol:   v1.ProtocolTCP,
+							Port:       12345,
+							TargetPort: intstr.IntOrString{IntVal: 12345},
+							NodePort:   31034,
+						},
+					},
+					Type: "LoadBalancer",
+				},
+			}
+			Expect(k8sClient.Create(ctx, &service)).Should(Succeed())
+
+			By("checking that the defaultNetwork SubnetID is set")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test34", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if (testInfraDefaults.SubnetID == nil && lb.Spec.Infrastructure.DefaultNetwork.SubnetID == nil) ||
+					(lb.Spec.Infrastructure.DefaultNetwork.SubnetID != nil && testInfraDefaults.SubnetID != nil &&
+						*lb.Spec.Infrastructure.DefaultNetwork.SubnetID == *testInfraDefaults.SubnetID) {
+					return nil
+				}
+				return fmt.Errorf("defaultNetwork subbnetID is not correct %v", lb.Spec.Infrastructure.DefaultNetwork.SubnetID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+
+			By("update svc to overwrite subbnetwork ID")
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: service.Name, Namespace: service.Namespace}, &service)).Should(Succeed())
+			service.ObjectMeta.Annotations = map[string]string{
+				yawolv1beta1.ServiceDefaultSubnetID: "newSubnetID",
+			}
+			Expect(k8sClient.Update(ctx, &service)).Should(Succeed())
+
+			By("check if lb gets new subnet ID")
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--service-test34", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Infrastructure.DefaultNetwork.SubnetID != nil &&
+					*lb.Spec.Infrastructure.DefaultNetwork.SubnetID == "newSubnetID" {
+					return nil
+				}
+				return fmt.Errorf("defaultNetwork SubnetID is not correct %v", lb.Spec.Infrastructure.DefaultNetwork.NetworkID)
+			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
 	})
 })

@@ -237,12 +237,20 @@ func GetFakeClient() *MockClient {
 		},
 		CreateFunc: func(ctx context.Context, optsBuilder ports.CreateOptsBuilder) (*ports.Port, error) {
 			opts := optsBuilder.(ports.CreateOpts)
+			var fixedIPs []ports.IP
+			if opts.FixedIPs != nil {
+				fixedIPs = opts.FixedIPs.([]ports.IP)
+			}
 
+			subnetID := "default-subnet-id"
+			if len(fixedIPs) > 0 {
+				subnetID = fixedIPs[0].SubnetID
+			}
 			port := &ports.Port{
 				ID:        getID(&client),
 				Name:      opts.Name,
 				NetworkID: opts.NetworkID,
-				FixedIPs:  []ports.IP{{IPAddress: generateIP()}},
+				FixedIPs:  []ports.IP{{SubnetID: subnetID, IPAddress: generateIP()}},
 			}
 
 			if opts.SecurityGroups != nil {
