@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -1118,7 +1119,7 @@ func (r *Reconciler) deleteFips(
 	var requeue = false
 
 	// skip deletion and release status when annotated
-	if lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepFloatingIP] == "true" {
+	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepFloatingIP]); err == nil && keep {
 		if lb.Status.FloatingID == nil &&
 			lb.Status.FloatingName == nil {
 			return false, nil
@@ -1243,7 +1244,7 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// skip deletion and release status when annotated
-	if lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepPort] == "true" {
+	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepPort]); err == nil && keep {
 		if lb.Status.PortID == nil {
 			return false, nil
 		}
@@ -1345,7 +1346,7 @@ func (r *Reconciler) deleteSecGroups(
 		return false, err
 	}
 	// skip deletion and release status when annotated
-	if lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup] == "true" {
+	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup]); err == nil && keep {
 		if lb.Status.SecurityGroupID == nil {
 			return false, nil
 		}
