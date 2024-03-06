@@ -61,7 +61,6 @@ func (r *OSGroupClient) Create(ctx context.Context, opts groups.CreateOptsBuilde
 		r.networkV2.Context = nil
 	}()
 
-	r.networkV2.Context = ctx
 	group, err := groups.Create(r.networkV2, opts).Extract()
 	return group, err
 }
