@@ -354,7 +354,7 @@ func (r *Reconciler) updateOpenstackReconcileHash(
 	// update status lb status accordingly
 	openstackReconcileHash, err := helper.GetOpenStackReconcileHash(lb)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get reconcicle hash: %w", err)
 	}
 
 	if lb.Status.OpenstackReconcileHash != nil &&
@@ -380,7 +380,11 @@ func (r *Reconciler) reconcileFIP(
 ) (bool, error) {
 	// delete fip if loadbalancer is internal
 	if lb.Spec.Options.InternalLB {
-		return r.deleteFips(ctx, osClient, lb)
+		requeue, err := r.deleteFips(ctx, osClient, lb)
+		if err != nil {
+			return requeue, fmt.Errorf("failed to delete FIPs for internal LB: %w", err)
+		}
+		return requeue, nil
 	}
 	r.Log.Info("Reconcile FloatingIP", "lb", lb.Name)
 
@@ -390,7 +394,7 @@ func (r *Reconciler) reconcileFIP(
 	var fipClient openstack.FipClient
 	fipClient, err = osClient.FipClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create FIP client: %w", err)
 	}
 
 	var requeue bool
@@ -400,14 +404,14 @@ func (r *Reconciler) reconcileFIP(
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			FloatingName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to patch lb status: %w", err)
 		}
 		requeue = true
 	}
 
 	if lb.Status.FloatingID == nil {
 		if err := r.assignOrCreateFIP(ctx, fipClient, lb); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to assign FIP: %w", err)
 		}
 		requeue = true
 	}
@@ -420,7 +424,7 @@ func (r *Reconciler) reconcileFIP(
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
 			// fip not found by ID, remove it from status and trigger reconcile
 			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
-				return false, err
+				return false, fmt.Errorf("failed to remove FIP from lb status: %w", err)
 			}
 			return true, err
 		default:
@@ -435,7 +439,7 @@ func (r *Reconciler) reconcileFIP(
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &fip.FloatingIP,
 		}); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to add FIP to lb status: %w", err)
 		}
 		requeue = true
 	}
@@ -451,7 +455,7 @@ func (r *Reconciler) reconcileFIP(
 		name := fip.Description + " (user managed)"
 		_, err = fipClient.Update(ctx, fip.ID, floatingips.UpdateOpts{Description: &name})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to mark FIP as user managed: %w", err)
 		}
 	}
 
