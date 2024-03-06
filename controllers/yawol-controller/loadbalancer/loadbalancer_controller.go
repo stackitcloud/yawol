@@ -158,7 +158,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 // LoadBalancerSetPredicate is the predicate that this controller uses for watching LoadBalancerSets.
 func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this naming makes more sense
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			// On restart of the controller, we already reconcile all LoadBalancers.
 			// When triggered by creation of a LoadBalancerSet by this controller, we don't need to reconcile immediately again.
 			return false
@@ -189,7 +189,7 @@ func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this 
 				ptr.Deref(lbs.Status.ReadyReplicas, 0) > 0 ||
 				ptr.Deref(lbs.Status.AvailableReplicas, 0) > 0
 		},
-		GenericFunc: func(e event.GenericEvent) bool {
+		GenericFunc: func(_ event.GenericEvent) bool {
 			return false
 		},
 	}
@@ -1297,7 +1297,6 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
-	// nolint: dupl //we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
@@ -1373,7 +1372,6 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	var requeue bool
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupID != nil {
 		secGroup, err := openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
@@ -1403,7 +1401,6 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	// clean up orphan secgroups
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupName != nil {
 		secGroupName := *lb.Status.SecurityGroupName
 		var secGroupList []groups.SecGroup
@@ -1462,7 +1459,6 @@ func (r *Reconciler) deleteServerGroups(
 	}
 
 	var requeue bool
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.ServerGroupID != nil {
 		serverGroup, err := openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID)
 		if err != nil {
