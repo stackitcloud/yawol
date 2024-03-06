@@ -61,7 +61,6 @@ func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuil
 	}()
 
 	srv, err := servers.Create(r.computeV2, opts).Extract()
-	r.computeV2.Context = nil
 	return srv, err
 }
 

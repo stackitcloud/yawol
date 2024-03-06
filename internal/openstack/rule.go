@@ -63,7 +63,6 @@ func (r *OSRuleClient) Create(ctx context.Context, opts rules.CreateOptsBuilder)
 	}()
 
 	rule, err := rules.Create(r.networkV2, opts).Extract()
-	r.networkV2.Context = nil
 	return rule, err
 }
 
@@ -79,7 +78,6 @@ func (r *OSRuleClient) Get(ctx context.Context, id string) (*rules.SecGroupRule,
 	}()
 
 	rule, err := rules.Get(r.networkV2, id).Extract()
-	r.networkV2.Context = nil
 	return rule, err
 }
 
@@ -95,6 +93,5 @@ func (r *OSRuleClient) Delete(ctx context.Context, id string) error {
 	}()
 
 	err := rules.Delete(r.networkV2, id).ExtractErr()
-	r.networkV2.Context = nil
 	return err
 }

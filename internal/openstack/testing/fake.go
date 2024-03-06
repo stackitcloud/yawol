@@ -33,7 +33,7 @@ func GetFakeClient() *MockClient {
 	}
 
 	client.GroupClientObj = &CallbackGroupClient{
-		ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
+		ListFunc: func(_ context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
 			grps := client.StoredValues["groups"].(map[string]*groups.SecGroup)
 
 			items := make([]groups.SecGroup, 0)
@@ -48,7 +48,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
+		CreateFunc: func(_ context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
 			name := opts.(groups.CreateOpts).Name
 			group := &groups.SecGroup{ID: getID(&client), Name: name}
 
@@ -57,7 +57,7 @@ func GetFakeClient() *MockClient {
 
 			return group, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*groups.SecGroup, error) {
+		GetFunc: func(_ context.Context, id string) (*groups.SecGroup, error) {
 			grps := client.StoredValues["groups"]
 
 			group, found := grps.(map[string]*groups.SecGroup)[id]
@@ -67,18 +67,18 @@ func GetFakeClient() *MockClient {
 
 			return group, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			grps := client.StoredValues["groups"]
 			delete(grps.(map[string]*groups.SecGroup), id)
 			return nil
 		},
-		UpdateFunc: func(ctx context.Context, id string, opts groups.UpdateOptsBuilder) (*groups.SecGroup, error) {
+		UpdateFunc: func(_ context.Context, _ string, _ groups.UpdateOptsBuilder) (*groups.SecGroup, error) {
 			return nil, fmt.Errorf("update group is not implemented yet, we havent used it yet")
 		},
 	}
 
 	client.RuleClientObj = &CallbackRuleClient{
-		ListFunc: func(ctx context.Context, opts rules.ListOpts) ([]rules.SecGroupRule, error) {
+		ListFunc: func(_ context.Context, opts rules.ListOpts) ([]rules.SecGroupRule, error) {
 			rls := client.StoredValues["rules"].(map[string]*rules.SecGroupRule)
 
 			items := make([]rules.SecGroupRule, 0)
@@ -132,7 +132,7 @@ func GetFakeClient() *MockClient {
 
 			return rule, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*rules.SecGroupRule, error) {
+		GetFunc: func(_ context.Context, id string) (*rules.SecGroupRule, error) {
 			rls := client.StoredValues["rules"]
 			rule, found := rls.(map[string]*rules.SecGroupRule)[id]
 			if !found {
@@ -141,7 +141,7 @@ func GetFakeClient() *MockClient {
 
 			return rule, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			rls := client.StoredValues["rules"]
 			delete(rls.(map[string]*rules.SecGroupRule), id)
 			return nil
@@ -149,7 +149,7 @@ func GetFakeClient() *MockClient {
 	}
 
 	client.FipClientObj = &CallbackFipClient{
-		ListFunc: func(ctx context.Context, optsBuilder floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error) {
+		ListFunc: func(_ context.Context, optsBuilder floatingips.ListOptsBuilder) ([]floatingips.FloatingIP, error) {
 			opts := optsBuilder.(floatingips.ListOpts)
 			fips := client.StoredValues["fips"].(map[string]*floatingips.FloatingIP)
 
@@ -170,7 +170,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(ctx context.Context, optsBuilder floatingips.CreateOptsBuilder) (*floatingips.FloatingIP, error) {
+		CreateFunc: func(_ context.Context, optsBuilder floatingips.CreateOptsBuilder) (*floatingips.FloatingIP, error) {
 			opts := optsBuilder.(floatingips.CreateOpts)
 			floatingIP := opts.FloatingIP
 
@@ -190,7 +190,7 @@ func GetFakeClient() *MockClient {
 
 			return fip, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
+		GetFunc: func(_ context.Context, id string) (*floatingips.FloatingIP, error) {
 			fips := client.StoredValues["fips"]
 			fip, found := fips.(map[string]*floatingips.FloatingIP)[id]
 			if !found {
@@ -199,7 +199,7 @@ func GetFakeClient() *MockClient {
 
 			return fip, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			fips := client.StoredValues["fips"]
 			delete(fips.(map[string]*floatingips.FloatingIP), id)
 			return nil

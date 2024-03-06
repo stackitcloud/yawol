@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -74,17 +75,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if errors2.IsNotFound(err) {
 			r.Log.Info("LoadBalancer not found", "lb", req.NamespacedName)
 		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, client.IgnoreNotFound(fmt.Errorf("failed to get LB: %w", err))
 	}
 
 	if err := r.migrateAPI(ctx, &lb); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to migrateAPI: %w", err)
 	}
 
 	// get OpenStack Client for LoadBalancer
 	osClient, err := openstackhelper.GetOpenStackClientForInfrastructure(ctx, r.Client, lb.Spec.Infrastructure, r.getOsClientForIni)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get open stack client for infrastructure: %w", err)
 	}
 
 	var res ctrl.Result
@@ -92,7 +93,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// handle deletion
 	if lb.GetDeletionTimestamp() != nil {
 		if res, err := r.deletionRoutine(ctx, &lb, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
-			return res, err
+			if err != nil {
+				return res, fmt.Errorf("failed to run deletion routine: %w", err)
+			}
+			return res, nil
 		}
 		return ctrl.Result{}, nil
 	}
@@ -105,19 +109,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// adds finalizer if not set
 	if err := kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &lb, ServiceFinalizer); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 	}
 
 	emptyResult := ctrl.Result{}
 
 	// run openstack reconcile if needed
 	if res, err = r.reconcileOpenStackIfNeeded(ctx, &lb, req, osClient); err != nil || res != emptyResult {
-		return res, err
+		if err != nil {
+			return res, fmt.Errorf("failed to reconcile openstack: %w", err)
+		}
+		return res, nil
 	}
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
 	if res, err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil || res != emptyResult {
-		return res, err
+		if err != nil {
+			return res, fmt.Errorf("failed to reconcile loadBalancerSet: %w", err)
+		}
+		return res, nil
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -148,7 +158,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 // LoadBalancerSetPredicate is the predicate that this controller uses for watching LoadBalancerSets.
 func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this naming makes more sense
 	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
+		CreateFunc: func(_ event.CreateEvent) bool {
 			// On restart of the controller, we already reconcile all LoadBalancers.
 			// When triggered by creation of a LoadBalancerSet by this controller, we don't need to reconcile immediately again.
 			return false
@@ -179,7 +189,7 @@ func LoadBalancerSetPredicate() predicate.Predicate { // nolint: revive // this 
 				ptr.Deref(lbs.Status.ReadyReplicas, 0) > 0 ||
 				ptr.Deref(lbs.Status.AvailableReplicas, 0) > 0
 		},
-		GenericFunc: func(e event.GenericEvent) bool {
+		GenericFunc: func(_ event.GenericEvent) bool {
 			return false
 		},
 	}
@@ -283,38 +293,38 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 
 	requeue, err = r.reconcileSecGroup(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile sec group: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcileFIP(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile FIP: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcilePort(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile port: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcileFIPAssociate(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile FIP association: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	if lb.Spec.Options.ServerGroupPolicy != "" {
 		requeue, err = r.reconcileServerGroup(ctx, req, lb, osClient)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to reconcile server group: %w", err)
 		}
 		overallRequeue = overallRequeue || requeue
 	} else {
 		requeue, err = r.deleteServerGroups(ctx, osClient, lb)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to delete server groups: %w", err)
 		}
 		overallRequeue = overallRequeue || requeue
 	}
@@ -326,12 +336,12 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 	if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 		LastOpenstackReconcile: &metaV1.Time{Time: time.Now()},
 	}); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to patch lb status: %w", err)
 	}
 
 	err = r.updateOpenstackReconcileHash(ctx, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to update openstack reconcile hash: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -344,7 +354,7 @@ func (r *Reconciler) updateOpenstackReconcileHash(
 	// update status lb status accordingly
 	openstackReconcileHash, err := helper.GetOpenStackReconcileHash(lb)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get reconcicle hash: %w", err)
 	}
 
 	if lb.Status.OpenstackReconcileHash != nil &&
@@ -370,7 +380,11 @@ func (r *Reconciler) reconcileFIP(
 ) (bool, error) {
 	// delete fip if loadbalancer is internal
 	if lb.Spec.Options.InternalLB {
-		return r.deleteFips(ctx, osClient, lb)
+		requeue, err := r.deleteFips(ctx, osClient, lb)
+		if err != nil {
+			return requeue, fmt.Errorf("failed to delete FIPs for internal LB: %w", err)
+		}
+		return requeue, nil
 	}
 	r.Log.Info("Reconcile FloatingIP", "lb", lb.Name)
 
@@ -380,7 +394,7 @@ func (r *Reconciler) reconcileFIP(
 	var fipClient openstack.FipClient
 	fipClient, err = osClient.FipClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create FIP client: %w", err)
 	}
 
 	var requeue bool
@@ -390,14 +404,14 @@ func (r *Reconciler) reconcileFIP(
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			FloatingName: ptr.To(req.NamespacedName.String()),
 		}); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to patch lb status: %w", err)
 		}
 		requeue = true
 	}
 
 	if lb.Status.FloatingID == nil {
 		if err := r.assignOrCreateFIP(ctx, fipClient, lb); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to assign FIP: %w", err)
 		}
 		requeue = true
 	}
@@ -410,7 +424,7 @@ func (r *Reconciler) reconcileFIP(
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
 			// fip not found by ID, remove it from status and trigger reconcile
 			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
-				return false, err
+				return false, fmt.Errorf("failed to remove FIP from lb status: %w", err)
 			}
 			return true, err
 		default:
@@ -425,7 +439,7 @@ func (r *Reconciler) reconcileFIP(
 		if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 			ExternalIP: &fip.FloatingIP,
 		}); err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to add FIP to lb status: %w", err)
 		}
 		requeue = true
 	}
@@ -441,7 +455,7 @@ func (r *Reconciler) reconcileFIP(
 		name := fip.Description + " (user managed)"
 		_, err = fipClient.Update(ctx, fip.ID, floatingips.UpdateOpts{Description: &name})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to mark FIP as user managed: %w", err)
 		}
 	}
 
@@ -1038,12 +1052,12 @@ func (r *Reconciler) deletionRoutine(
 	// Clean up all LoadBalancerSets
 	list, err := helper.GetLoadBalancerSetsForLoadBalancer(ctx, r.Client, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get lb sets for lb: %w", err)
 	}
 	for i := range list.Items {
 		if list.Items[i].DeletionTimestamp == nil {
 			if err := r.Client.Delete(ctx, &list.Items[i]); err != nil {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to delete item %v: %w", list.Items[i].Name, err)
 			}
 		}
 	}
@@ -1055,7 +1069,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteServerGroups(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete server groups: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1063,7 +1077,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteFips(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete FIPs: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1071,7 +1085,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deletePorts(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete ports: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1079,7 +1093,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteSecGroups(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete sec groups: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1091,7 +1105,7 @@ func (r *Reconciler) deletionRoutine(
 	)
 
 	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -1283,7 +1297,6 @@ func (r *Reconciler) deletePorts(
 	}
 
 	// clean up orphan ports
-	// nolint: dupl //we can't extract this code because of generics
 	if lb.Status.PortName != nil {
 		portName := *lb.Status.PortName
 		var portList []ports.Port
@@ -1333,17 +1346,17 @@ func (r *Reconciler) deleteSecGroups(
 
 	portClient, err := osClient.PortClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create port client: %w", err)
 	}
 
 	groupClient, err := osClient.GroupClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create group client: %w", err)
 	}
 
 	err = r.findAndDeleteSecGroupUsages(ctx, portClient, lb)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to delete sec group usages: %w", err)
 	}
 	// skip deletion and release status when annotated
 	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup]); err == nil && keep {
@@ -1352,11 +1365,13 @@ func (r *Reconciler) deleteSecGroups(
 		}
 		r.Log.Info("security group was released", "lb", lb.Namespace+"/"+lb.Name)
 		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "security_group_id")
-		return err != nil, err
+		if err != nil {
+			return true, fmt.Errorf("failed to remove from lb status: %w", err)
+		}
+		return false, nil
 	}
 
 	var requeue bool
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupID != nil {
 		secGroup, err := openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
@@ -1364,10 +1379,14 @@ func (r *Reconciler) deleteSecGroups(
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				// requeue to clean orphan secgroups
-				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
+				err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
+				if err != nil {
+					return true, fmt.Errorf("failed to remove securityGroupID from lb status: %w", err)
+				}
+				return true, nil
 			default:
 				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-				return false, err
+				return false, fmt.Errorf("failed to get sec group by ID: %w", err)
 			}
 		}
 		if secGroup != nil {
@@ -1382,13 +1401,12 @@ func (r *Reconciler) deleteSecGroups(
 	}
 
 	// clean up orphan secgroups
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.SecurityGroupName != nil {
 		secGroupName := *lb.Status.SecurityGroupName
 		var secGroupList []groups.SecGroup
 		secGroupList, err := groupClient.List(ctx, groups.ListOpts{Name: secGroupName})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to list sec groups: %w", err)
 		}
 
 		if len(secGroupList) == 0 {
@@ -1397,7 +1415,11 @@ func (r *Reconciler) deleteSecGroups(
 				lb.Namespace+"/"+lb.Name, "secGroup", secGroupName,
 			)
 			// no requeue, everything is cleaned
-			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupName")
+			err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupName")
+			if err != nil {
+				return false, fmt.Errorf("failed to remove securityGroupName from lb status: %w", err)
+			}
+			return false, nil
 		}
 
 		for i := range secGroupList {
@@ -1437,7 +1459,6 @@ func (r *Reconciler) deleteServerGroups(
 	}
 
 	var requeue bool
-	//nolint: dupl // we can't extract this code because of generics
 	if lb.Status.ServerGroupID != nil {
 		serverGroup, err := openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID)
 		if err != nil {
@@ -1510,13 +1531,17 @@ func (r *Reconciler) findAndDeleteSecGroupUsages(
 	var err error
 	listedPorts, err = openstackhelper.GetAllPorts(ctx, portClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get all ports: %w", err)
 	}
 
 	for i := range listedPorts {
 		err = openstackhelper.RemoveSecGroupFromPortIfNeeded(ctx, portClient, &listedPorts[i], *lb.Status.SecurityGroupID)
 		if err != nil {
-			return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			err = kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			if err != nil {
+				return fmt.Errorf("failed to remove sec group from port %v: %w", listedPorts[i].ID, err)
+			}
+			return nil
 		}
 	}
 
