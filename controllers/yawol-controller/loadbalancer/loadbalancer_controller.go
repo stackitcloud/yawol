@@ -1347,17 +1347,17 @@ func (r *Reconciler) deleteSecGroups(
 
 	portClient, err := osClient.PortClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create port client: %w", err)
 	}
 
 	groupClient, err := osClient.GroupClient(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create group client: %w", err)
 	}
 
 	err = r.findAndDeleteSecGroupUsages(ctx, portClient, lb)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to delete sec group usages: %w", err)
 	}
 	// skip deletion and release status when annotated
 	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup]); err == nil && keep {
@@ -1366,7 +1366,10 @@ func (r *Reconciler) deleteSecGroups(
 		}
 		r.Log.Info("security group was released", "lb", lb.Namespace+"/"+lb.Name)
 		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "security_group_id")
-		return err != nil, err
+		if err != nil {
+			return true, fmt.Errorf("failed to remove from lb status: %w", err)
+		}
+		return false, nil
 	}
 
 	var requeue bool
@@ -1378,10 +1381,14 @@ func (r *Reconciler) deleteSecGroups(
 			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				// requeue to clean orphan secgroups
-				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
+				err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
+				if err != nil {
+					return true, fmt.Errorf("failed to remove securityGroupID from lb status: %w", err)
+				}
+				return true, nil
 			default:
 				r.Log.Info("an unexpected error occurred retrieving secGroup", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
-				return false, err
+				return false, fmt.Errorf("failed to get sec group by ID: %w", err)
 			}
 		}
 		if secGroup != nil {
@@ -1402,7 +1409,7 @@ func (r *Reconciler) deleteSecGroups(
 		var secGroupList []groups.SecGroup
 		secGroupList, err := groupClient.List(ctx, groups.ListOpts{Name: secGroupName})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to list sec groups: %w", err)
 		}
 
 		if len(secGroupList) == 0 {
@@ -1411,7 +1418,11 @@ func (r *Reconciler) deleteSecGroups(
 				lb.Namespace+"/"+lb.Name, "secGroup", secGroupName,
 			)
 			// no requeue, everything is cleaned
-			return false, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupName")
+			err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupName")
+			if err != nil {
+				return false, fmt.Errorf("failed to remove securityGroupName from lb status: %w", err)
+			}
+			return false, nil
 		}
 
 		for i := range secGroupList {
