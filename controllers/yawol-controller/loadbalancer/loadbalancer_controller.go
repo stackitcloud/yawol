@@ -1052,12 +1052,12 @@ func (r *Reconciler) deletionRoutine(
 	// Clean up all LoadBalancerSets
 	list, err := helper.GetLoadBalancerSetsForLoadBalancer(ctx, r.Client, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get lb sets for lb: %w", err)
 	}
 	for i := range list.Items {
 		if list.Items[i].DeletionTimestamp == nil {
 			if err := r.Client.Delete(ctx, &list.Items[i]); err != nil {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to delete item %v: %w", list.Items[i].Name, err)
 			}
 		}
 	}
@@ -1069,7 +1069,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteServerGroups(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete server groups: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1077,7 +1077,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteFips(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete FIPs: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1085,7 +1085,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deletePorts(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete ports: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1093,7 +1093,7 @@ func (r *Reconciler) deletionRoutine(
 
 	requeue, err = r.deleteSecGroups(ctx, osClient, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to delete sec groups: %w", err)
 	}
 	if requeue {
 		return ctrl.Result{RequeueAfter: DefaultRequeueTime}, nil
@@ -1105,7 +1105,7 @@ func (r *Reconciler) deletionRoutine(
 	)
 
 	if err := kubernetes.RemoveFinalizerIfNeeded(ctx, r.Client, lb, ServiceFinalizer); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return ctrl.Result{}, nil
