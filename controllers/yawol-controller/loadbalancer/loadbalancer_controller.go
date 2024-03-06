@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -74,17 +75,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if errors2.IsNotFound(err) {
 			r.Log.Info("LoadBalancer not found", "lb", req.NamespacedName)
 		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, client.IgnoreNotFound(fmt.Errorf("failed to get LB: %w", err))
 	}
 
 	if err := r.migrateAPI(ctx, &lb); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to migrateAPI: %w", err)
 	}
 
 	// get OpenStack Client for LoadBalancer
 	osClient, err := openstackhelper.GetOpenStackClientForInfrastructure(ctx, r.Client, lb.Spec.Infrastructure, r.getOsClientForIni)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get open stack client for infrastructure: %w", err)
 	}
 
 	var res ctrl.Result
@@ -92,7 +93,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// handle deletion
 	if lb.GetDeletionTimestamp() != nil {
 		if res, err := r.deletionRoutine(ctx, &lb, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
-			return res, err
+			if err != nil {
+				return res, fmt.Errorf("failed to run deletion routine: %w", err)
+			}
+			return res, nil
 		}
 		return ctrl.Result{}, nil
 	}
@@ -105,19 +109,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// adds finalizer if not set
 	if err := kubernetes.AddFinalizerIfNeeded(ctx, r.Client, &lb, ServiceFinalizer); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
 	}
 
 	emptyResult := ctrl.Result{}
 
 	// run openstack reconcile if needed
 	if res, err = r.reconcileOpenStackIfNeeded(ctx, &lb, req, osClient); err != nil || res != emptyResult {
-		return res, err
+		if err != nil {
+			return res, fmt.Errorf("failed to reconcile openstack: %w", err)
+		}
+		return res, nil
 	}
 
 	// lbs reconcile is not affected by lastOpenstackReconcile
 	if res, err := r.reconcileLoadBalancerSet(ctx, log, &lb); err != nil || res != emptyResult {
-		return res, err
+		if err != nil {
+			return res, fmt.Errorf("failed to reconcile loadBalancerSet: %w", err)
+		}
+		return res, nil
 	}
 
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -283,38 +293,38 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 
 	requeue, err = r.reconcileSecGroup(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile sec group: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcileFIP(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile FIP: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcilePort(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile port: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	requeue, err = r.reconcileFIPAssociate(ctx, req, lb, osClient)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile FIP association: %w", err)
 	}
 	overallRequeue = overallRequeue || requeue
 
 	if lb.Spec.Options.ServerGroupPolicy != "" {
 		requeue, err = r.reconcileServerGroup(ctx, req, lb, osClient)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to reconcile server group: %w", err)
 		}
 		overallRequeue = overallRequeue || requeue
 	} else {
 		requeue, err = r.deleteServerGroups(ctx, osClient, lb)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to delete server groups: %w", err)
 		}
 		overallRequeue = overallRequeue || requeue
 	}
@@ -326,12 +336,12 @@ func (r *Reconciler) reconcileOpenStackIfNeeded(
 	if err := helper.PatchLBStatus(ctx, r.Status(), lb, yawolv1beta1.LoadBalancerStatus{
 		LastOpenstackReconcile: &metaV1.Time{Time: time.Now()},
 	}); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to patch lb status: %w", err)
 	}
 
 	err = r.updateOpenstackReconcileHash(ctx, lb)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to update openstack reconcile hash: %w", err)
 	}
 
 	return ctrl.Result{}, nil
