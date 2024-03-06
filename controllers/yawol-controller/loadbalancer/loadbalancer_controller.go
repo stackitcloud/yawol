@@ -1531,13 +1531,17 @@ func (r *Reconciler) findAndDeleteSecGroupUsages(
 	var err error
 	listedPorts, err = openstackhelper.GetAllPorts(ctx, portClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get all ports: %w", err)
 	}
 
 	for i := range listedPorts {
 		err = openstackhelper.RemoveSecGroupFromPortIfNeeded(ctx, portClient, &listedPorts[i], *lb.Status.SecurityGroupID)
 		if err != nil {
-			return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			err = kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+			if err != nil {
+				return fmt.Errorf("failed to remove sec group from port %v: %w", listedPorts[i].ID, err)
+			}
+			return nil
 		}
 	}
 
