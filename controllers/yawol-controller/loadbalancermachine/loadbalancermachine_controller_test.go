@@ -516,7 +516,7 @@ func cleanupLBM(lbm *LBM, timeout time.Duration) {
 
 	// check if custom created SA is deleted
 	var actualSA v1.ServiceAccount
-	Eventually(func(g Gomega) error {
+	Eventually(func(_ Gomega) error {
 		err := k8sClient.Get(ctx, runtimeClient.ObjectKeyFromObject(lbm), &actualSA)
 		if err != nil && runtimeClient.IgnoreNotFound(err) == nil {
 			return nil

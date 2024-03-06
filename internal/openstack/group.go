@@ -1,3 +1,4 @@
+// nolint: dupl // we can't extract this code because of generics
 package openstack
 
 import (

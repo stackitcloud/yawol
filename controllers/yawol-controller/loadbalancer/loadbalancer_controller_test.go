@@ -176,7 +176,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 	When("everything is set to default", func() {
 		It("should create the lb", func() {
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(_ Gomega, act LB) error {
 				if len(act.Finalizers) == 0 {
 					return fmt.Errorf("no finalizers on lb")
 				}
@@ -297,7 +297,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		It("should create a new lbset when infrastructure changes", func() {
 			var hash string
 			By("waiting for lbset creation")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(g Gomega, _ LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
 				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
@@ -340,7 +340,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		It("should scale down old lbset after new one has ready keepalived", func() {
 			var oldLbs client.ObjectKey
 			By("waiting for lbset creation")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(g Gomega, _ LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
 				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
@@ -357,7 +357,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 			var newLbs client.ObjectKey
 			By("checking for a new lbset")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(g Gomega, _ LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
 				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(2))
@@ -435,7 +435,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			Expect(k8sClient.Status().Patch(ctx, &lbs, patch)).Should(Succeed())
 
 			By("Old lbs should be downscaled")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(g Gomega, _ LB) error {
 				var lbs yawolv1beta1.LoadBalancerSet
 				g.Expect(k8sClient.Get(ctx, oldLbs, &lbs)).Should(Succeed())
 				g.Expect(lbs.Spec.Replicas).To(Equal(0))
@@ -550,7 +550,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 		It("should create matching server group with policy", func() {
 			By("creating default rules")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(_ Gomega, act LB) error {
 				if act.Status.ServerGroupID == nil || act.Status.ServerGroupName == nil {
 					return fmt.Errorf("servergroupid or servergroupname is nil")
 				}
