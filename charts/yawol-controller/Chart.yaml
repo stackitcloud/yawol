@@ -4,4 +4,4 @@ name: yawol-controller
 sources:
   - https://github.com/stackitcloud/yawol
 version: "0.21.3"
-appVersion: v0.21.2
+appVersion: v0.21.3
