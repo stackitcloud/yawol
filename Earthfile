@@ -248,7 +248,7 @@ lint:
 
 test:
     FROM +deps
-    ARG KUBERNETES_VERSION=1.24.x
+    ARG KUBERNETES_VERSION=1.26.x
     COPY +gotools/bin/setup-envtest $BINPATH
     COPY +envoy/envoy $BINPATH
     # install envtest in its own layer
@@ -263,11 +263,9 @@ test:
         eval "$GO_TEST ./..."
 
 test-multiple-k8s-versions:
-    BUILD +test --KUBERNETES_VERSION=1.23.5
-    BUILD +test --KUBERNETES_VERSION=1.24.2
-    BUILD +test --KUBERNETES_VERSION=1.25.0
-    BUILD +test --KUBERNETES_VERSION=1.26.1
-    BUILD +test --KUBERNETES_VERSION=1.27.1
+    BUILD +test --KUBERNETES_VERSION=1.25.x
+    BUILD +test --KUBERNETES_VERSION=1.26.x
+    BUILD +test --KUBERNETES_VERSION=1.27.x
 
 list-available-k8s-envtest-versions:
     FROM +deps
