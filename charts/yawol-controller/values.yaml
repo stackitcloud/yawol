@@ -19,10 +19,14 @@ yawolCloudController:
   service:
     annotations: {}
     labels: {}
+  additionalEnv: {}
+    #ENV_VAR: value
   image:
     repository: ghcr.io/stackitcloud/yawol/yawol-cloud-controller
     # -- Allows you to override the yawol version in this chart. Use at your own risk.
     tag: ""
+  serviceAccount: {}
+    #imagePullSecret: "registry-credentials"
 
 yawolController:
   gardenerMonitoringEnabled: false
