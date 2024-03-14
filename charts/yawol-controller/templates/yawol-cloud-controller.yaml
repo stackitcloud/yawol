@@ -73,6 +73,10 @@ spec:
         - name: AVAILABILITY_ZONE
           value: {{ .Values.yawolAvailabilityZone }}
         {{- end }}
+        {{- range $key, $val := .Values.yawolCloudController.additionalEnv }}
+        - name: {{ $key }}
+          value: {{ $val | quote }}
+        {{- end }}
         {{- if .Values.resources.yawolCloudController }}
         resources:
 {{ toYaml .Values.resources.yawolCloudController | indent 10 }}

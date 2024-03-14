@@ -3,3 +3,7 @@ kind: ServiceAccount
 metadata:
   name: yawol-cloud-controller
   namespace: {{ .Values.namespace }}
+{{- if hasKey .Values.yawolCloudController.serviceAccount "imagePullSecret" }}
+imagePullSecrets:
+  - name: {{ .Values.yawolCloudController.serviceAccount.imagePullSecret }}
+{{- end -}}
