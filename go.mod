@@ -3,7 +3,7 @@ module github.com/stackitcloud/yawol
 go 1.21
 
 require (
-	github.com/cncf/xds/go v0.0.0-20231128003011-0fa0005c9caa
+	github.com/cncf/xds/go v0.0.0-20240325133356-033564927e4a
 	github.com/envoyproxy/go-control-plane v0.12.0
 	github.com/go-logr/logr v1.4.1
 	github.com/golang/protobuf v1.5.3
