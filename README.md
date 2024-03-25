@@ -178,6 +178,12 @@ yawolFloatingID: <floating-id>
 # Placed in LoadBalancer.spec.infrastructure.networkID
 yawolNetworkID: <network-id>
 
+# OpenStack subnetwork ID in which the Load Balancer is placed.
+# If not set, the subnetwork is chosen automatically.
+#
+# Placed in LoadBalancer.spec.infrastructure.subnetworkID
+yawolSubnetworkID: <subnetwork-id>
+
 # default value for flavor that yawol Load Balancer instances should use
 # can be overridden by annotation
 #

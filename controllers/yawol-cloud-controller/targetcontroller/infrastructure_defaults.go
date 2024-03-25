@@ -12,6 +12,7 @@ type InfrastructureDefaults struct {
 	AuthSecretName    *string
 	FloatingNetworkID *string
 	NetworkID         *string
+	SubnetworkID      *string
 	Namespace         *string
 	FlavorRef         *yawolv1beta1.OpenstackFlavorRef
 	ImageRef          *yawolv1beta1.OpenstackImageRef
