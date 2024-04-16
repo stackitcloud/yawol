@@ -207,23 +207,33 @@ set-version:
     RUN git describe --tags --always > VERSION
     SAVE ARTIFACT VERSION
 
+set-revision:
+    FROM alpine/git
+    COPY .git .git
+    RUN git rev-parse HEAD > REVISION
+    SAVE ARTIFACT REVISION
+
 ci:
     FROM busybox
     COPY +set-version/VERSION .
-    BUILD +docker --CONTROLLER=yawol-controller --DOCKER_TAG=$(cat VERSION)
-    BUILD +docker --CONTROLLER=yawol-cloud-controller --DOCKER_TAG=$(cat VERSION)
+    COPY +set-revision/REVISION .
+    BUILD +docker --CONTROLLER=yawol-controller --DOCKER_TAG=$(cat VERSION) --REVISION=$(cat REVISION)
+    BUILD +docker --CONTROLLER=yawol-cloud-controller --DOCKER_TAG=$(cat VERSION) --REVISION=$(cat REVISION)
 
 docker:
     ARG TARGETPLATFORM
     ARG TARGETOS
     ARG TARGETARCH
     ARG DOCKER_TAG
+    ARG REVISION
     ARG CONTROLLER
     FROM --platform=$TARGETPLATFORM \
         gcr.io/distroless/static:nonroot
     COPY --platform=$USERPLATFORM \
         (+build/controller --CONTROLLER=$CONTROLLER --GOOS=$TARGETOS --GOARCH=$TARGETARCH) /controller
-    BUILD +set-version
+    LABEL org.opencontainers.image.source="https://github.com/stackitcloud/yawol"
+    LABEL org.opencontainers.image.revision=$REVISION
+    LABEL org.opencontainers.image.version=$DOCKER_TAG
     USER 65532:65532
     ENTRYPOINT ["/controller"]
     SAVE IMAGE --push $DOCKER_REPO$CONTROLLER:$DOCKER_TAG
