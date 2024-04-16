@@ -231,7 +231,6 @@ docker:
         gcr.io/distroless/static:nonroot
     COPY --platform=$USERPLATFORM \
         (+build/controller --CONTROLLER=$CONTROLLER --GOOS=$TARGETOS --GOARCH=$TARGETARCH) /controller
-    BUILD +set-version
     LABEL org.opencontainers.image.source="https://github.com/stackitcloud/yawol"
     LABEL org.opencontainers.image.revision=$REVISION
     USER 65532:65532
