@@ -233,6 +233,7 @@ docker:
         (+build/controller --CONTROLLER=$CONTROLLER --GOOS=$TARGETOS --GOARCH=$TARGETARCH) /controller
     LABEL org.opencontainers.image.source="https://github.com/stackitcloud/yawol"
     LABEL org.opencontainers.image.revision=$REVISION
+    LABEL org.opencontainers.image.version=$DOCKER_TAG
     USER 65532:65532
     ENTRYPOINT ["/controller"]
     SAVE IMAGE --push $DOCKER_REPO$CONTROLLER:$DOCKER_TAG
