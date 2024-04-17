@@ -19,9 +19,9 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.29.3
-	k8s.io/apimachinery v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/api v0.29.4
+	k8s.io/apimachinery v0.29.4
+	k8s.io/client-go v0.29.4
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231204011133-c2179ec349ec // controller-runtime v0.15.0
@@ -82,10 +82,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.17.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.17.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
