@@ -1,5 +1,5 @@
 VERSION 0.6
-FROM golang:1.21
+FROM golang:1.22
 ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
