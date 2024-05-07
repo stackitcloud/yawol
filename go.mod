@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
-	github.com/onsi/ginkgo/v2 v2.17.2
+	github.com/onsi/ginkgo/v2 v2.17.3
 	github.com/onsi/gomega v1.33.1
 	github.com/prometheus/client_golang v1.19.0
 	github.com/shirou/gopsutil/v3 v3.24.4
