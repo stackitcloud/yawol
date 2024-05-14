@@ -51,5 +51,6 @@ Helm chart for yawol-controller
 | yawolFloatingID | string | `nil` |  |
 | yawolImageID | string | `nil` |  |
 | yawolNetworkID | string | `nil` |  |
+| yawolSubnetID | string | `nil` |  |
 | yawolOSSecretName | string | `nil` |  |
 

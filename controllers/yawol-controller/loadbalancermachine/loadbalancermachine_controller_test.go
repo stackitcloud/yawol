@@ -240,6 +240,60 @@ var _ = Describe("load balancer machine", Serial, Ordered, func() {
 		})
 	}) // openstack not working
 
+	Context("customizable subnetID features", func() {
+		BeforeEach(func() {
+			lbm.Spec.Infrastructure.DefaultNetwork.SubnetID = ptr.To("lb-subnetID")
+		})
+
+		It("should create openstack resources", func() {
+			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+			Eventually(func(g Gomega) {
+				var actual yawolv1beta1.LoadBalancerMachine
+				g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
+
+				g.Expect(actual.Status.ServerID).ToNot(BeNil())
+				g.Expect(actual.Status.DefaultPortID).ToNot(BeNil())
+
+				_, err := client.ServerClientObj.Get(ctx, *actual.Status.ServerID)
+				g.Expect(err).To(Succeed())
+
+				port, err := client.PortClientObj.Get(ctx, *actual.Status.DefaultPortID)
+				g.Expect(err).To(Succeed())
+				g.Expect(port.FixedIPs).To(HaveLen(1))
+
+				g.Expect(port.FixedIPs[0].SubnetID).To(Equal("lb-subnetID"))
+			}, timeout, interval).Should(Succeed())
+		})
+	}) // customizable subnetID features
+
+	Context("fallback to default subnetID", func() {
+		BeforeEach(func() {
+			lbm.Spec.Infrastructure.DefaultNetwork.SubnetID = nil // unset
+		})
+
+		It("should create openstack resources", func() {
+			lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
+
+			Eventually(func(g Gomega) {
+				var actual yawolv1beta1.LoadBalancerMachine
+				g.Expect(k8sClient.Get(ctx, lbmNN, &actual)).To(Succeed())
+
+				g.Expect(actual.Status.ServerID).ToNot(BeNil())
+				g.Expect(actual.Status.DefaultPortID).ToNot(BeNil())
+
+				_, err := client.ServerClientObj.Get(ctx, *actual.Status.ServerID)
+				g.Expect(err).To(Succeed())
+
+				port, err := client.PortClientObj.Get(ctx, *actual.Status.DefaultPortID)
+				g.Expect(err).To(Succeed())
+				g.Expect(len(port.FixedIPs)).To(Equal(1))
+
+				g.Expect(port.FixedIPs[0].SubnetID).To(Equal("default-subnet-id"))
+			}, timeout, interval).Should(Succeed())
+		})
+	}) // fallback to default subnetID
+
 	Context("additionalNetworks features", func() {
 		BeforeEach(func() {
 			lbm.Spec.Infrastructure.AdditionalNetworks = []yawolv1beta1.LoadBalancerAdditionalNetwork{

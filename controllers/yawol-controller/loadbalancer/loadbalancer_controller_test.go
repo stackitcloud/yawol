@@ -1016,6 +1016,7 @@ func getMockLB(lbNN types.NamespacedName) *LB {
 				DefaultNetwork: yawolv1beta1.LoadBalancerDefaultNetwork{
 					FloatingNetID: ptr.To("floatingnet-id"),
 					NetworkID:     "network-id",
+					SubnetID:      ptr.To("subnet-id"),
 				},
 				Flavor: yawolv1beta1.OpenstackFlavorRef{
 					FlavorID: ptr.To("flavor-id"),

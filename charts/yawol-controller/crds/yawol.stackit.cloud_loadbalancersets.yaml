@@ -165,6 +165,10 @@ spec:
                                 description: NetworkID defines an openstack ID for
                                   the network.
                                 type: string
+                              subnetID:
+                                description: SubnetID defines an openstack ID
+                                  for the subnet.
+                                type: string
                             required:
                             - networkID
                             type: object

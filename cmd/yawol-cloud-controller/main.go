@@ -47,6 +47,8 @@ const (
 	EnvFloatingNetID = "FLOATING_NET_ID"
 	// Openstack NetworkID for LB
 	EnvNetworkID = "NETWORK_ID"
+	// OpenStack SubnetID for LB
+	EnvSubnetID = "SUBNET_ID"
 	// Flavor Information
 	// one must be set
 	EnvFlavorID     = "FLAVOR_ID"
@@ -301,6 +303,11 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		panic("could not read env " + EnvNetworkID)
 	}
 
+	var subnetID *string
+	if subnetID = ptr.To(os.Getenv(EnvSubnetID)); *subnetID == "" {
+		subnetID = nil
+	}
+
 	var clusterNamespace string
 	if clusterNamespace = os.Getenv(EnvClusterNamespace); clusterNamespace == "" {
 		panic("could not read env " + EnvClusterNamespace)
@@ -358,6 +365,7 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		AuthSecretName:    ptr.To(authSecretName),
 		FloatingNetworkID: ptr.To(floatingNetworkID),
 		NetworkID:         ptr.To(networkID),
+		SubnetID:          subnetID,
 		Namespace:         ptr.To(clusterNamespace),
 		FlavorRef: &yawolv1beta1.OpenstackFlavorRef{
 			FlavorID:     flavorID,
