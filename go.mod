@@ -7,7 +7,7 @@ toolchain go1.22.3
 require (
 	github.com/cncf/xds/go v0.0.0-20240423153145-555b57ec207b
 	github.com/envoyproxy/go-control-plane v0.12.0
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/golang/protobuf v1.5.4
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
