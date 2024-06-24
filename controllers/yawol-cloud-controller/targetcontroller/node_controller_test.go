@@ -148,6 +148,27 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 
 		})
 
+		assertFirstNode := func(nodeName string) {
+			GinkgoHelper()
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--node-test1", Namespace: "default"}, &lb)
+				if err != nil {
+					return err
+				}
+				if lb.Spec.Endpoints == nil || len(lb.Spec.Endpoints) != 1 {
+					return fmt.Errorf("no or more than one endpoint in LB found: %v", lb.Spec.Endpoints)
+				}
+				if len(lb.Spec.Endpoints[0].Addresses) != 1 {
+					return fmt.Errorf("no or more than one endpoint address in LB found: %v", lb.Spec.Endpoints[0].Addresses)
+				}
+				if lb.Spec.Endpoints[0].Name == nodeName &&
+					lb.Spec.Endpoints[0].Addresses[0] == "10.10.10.10" {
+					return nil
+				}
+				return helper.ErrEndpointValuesWrong
+			}, time.Second*15, time.Millisecond*500).Should(Succeed())
+		}
+
 		It("Create node and check node", func() {
 			By("create node")
 			nodeName := "node1"
@@ -181,23 +202,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
 
 			By("check node in LB")
-			Eventually(func() error {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--node-test1", Namespace: "default"}, &lb)
-				if err != nil {
-					return err
-				}
-				if lb.Spec.Endpoints == nil || len(lb.Spec.Endpoints) != 1 {
-					return fmt.Errorf("no or more than one endpoint in LB found: %v", lb.Spec.Endpoints)
-				}
-				if len(lb.Spec.Endpoints[0].Addresses) != 1 {
-					return fmt.Errorf("no or more than one endpoint address in LB found: %v", lb.Spec.Endpoints[0].Addresses)
-				}
-				if lb.Spec.Endpoints[0].Name == nodeName &&
-					lb.Spec.Endpoints[0].Addresses[0] == "10.10.10.10" {
-					return nil
-				}
-				return helper.ErrEndpointValuesWrong
-			}, time.Second*15, time.Millisecond*500).Should(Succeed())
+			assertFirstNode(nodeName)
 			By("check event for node sync")
 			Eventually(func() error {
 				eventList := v1.EventList{}
@@ -214,6 +219,84 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				}
 				return helper.ErrNoEventFound
 			}, time.Second*5, time.Millisecond*500).Should(Succeed())
+		})
+		It("ignore terminating Node and check", func() {
+			By("create node")
+			node := v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nodebrk",
+					Namespace: "default"},
+				Spec: v1.NodeSpec{},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{
+							Type:               v1.NodeReady,
+							Status:             v1.ConditionTrue,
+							LastHeartbeatTime:  metav1.Time{},
+							LastTransitionTime: metav1.Time{},
+							Reason:             "Ready",
+							Message:            "Ready",
+						},
+						{
+							Type:               NodeTerminationCondition,
+							Status:             v1.ConditionTrue,
+							LastHeartbeatTime:  metav1.Time{},
+							LastTransitionTime: metav1.Time{},
+							Reason:             "Terminating",
+							Message:            "Terminating",
+						},
+					},
+					Addresses: []v1.NodeAddress{
+						{
+							Type:    v1.NodeInternalIP,
+							Address: "10.10.10.42",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
+
+			By("check node in LB")
+			assertFirstNode("node1")
+		})
+		It("ignore tainted Node and check", func() {
+			By("create node")
+			node := v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nodebrk2",
+					Namespace: "default"},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    ToBeDeletedTaint,
+							Effect: v1.TaintEffectNoSchedule,
+							Value:  "123456789", // unix timestamp
+						},
+					},
+				},
+				Status: v1.NodeStatus{
+					Conditions: []v1.NodeCondition{
+						{
+							Type:               v1.NodeReady,
+							Status:             v1.ConditionTrue,
+							LastHeartbeatTime:  metav1.Time{},
+							LastTransitionTime: metav1.Time{},
+							Reason:             "Ready",
+							Message:            "Ready",
+						},
+					},
+					Addresses: []v1.NodeAddress{
+						{
+							Type:    v1.NodeInternalIP,
+							Address: "10.10.10.43",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
+
+			By("check node in LB")
+			assertFirstNode("node1")
 		})
 
 		It("add Node and check", func() {
