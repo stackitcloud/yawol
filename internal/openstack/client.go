@@ -12,9 +12,9 @@ import (
 	netutil "k8s.io/apimachinery/pkg/util/net"
 	certutil "k8s.io/client-go/util/cert"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/ini.v1"
 )
@@ -298,9 +298,7 @@ func getProvider(
 	actx, acancel := context.WithTimeout(ctx, timeout)
 	defer acancel()
 
-	provider.Context = actx
-	err = openstack.Authenticate(provider, *ao)
-	provider.Context = nil
+	err = openstack.Authenticate(actx, provider, *ao)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -313,20 +311,19 @@ func getProvider(
 	authOpts := *ao
 	authOpts.AllowReauth = false
 
-	provider.ReauthFunc = func() error {
+	provider.ReauthFunc = func(ctx context.Context) error {
 		pctx, pcancel := context.WithTimeout(ctx, timeout)
 		defer pcancel()
 
 		// does not have to be reset since this client is only used in this function
-		authProvider.Context = pctx
 
 		eo := gophercloud.EndpointOpts{}
 		if strings.Contains(authURL, "v2") {
-			if err := openstack.AuthenticateV2(&authProvider, authOpts, eo); err != nil {
+			if err := openstack.AuthenticateV2(pctx, &authProvider, authOpts, eo); err != nil {
 				return err
 			}
 		} else {
-			if err := openstack.AuthenticateV3(&authProvider, &authOpts, eo); err != nil {
+			if err := openstack.AuthenticateV3(pctx, &authProvider, &authOpts, eo); err != nil {
 				return err
 			}
 		}

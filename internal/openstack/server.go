@@ -6,8 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 )
 
 // The OSServerClient is a implementation for ServerClient. When you want to use this struct be sure to call
@@ -38,12 +38,8 @@ func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder)
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	page, err := servers.List(r.computeV2, opts).AllPages()
+	page, err := servers.List(r.computeV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -51,16 +47,13 @@ func (r *OSServerClient) List(ctx context.Context, opts servers.ListOptsBuilder)
 }
 
 // Invokes servers.Create() in gophercloud's servers package. Uses the computeV2 client provided in Configure().
-func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error) {
+func (r *OSServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder,
+) (*servers.Server, error) {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	srv, err := servers.Create(r.computeV2, opts).Extract()
+	srv, err := servers.Create(tctx, r.computeV2, opts, hintOpts).Extract()
 	return srv, err
 }
 
@@ -69,12 +62,8 @@ func (r *OSServerClient) Get(ctx context.Context, id string) (*servers.Server, e
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	srv, err := servers.Get(r.computeV2, id).Extract()
+	srv, err := servers.Get(tctx, r.computeV2, id).Extract()
 	return srv, err
 }
 
@@ -83,12 +72,8 @@ func (r *OSServerClient) Update(ctx context.Context, id string, opts servers.Upd
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	srv, err := servers.Update(r.computeV2, id, opts).Extract()
+	srv, err := servers.Update(tctx, r.computeV2, id, opts).Extract()
 	return srv, err
 }
 
@@ -97,11 +82,7 @@ func (r *OSServerClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServer, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	err := servers.Delete(r.computeV2, id).ExtractErr()
+	err := servers.Delete(tctx, r.computeV2, id).ExtractErr()
 	return err
 }

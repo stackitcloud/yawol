@@ -6,8 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 )
 
 // The OSPortClient is a implementation for PortClient. When you want to use this struct be sure to call
@@ -39,12 +39,8 @@ func (r *OSPortClient) List(ctx context.Context, opts ports.ListOptsBuilder) ([]
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	page, err := ports.List(r.networkV2, opts).AllPages()
+	page, err := ports.List(r.networkV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +52,8 @@ func (r *OSPortClient) Get(ctx context.Context, id string) (*ports.Port, error) 
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	port, err := ports.Get(r.networkV2, id).Extract()
+	port, err := ports.Get(tctx, r.networkV2, id).Extract()
 	return port, err
 }
 
@@ -70,12 +62,8 @@ func (r *OSPortClient) Create(ctx context.Context, opts ports.CreateOptsBuilder)
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	port, err := ports.Create(r.networkV2, opts).Extract()
+	port, err := ports.Create(tctx, r.networkV2, opts).Extract()
 	return port, err
 }
 
@@ -84,12 +72,8 @@ func (r *OSPortClient) Update(ctx context.Context, id string, opts ports.UpdateO
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	port, err := ports.Update(r.networkV2, id, opts).Extract()
+	port, err := ports.Update(tctx, r.networkV2, id, opts).Extract()
 	return port, err
 }
 
@@ -98,11 +82,7 @@ func (r *OSPortClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectPort, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	err := ports.Delete(r.networkV2, id).ExtractErr()
+	err := ports.Delete(tctx, r.networkV2, id).ExtractErr()
 	return err
 }

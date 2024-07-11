@@ -3,13 +3,13 @@ package testing
 import (
 	"context"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/keypairs"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servergroups"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 )
 
 type CallbackGroupClient struct { //nolint:dupl // no dupl
@@ -106,7 +106,7 @@ func (r *CallbackPortClient) Delete(ctx context.Context, id string) error {
 
 type CallbackServerClient struct { //nolint:dupl // no dupl
 	ListFunc   func(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error)
-	CreateFunc func(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error)
+	CreateFunc func(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error)
 	GetFunc    func(ctx context.Context, id string) (*servers.Server, error)
 	UpdateFunc func(ctx context.Context, id string, opts servers.UpdateOptsBuilder) (*servers.Server, error)
 	DeleteFunc func(ctx context.Context, id string) error
@@ -115,8 +115,8 @@ type CallbackServerClient struct { //nolint:dupl // no dupl
 func (r *CallbackServerClient) List(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
 	return r.ListFunc(ctx, opts)
 }
-func (r *CallbackServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	return r.CreateFunc(ctx, opts)
+func (r *CallbackServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
+	return r.CreateFunc(ctx, opts, hintOpts)
 }
 func (r *CallbackServerClient) Get(ctx context.Context, id string) (*servers.Server, error) {
 	return r.GetFunc(ctx, id)
