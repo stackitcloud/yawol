@@ -315,8 +315,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(_ context.Context, optsBuilder servers.CreateOptsBuilder, _ servers.SchedulerHintOptsBuilder,
-		) (*servers.Server, error) {
+		CreateFunc: func(_ context.Context, optsBuilder servers.CreateOptsBuilder, _ servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
 			opts := optsBuilder.(*servers.CreateOpts)
 
 			addresses := make(map[string]interface{})

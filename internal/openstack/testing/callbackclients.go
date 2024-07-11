@@ -12,7 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 )
 
-type CallbackGroupClient struct { //nolint:dupl // no dupl
+type CallbackGroupClient struct {
 	ListFunc   func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error)
 	CreateFunc func(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error)
 	GetFunc    func(ctx context.Context, id string) (*groups.SecGroup, error)
@@ -104,7 +104,7 @@ func (r *CallbackPortClient) Delete(ctx context.Context, id string) error {
 	return r.DeleteFunc(ctx, id)
 }
 
-type CallbackServerClient struct { //nolint:dupl // no dupl
+type CallbackServerClient struct {
 	ListFunc   func(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error)
 	CreateFunc func(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error)
 	GetFunc    func(ctx context.Context, id string) (*servers.Server, error)
@@ -115,7 +115,8 @@ type CallbackServerClient struct { //nolint:dupl // no dupl
 func (r *CallbackServerClient) List(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
 	return r.ListFunc(ctx, opts)
 }
-func (r *CallbackServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
+func (r *CallbackServerClient) Create(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder,
+) (*servers.Server, error) {
 	return r.CreateFunc(ctx, opts, hintOpts)
 }
 func (r *CallbackServerClient) Get(ctx context.Context, id string) (*servers.Server, error) {

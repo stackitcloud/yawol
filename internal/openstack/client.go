@@ -311,11 +311,9 @@ func getProvider(
 	authOpts := *ao
 	authOpts.AllowReauth = false
 
-	provider.ReauthFunc = func(ctx context.Context) error {
+	provider.ReauthFunc = func(context.Context) error {
 		pctx, pcancel := context.WithTimeout(ctx, timeout)
 		defer pcancel()
-
-		// does not have to be reset since this client is only used in this function
 
 		eo := gophercloud.EndpointOpts{}
 		if strings.Contains(authURL, "v2") {

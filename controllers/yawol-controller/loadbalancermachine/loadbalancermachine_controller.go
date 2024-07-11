@@ -1030,7 +1030,6 @@ func (r *LoadBalancerMachineReconciler) waitForServerStatus(
 	target []string,
 	secs int,
 ) error {
-
 	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(secs)*time.Second)
 	defer cancel()
 
