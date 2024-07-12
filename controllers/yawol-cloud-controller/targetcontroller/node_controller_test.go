@@ -19,7 +19,6 @@ import (
 )
 
 var _ = Describe("check controller-runtime predicate", func() {
-	nodeName := "node1"
 	conditionReady := v1.NodeCondition{
 		Type:               v1.NodeReady,
 		Status:             v1.ConditionTrue,
@@ -39,7 +38,7 @@ var _ = Describe("check controller-runtime predicate", func() {
 
 	baseNode := v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      nodeName,
+			Name:      "node1",
 			Namespace: "default"},
 		Spec: v1.NodeSpec{},
 		Status: v1.NodeStatus{
@@ -148,7 +147,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 
 		})
 
-		assertFirstNode := func(nodeName string) {
+		assertLBWithOneEndpoint := func(nodeName string, nodeAddress string) {
 			GinkgoHelper()
 			Eventually(func() error {
 				err := k8sClient.Get(ctx, types.NamespacedName{Name: "default--node-test1", Namespace: "default"}, &lb)
@@ -161,20 +160,19 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				if len(lb.Spec.Endpoints[0].Addresses) != 1 {
 					return fmt.Errorf("no or more than one endpoint address in LB found: %v", lb.Spec.Endpoints[0].Addresses)
 				}
-				if lb.Spec.Endpoints[0].Name == nodeName &&
-					lb.Spec.Endpoints[0].Addresses[0] == "10.10.10.10" {
-					return nil
+				if lb.Spec.Endpoints[0].Name != nodeName || lb.Spec.Endpoints[0].Addresses[0] != nodeAddress {
+					return helper.ErrEndpointValuesWrong
+
 				}
-				return helper.ErrEndpointValuesWrong
+				return nil
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 		}
 
 		It("Create node and check node", func() {
 			By("create node")
-			nodeName := "node1"
 			node := v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      nodeName,
+					Name:      "node1",
 					Namespace: "default"},
 				Spec: v1.NodeSpec{},
 				Status: v1.NodeStatus{
@@ -202,7 +200,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
 
 			By("check node in LB")
-			assertFirstNode(nodeName)
+			assertLBWithOneEndpoint("node1", "10.10.10.10")
 			By("check event for node sync")
 			Eventually(func() error {
 				eventList := v1.EventList{}
@@ -257,7 +255,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
 
 			By("check node in LB")
-			assertFirstNode("node1")
+			assertLBWithOneEndpoint("node1", "10.10.10.10")
 		})
 		It("ignore tainted Node and check", func() {
 			By("create node")
@@ -296,7 +294,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 			Expect(k8sClient.Create(ctx, &node)).Should(Succeed())
 
 			By("check node in LB")
-			assertFirstNode("node1")
+			assertLBWithOneEndpoint("node1", "10.10.10.10")
 		})
 
 		It("add Node and check", func() {
