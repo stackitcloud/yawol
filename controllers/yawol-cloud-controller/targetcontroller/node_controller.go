@@ -21,6 +21,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+// nolint: lll // these are links...
+const (
+	// From https://github.com/kubernetes/cloud-provider/blob/81e4f58b4d1badd71d633d356faaaf69d971d874/controllers/service/controller.go#L64C2-L64C53
+	ToBeDeletedTaint = "ToBeDeletedByClusterAutoscaler"
+	// From https://github.com/gardener/machine-controller-manager/blob/fc341881a5e71d7c5f240ca73415f967084aa85b/pkg/util/provider/machineutils/utils.go#L61
+	NodeTerminationCondition coreV1.NodeConditionType = "Terminating"
+)
+
 // NodeReconciler reconciles service Objects with type LoadBalancer
 type NodeReconciler struct {
 	TargetClient           client.Client
@@ -178,7 +186,7 @@ func getReadyEndpointsFromNodes(
 	// TODO check if ipFamilies and IPFamilyPolicyType is available?
 	eps := make([]yawolv1beta1.LoadBalancerEndpoint, 0)
 	for i := range nodes {
-		if !isNodeReady(nodes[i]) {
+		if !isNodeReady(nodes[i]) || isNodeTerminating(nodes[i]) {
 			continue
 		}
 		eps = append(eps, getLoadBalancerEndpointFromNode(nodes[i], ipFamilies))
@@ -195,6 +203,21 @@ func isNodeReady(node coreV1.Node) bool {
 	for _, condition := range node.Status.Conditions {
 		if condition.Type == coreV1.NodeReady {
 			return condition.Status == coreV1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func isNodeTerminating(node coreV1.Node) bool {
+	for _, taint := range node.Spec.Taints {
+		if taint.Key == ToBeDeletedTaint {
+			return true
+		}
+	}
+
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == NodeTerminationCondition && condition.Status == coreV1.ConditionTrue {
+			return true
 		}
 	}
 	return false
