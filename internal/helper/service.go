@@ -183,12 +183,20 @@ func CheckLoadBalancerClasses(service *coreV1.Service, validClasses []string) bo
 
 // ValidateService checks if the service is valid
 func ValidateService(svc *coreV1.Service) error {
+	if svc.Spec.AllocateLoadBalancerNodePorts != nil &&
+		!*svc.Spec.AllocateLoadBalancerNodePorts {
+		return fmt.Errorf("%w: %v)", ErrUnsupportedServiceOption, "spec.allocateLoadBalancerNodePorts=false is not supported")
+	}
 	for _, port := range svc.Spec.Ports {
 		switch port.Protocol {
 		case coreV1.ProtocolTCP:
 		case coreV1.ProtocolUDP:
 		default:
 			return fmt.Errorf("%w: %v)", ErrUnsupportedProtocol, port.Protocol)
+		}
+
+		if port.NodePort > 65535 || port.NodePort < 1 {
+			return ErrNodePortInvalidRange
 		}
 	}
 	return nil
