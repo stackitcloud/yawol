@@ -2,6 +2,10 @@
 version: v1.22.1
 # ignores vulnerabilities until expiry date; change duration by modifying expiry date
 ignore:
+  'SNYK-GOLANG-K8SIOCLIENTGOTRANSPORT-7538822':
+    - '*':
+        reason: Is fixed in client-go since 2019, due to the new versions of k8s this triggers a false positive
+        created: 2024-07-24T08:16:00.00Z
   SNYK-CC-K8S-48:
     - '*':
         reason: K8s Controller runs in kube-system namespace
