@@ -210,34 +210,26 @@
     - name: install promtail
       command: "apk add loki-promtail"
 
-    #- name: upload promtail
-    #  copy:
-    #    src: ../out/promtail
-    #    dest: /usr/local/bin/promtail
-    #    owner: root
-    #    group: root
-    #    mode: 0755
+    - name: Creating promtail user
+      user:
+        name: "promtail"
+        shell: /bin/ash
+        groups: wheel
+        append: true
 
-    #- name: Creating promtail user
-    #  user:
-    #    name: "promtail"
-    #    shell: /bin/ash
-    #    groups: wheel
-    #    append: true
+    - name: Create a directory for promtail
+      file:
+        path: /etc/promtail
+        state: directory
+        mode: '0755'
 
-    #- name: Create a directory for promtail
-    #  file:
-    #    path: /etc/promtail
-    #    state: directory
-    #    mode: '0755'
-
-    #- name: add openrc promtail
-    #  copy:
-    #    src: ./promtail.sh
-    #    dest: /etc/init.d/promtail
-    #    owner: root
-    #    group: root
-    #    mode: 0755
+    - name: add openrc promtail
+      copy:
+        src: ./promtail.sh
+        dest: /etc/init.d/promtail
+        owner: root
+        group: root
+        mode: 0755
 
     # reload openrc
     - name: Reload openrc
