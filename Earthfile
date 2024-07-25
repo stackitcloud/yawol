@@ -5,7 +5,6 @@ ARG BINPATH=/usr/local/bin/
 ARG GOCACHE=/go-cache
 
 ARG ENVOY_VERSION=v1.27.0
-ARG PROMTAIL_VERSION=2.9.0
 ARG HELM_VERSION=3.12.3
 ARG GOLANGCI_LINT_VERSION=v1.54.2
 ARG PACKER_VERSION=1.9
@@ -70,11 +69,6 @@ get-envoy-libs-local:
     COPY +get-envoy/envoylibs /envoylibs
     SAVE ARTIFACT /envoylibs AS LOCAL out/envoy/lib
 
-get-promtail-local:
-    FROM +promtail
-    COPY +promtail/promtail /promtail
-    SAVE ARTIFACT /promtail AS LOCAL out/promtail
-
 get-envoy:
     FROM +envoy
     SAVE ARTIFACT /usr/local/bin/envoy
@@ -131,7 +125,6 @@ build-yawollet-image:
     ARG --required OS_USERNAME
     ARG --required OS_REGION_NAME
 
-    COPY +promtail/promtail out/promtail
     COPY +get-envoy/envoy out/envoy/envoy
     COPY +get-envoy/envoylibs out/envoy/lib
     COPY (+build/controller --CONTROLLER=yawollet --GOOS=$USEROS --GOARCH=$USERARCH) out/yawollet
@@ -354,10 +347,6 @@ terraform:
 envoy:
     FROM envoyproxy/envoy:$ENVOY_VERSION
     SAVE ARTIFACT /usr/local/bin/envoy
-
-promtail:
-    FROM grafana/promtail:$PROMTAIL_VERSION
-    SAVE ARTIFACT /usr/bin/promtail
 
 snyk-linux:
     FROM snyk/snyk:linux
