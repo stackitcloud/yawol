@@ -168,6 +168,9 @@
         group: root
         mode: 0755
 
+    - name: install libcap-getcap
+      command: "apk add libcap-getcap"
+
     - name: add cap_net_bind_service for envoy
       capabilities:
         path: /usr/local/bin/envoy
