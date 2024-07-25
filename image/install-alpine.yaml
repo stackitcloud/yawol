@@ -324,11 +324,17 @@
     - name: disable ssh service
       command: "rc-update del sshd"
 
-    - name: cleanup
+    - name: cleanup apk cache
       command: "rm -rf /var/cache/apk/*"
 
-    - name: more cleanup
+    - name: cleanup cloud-init
       command: "cloud-init clean -l -s"
+
+    - name: cleanup messages
+      lineinfile:
+        path: /var/log/messages
+        state: absent
+        regexp: '.*'
 
     - name: cleanup ssh-keys
       lineinfile:
