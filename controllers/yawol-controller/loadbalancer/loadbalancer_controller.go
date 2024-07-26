@@ -17,11 +17,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servergroups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -420,7 +420,7 @@ func (r *Reconciler) reconcileFIP(
 	var fip *floatingips.FloatingIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
-		case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+		case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
 			// fip not found by ID, remove it from status and trigger reconcile
 			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
@@ -475,7 +475,7 @@ func (r *Reconciler) assignOrCreateFIP(
 		r.Log.Info("Use ExistingFloatingIP", "lb", lb.Name)
 		if fip, err = openstackhelper.GetFIPByIP(ctx, fipClient, *lb.Spec.ExistingFloatingIP); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("configured fip not found in openstack", "fip", *lb.Spec.ExistingFloatingIP)
 				return kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 			default:
@@ -611,7 +611,7 @@ func (r *Reconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity 
 	if lb.Status.PortID != nil {
 		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port not found in openstack", "portID", *lb.Status.PortID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portID"); err != nil {
 					return false, err
@@ -753,7 +753,7 @@ func (r *Reconciler) reconcileSecGroup(
 	if lb.Status.SecurityGroupID != nil {
 		if secGroup, err = openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("SecurityGroupID not found in openstack", "SecurityGroupID", *lb.Status.SecurityGroupID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID"); err != nil {
 					return false, err
@@ -861,7 +861,7 @@ func (r *Reconciler) reconcileServerGroup(
 	if lb.Status.ServerGroupID != nil {
 		if serverGroup, err = openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("server group not found in openstack", "serverGroupID", *lb.Status.ServerGroupID)
 				if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupID"); err != nil {
 					return false, err
@@ -1187,7 +1187,7 @@ func (r *Reconciler) deleteFips(
 
 			// if error is openstack error
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("error getting fip, already deleted", "lb", lb.Namespace+"/"+lb.Name, "fipId", *lb.Status.FloatingID)
 				// requeue true to delete fips by floatingName in the next run
 				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID")
@@ -1282,7 +1282,7 @@ func (r *Reconciler) deletePorts(
 		port, err := openstackhelper.GetPortByID(ctx, portClient, *lb.Status.PortID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("port has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "portID", *lb.Status.PortID)
 				// requeue true to clean orphan ports in the next run
 				_ = helper.RemoveFromLBStatus(ctx, r.Status(), lb, "portIP")
@@ -1382,7 +1382,7 @@ func (r *Reconciler) deleteSecGroups(
 		secGroup, err := openstackhelper.GetSecGroupByID(ctx, groupClient, *lb.Status.SecurityGroupID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("secGroup has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "secGroup", *lb.Status.SecurityGroupID)
 				// requeue to clean orphan secgroups
 				err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "securityGroupID")
@@ -1469,7 +1469,7 @@ func (r *Reconciler) deleteServerGroups(
 		serverGroup, err := openstackhelper.GetServerGroupByID(ctx, serverGroupClient, *lb.Status.ServerGroupID)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("server group has already been deleted",
 					"lb", lb.Namespace+"/"+lb.Name, "serverGroupID", *lb.Status.ServerGroupID)
 				// requeue to clean orphan server groups
@@ -1497,7 +1497,7 @@ func (r *Reconciler) deleteServerGroups(
 		serverGroup, err := openstackhelper.GetServerGroupByName(ctx, serverGroupClient, *lb.Status.ServerGroupName)
 		if err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404, gophercloud.ErrResourceNotFound:
+			case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
 				r.Log.Info("server group has already been deleted", "lb", lb.Namespace+"/"+lb.Name, "serverGroup", *lb.Status.ServerGroupName)
 				// requeue to clean orphan secgroups
 				return true, helper.RemoveFromLBStatus(ctx, r.Status(), lb, "serverGroupName")

@@ -11,11 +11,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	"github.com/stackitcloud/yawol/internal/helper"
@@ -703,29 +703,26 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 		BeforeEach(func() {
 			mockClient.GroupClientObj = &testing.CallbackGroupClient{
 				ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
-					return []groups.SecGroup{}, gophercloud.ErrDefault401{
-						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
-							Body: []byte("Auth failed"),
-						},
+					return []groups.SecGroup{}, gophercloud.ErrUnexpectedResponseCode{
+						// Actual: 401,
+						Body: []byte("Auth failed"),
 					}
 				},
 				GetFunc: func(ctx context.Context, id string) (*groups.SecGroup, error) {
-					return nil, gophercloud.ErrDefault401{
-						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
-							Body: []byte("Auth failed"),
-						},
+					return nil, gophercloud.ErrUnexpectedResponseCode{
+						Body: []byte("Auth failed"),
 					}
 				},
 				CreateFunc: func(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
-					return nil, gophercloud.ErrDefault401{}
+					return nil, gophercloud.ErrUnexpectedResponseCode{}
 				},
 				DeleteFunc: func(ctx context.Context, id string) error {
-					return gophercloud.ErrDefault401{}
+					return gophercloud.ErrUnexpectedResponseCode{}
 				},
 			}
 			mockClient.FipClientObj = &testing.CallbackFipClient{
 				GetFunc: func(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
-					return nil, gophercloud.ErrDefault403{}
+					return nil, gophercloud.ErrUnexpectedResponseCode{}
 				},
 			}
 		})

@@ -6,8 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servergroups"
 )
 
 // The OSServerGroupClient is a implementation for ServerGroupClient. When you want to use this struct be sure to call
@@ -38,11 +38,8 @@ func (r *OSServerGroupClient) List(ctx context.Context, opts servergroups.ListOp
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
-	page, err := servergroups.List(r.computeV2, opts).AllPages()
+
+	page, err := servergroups.List(r.computeV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +51,8 @@ func (r *OSServerGroupClient) Create(ctx context.Context, opts servergroups.Crea
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	srv, err := servergroups.Create(r.computeV2, opts).Extract()
+	srv, err := servergroups.Create(tctx, r.computeV2, opts).Extract()
 	return srv, err
 }
 
@@ -68,12 +61,8 @@ func (r *OSServerGroupClient) Get(ctx context.Context, id string) (*servergroups
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	srv, err := servergroups.Get(r.computeV2, id).Extract()
+	srv, err := servergroups.Get(tctx, r.computeV2, id).Extract()
 	return srv, err
 }
 
@@ -82,10 +71,6 @@ func (r *OSServerGroupClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINova, MetricObjectServerGroup, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.computeV2.Context = tctx
-	defer func() {
-		r.computeV2.Context = nil
-	}()
 
-	return servergroups.Delete(r.computeV2, id).ExtractErr()
+	return servergroups.Delete(tctx, r.computeV2, id).ExtractErr()
 }

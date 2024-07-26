@@ -30,13 +30,45 @@ linters-settings:
       #rules:
       #- name: var-naming
     #severity: warning
-  gomnd:
-    settings:
-      mnd:
-        # don't include the "operation" and "assign"
-        checks: [argument, case, condition, return]
+  revive:
+    enable-all-rules: false
+    rules:
+      # enable (taken from https://github.com/mgechev/revive/blob/master/defaults.toml)
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: empty-block
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: redefines-builtin-id
+      - name: superfluous-else
+      - name: time-naming
+      - name: unexported-return
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: var-declaration
+      - name: var-naming
+      # tweaks
+      - name: dot-imports
+        exclude: [TEST]
+      - name: unused-parameter
+        exclude: [TEST]
+
+  mnd:
+    # don't include the "operation" and "assign"
+    checks: [argument, case, condition, return]
   govet:
-    check-shadowing: false
+    disable:
+      - shadow
   lll:
     line-length: 140
   misspell:

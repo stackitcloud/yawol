@@ -85,11 +85,11 @@ func (c *Config) GetCurrentStats() ([]yawolv1beta1.LoadBalancerMachineMetric, er
 		return []yawolv1beta1.LoadBalancerMachineMetric{}, err
 	}
 
-	return parseEnvoyMetricsToLoadBalancerMachineMetrics(string(body))
+	return parseEnvoyMetricsToLoadBalancerMachineMetrics(string(body)), nil
 }
 
 // parseEnvoyMetricsToLoadBalancerMachineMetrics returns a LoadBalancerMachineMetric for Envoy
-func parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics string) ([]yawolv1beta1.LoadBalancerMachineMetric, error) {
+func parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics string) []yawolv1beta1.LoadBalancerMachineMetric {
 	var metrics []yawolv1beta1.LoadBalancerMachineMetric
 	for _, stats := range strings.Split(envoyMetrics, "\n") {
 		if strings.HasPrefix(stats, "cluster") {
@@ -126,5 +126,5 @@ func parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics string) ([]yawol
 		}
 	}
 
-	return metrics, nil
+	return metrics
 }

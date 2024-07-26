@@ -1,7 +1,6 @@
 package envoystatus
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -62,9 +61,7 @@ func TestEnvoyStats4(t *testing.T) {
 var _ = Describe("check envoy status", func() {
 	When("Envoy stats to LoadBalancerMachine Metrics", func() {
 		It("should set the correct metrics", func() {
-			got, err := parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(got)
+			got := parseEnvoyMetricsToLoadBalancerMachineMetrics(envoyMetrics)
 			Expect(compareMetrics(got, wanted)).To(BeTrue())
 
 		})

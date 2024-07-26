@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,12 +39,8 @@ func (r *OSFloatingIPClient) List(ctx context.Context, opts floatingips.ListOpts
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	pages, err := floatingips.List(r.networkV2, opts).AllPages()
+	pages, err := floatingips.List(r.networkV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +52,8 @@ func (r *OSFloatingIPClient) Create(ctx context.Context, opts floatingips.Create
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	fip, err := floatingips.Create(r.networkV2, opts).Extract()
+	fip, err := floatingips.Create(tctx, r.networkV2, opts).Extract()
 	return fip, err
 }
 
@@ -70,12 +62,8 @@ func (r *OSFloatingIPClient) Update(ctx context.Context, id string, opts floatin
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	fip, err := floatingips.Update(r.networkV2, id, opts).Extract()
+	fip, err := floatingips.Update(tctx, r.networkV2, id, opts).Extract()
 	return fip, err
 }
 
@@ -84,12 +72,8 @@ func (r *OSFloatingIPClient) Get(ctx context.Context, id string) (*floatingips.F
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	fip, err := floatingips.Get(r.networkV2, id).Extract()
+	fip, err := floatingips.Get(tctx, r.networkV2, id).Extract()
 	return fip, err
 }
 
@@ -98,11 +82,7 @@ func (r *OSFloatingIPClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectFloatingIP, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	err := floatingips.Delete(r.networkV2, id).ExtractErr()
+	err := floatingips.Delete(tctx, r.networkV2, id).ExtractErr()
 	return err
 }
