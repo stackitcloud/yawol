@@ -168,6 +168,12 @@
         group: root
         mode: 0755
 
+    - name: install libcap-getcap
+      command: "apk add libcap-getcap"
+
+    - name: install libcap-setcap
+      command: "apk add libcap-setcap"
+
     - name: add cap_net_bind_service for envoy
       capabilities:
         path: /usr/local/bin/envoy
@@ -201,13 +207,8 @@
         mode: 0755
 
     # promtail
-    - name: upload promtail
-      copy:
-        src: ../out/promtail
-        dest: /usr/local/bin/promtail
-        owner: root
-        group: root
-        mode: 0755
+    - name: install promtail
+      command: "apk add loki-promtail"
 
     - name: Creating promtail user
       user:
@@ -323,11 +324,17 @@
     - name: disable ssh service
       command: "rc-update del sshd"
 
-    - name: cleanup
+    - name: cleanup apk cache
       command: "rm -rf /var/cache/apk/*"
 
-    - name: more cleanup
+    - name: cleanup cloud-init
       command: "cloud-init clean -l -s"
+
+    - name: cleanup messages
+      lineinfile:
+        path: /var/log/messages
+        state: absent
+        regexp: '.*'
 
     - name: cleanup ssh-keys
       lineinfile:
