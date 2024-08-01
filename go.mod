@@ -29,7 +29,7 @@ require (
 	sigs.k8s.io/controller-tools v0.15.0
 )
 
-require github.com/shirou/gopsutil/v4 v4.24.6
+require github.com/shirou/gopsutil/v4 v4.24.7
 
 require (
 	cel.dev/expr v0.15.0 // indirect
