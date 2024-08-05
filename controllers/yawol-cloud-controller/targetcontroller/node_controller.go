@@ -115,6 +115,10 @@ func yawolNodePredicate() predicate.Predicate {
 				return true
 			}
 
+			if isNodeTerminating(*oldNode) != isNodeTerminating(*newNode) {
+				return true
+			}
+
 			return !reflect.DeepEqual(
 				getLoadBalancerEndpointFromNode(*oldNode, []coreV1.IPFamily{}),
 				getLoadBalancerEndpointFromNode(*newNode, []coreV1.IPFamily{}),
