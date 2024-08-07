@@ -2,7 +2,7 @@ module github.com/stackitcloud/yawol
 
 go 1.22.0
 
-toolchain go1.22.5
+toolchain go1.22.6
 
 require (
 	github.com/cncf/xds/go v0.0.0-20240723142845-024c85f92f20
