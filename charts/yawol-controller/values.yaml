@@ -28,6 +28,12 @@ yawolCloudController:
   serviceAccount: {}
     #imagePullSecret: "registry-credentials"
 
+logging:
+  level: info
+  encoding: console
+  stacktraceLevel: error
+
+
 yawolController:
   gardenerMonitoringEnabled: false
   errorBackoffBaseDelay: 5ms
