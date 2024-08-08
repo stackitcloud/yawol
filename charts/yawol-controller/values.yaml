@@ -28,9 +28,13 @@ yawolCloudController:
   serviceAccount: {}
     #imagePullSecret: "registry-credentials"
 
+# -- values are passed as zap-flags to the containers. See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/log/zap#Options.BindFlags for more information
 logging:
+  # -- log-level to omit. Can be one of 'debug', 'info', 'error' or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
   level: info
+  # -- log encoding (one of 'json' or 'console')
   encoding: console
+  # -- level at and above which stacktraces are captured (one of 'info', 'error' or 'panic')
   stacktraceLevel: error
 
 
