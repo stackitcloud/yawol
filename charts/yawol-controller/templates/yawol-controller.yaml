@@ -46,6 +46,7 @@ spec:
           {{- if .Values.yawolController.errorBackoffMaxDelay }}
           - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
+          {{- include "logFlags" . | indent 10 }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
@@ -76,6 +77,7 @@ spec:
           {{- if .Values.yawolController.errorBackoffMaxDelay }}
           - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
+          {{- include "logFlags" . | indent 10 }}
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
@@ -112,6 +114,7 @@ spec:
           {{- if .Values.yawolController.errorBackoffMaxDelay }}
           - -error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
+          {{- include "logFlags" . | indent 10 }}
         env:
           {{- if .Values.namespace }}
           - name: CLUSTER_NAMESPACE
