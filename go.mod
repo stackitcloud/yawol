@@ -15,7 +15,7 @@ require (
 	github.com/onsi/gomega v1.34.1
 	github.com/prometheus/client_golang v1.19.1
 	go.uber.org/zap v1.27.0
-	golang.org/x/time v0.5.0
+	golang.org/x/time v0.6.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/ini.v1 v1.67.0
