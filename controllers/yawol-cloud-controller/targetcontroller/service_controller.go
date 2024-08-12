@@ -352,7 +352,7 @@ func (r *ServiceReconciler) reconcileNodes(
 	if err := r.TargetClient.List(ctx, &nodes, &client.ListOptions{}); err != nil {
 		return err
 	}
-	nodeEPs := getReadyEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilies)
+	nodeEPs := getEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilies)
 
 	if !EqualLoadBalancerEndpoints(lb.Spec.Endpoints, nodeEPs) {
 		if err := r.patchLoadBalancerEndpoints(ctx, lb, nodeEPs); err != nil {

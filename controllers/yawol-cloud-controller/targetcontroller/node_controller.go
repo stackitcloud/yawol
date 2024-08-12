@@ -77,7 +77,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
-		readyEndpoints := getReadyEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilies)
+		readyEndpoints := getEndpointsFromNodes(nodes.Items, svc.Spec.IPFamilies)
 
 		// update endpoints
 		if !EqualLoadBalancerEndpoints(loadBalancers.Items[i].Spec.Endpoints, readyEndpoints) {
@@ -183,20 +183,30 @@ func getLoadBalancerEndpointFromNode(node coreV1.Node, ipFamilies []coreV1.IPFam
 	return lbEndpoint
 }
 
-func getReadyEndpointsFromNodes(
+func getEndpointsFromNodes(
 	nodes []coreV1.Node,
 	ipFamilies []coreV1.IPFamily,
 ) []yawolv1beta1.LoadBalancerEndpoint {
 	// TODO check if ipFamilies and IPFamilyPolicyType is available?
-	eps := make([]yawolv1beta1.LoadBalancerEndpoint, 0)
+	readyEPs := make([]yawolv1beta1.LoadBalancerEndpoint, 0)
+	nonTermintatingEPs := make([]yawolv1beta1.LoadBalancerEndpoint, 0)
 	for i := range nodes {
-		if !isNodeReady(nodes[i]) || isNodeTerminating(nodes[i]) {
+		if isNodeTerminating(nodes[i]) {
 			continue
 		}
-		eps = append(eps, getLoadBalancerEndpointFromNode(nodes[i], ipFamilies))
+		ep := getLoadBalancerEndpointFromNode(nodes[i], ipFamilies)
+		nonTermintatingEPs = append(nonTermintatingEPs, ep)
+		if isNodeReady(nodes[i]) {
+			readyEPs = append(readyEPs, ep)
+		}
 	}
-
-	return eps
+	// In case all nodes are not ready we assume there is something wrong with the health checks (e.g. all kubelets
+	// cannot reach the control-plane), but the nodes / workloads themselves might still work. So we don't remove all
+	// endpoints, instead keeping all non-terminating nodes.
+	if len(readyEPs) == 0 {
+		return nonTermintatingEPs
+	}
+	return readyEPs
 }
 
 func isNodeReady(node coreV1.Node) bool {
