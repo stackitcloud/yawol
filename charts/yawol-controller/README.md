@@ -15,7 +15,7 @@ Helm chart for yawol-controller
 | featureGates | object | `{}` |  |
 | logging | object | `{"encoding":"console","level":"info","stacktraceLevel":"error"}` | values are passed as zap-flags to the containers. See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/log/zap#Options.BindFlags for more information |
 | logging.encoding | string | `"console"` | log encoding (one of 'json' or 'console') |
-| logging.level | string | `"info"` | log-level to omit. Can be one of 'debug', 'info', 'error' or any integer value > 0 which corresponds to custom debug levels of increasing verbosity |
+| logging.level | string | `"info"` | Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error' or any integer value > 0 which corresponds to custom debug levels of increasing verbosity |
 | logging.stacktraceLevel | string | `"error"` | level at and above which stacktraces are captured (one of 'info', 'error' or 'panic') |
 | namespace | string | `"kube-system"` |  |
 | podAnnotations | object | `{}` |  |
