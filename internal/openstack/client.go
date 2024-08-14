@@ -260,7 +260,7 @@ func getProvider(
 		if err != nil {
 			return nil, nil, err
 		}
-		config := &tls.Config{}
+		config := &tls.Config{MinVersion: tls.VersionTLS12}
 		config.RootCAs = roots
 		transport = netutil.SetOldTransportDefaults(&http.Transport{TLSClientConfig: config})
 	}
