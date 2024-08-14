@@ -44,7 +44,7 @@ spec:
         {{- if .Values.yawolClassName }}
         - -classname={{ .Values.yawolClassName }}
         {{- end }}
-        {{- include "logFlags" . | indent 10 }}
+        {{- include "logFlags" . | indent 8 }}
         env:
         {{- if .Values.namespace }}
         - name: CLUSTER_NAMESPACE
