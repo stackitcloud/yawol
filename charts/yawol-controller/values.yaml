@@ -27,6 +27,8 @@ yawolCloudController:
     tag: ""
   serviceAccount: {}
     #imagePullSecret: "registry-credentials"
+  additionalVolumeMounts: []
+  additionalVolumes: []
 
 # -- values are passed as zap-flags to the containers. See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/log/zap#Options.BindFlags for more information
 logging:
@@ -49,6 +51,8 @@ yawolController:
     repository: ghcr.io/stackitcloud/yawol/yawol-controller
     # -- Allows you to override the yawol version in this chart. Use at your own risk.
     tag: ""
+  additionalVolumeMounts: []
+  additionalVolumes: []
 
 resources:
   yawolCloudController:
