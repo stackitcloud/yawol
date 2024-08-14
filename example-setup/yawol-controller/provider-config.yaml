@@ -8,6 +8,7 @@ stringData:
     username="USERNAME"
     password="PASSWORD"
     region="RegionOne"
+    ca-file="/etc/ssl/myca.crt"
 kind: Secret
 metadata:
   name: cloud-provider-config
