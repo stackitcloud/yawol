@@ -150,6 +150,8 @@ stringData:
     username="<OS_USERNAME>"
     password="<OS_PASSWORD>"
     region="<OS_REGION_NAME>"
+    # Optional self-signed CA for OpenStack APIs
+    ca-file="/etc/ssl/myca.crt"
 ```
 
 Assuming you saved the secret as `secret-cloud-provider-config.yaml`, apply it with:

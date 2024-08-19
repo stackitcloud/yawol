@@ -62,6 +62,10 @@ spec:
           capabilities:
             drop:
               - ALL
+{{- if .Values.yawolController.additionalVolumeMounts }}
+        volumeMounts:
+{{ toYaml .Values.yawolController.additionalVolumeMounts | indent 8 }}
+{{- end }}
       - name: yawol-controller-loadbalancerset
         image: "{{ .Values.yawolController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
@@ -93,6 +97,10 @@ spec:
           capabilities:
             drop:
               - ALL
+{{- if .Values.yawolController.additionalVolumeMounts }}
+        volumeMounts:
+{{ toYaml .Values.yawolController.additionalVolumeMounts | indent 8 }}
+{{- end }}
       - name: yawol-controller-loadbalancermachine
         image: "{{ .Values.yawolController.image.repository }}:{{ default .Chart.AppVersion .Values.yawolController.image.tag }}"
         imagePullPolicy: Always
@@ -134,4 +142,12 @@ spec:
           capabilities:
             drop:
               - ALL
+{{- if .Values.yawolController.additionalVolumeMounts }}
+        volumeMounts:
+{{ toYaml .Values.yawolController.additionalVolumeMounts | indent 8 }}
+{{- end }}
       restartPolicy: Always
+{{- if .Values.yawolController.additionalVolumes }}
+      volumes:
+{{ toYaml .Values.yawolController.additionalVolumes | indent 6 }}
+{{- end }}

@@ -2,9 +2,14 @@ package openstack
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
+
+	netutil "k8s.io/apimachinery/pkg/util/net"
+	certutil "k8s.io/client-go/util/cert"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
@@ -231,6 +236,8 @@ func getProvider(
 	projectName := strings.TrimSpace(cfg.Section("Global").Key("project-name").String())
 	authInfo.ProjectID = strings.TrimSpace(cfg.Section("Global").Key("project-id").String())
 
+	caFile := strings.TrimSpace(cfg.Section("Global").Key("ca-file").String())
+
 	// TODO: remove legacyProjectName once openstack-cloud-controller has dropped tenant-name support. Link to ccm args:
 	//nolint:lll // link
 	// https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/using-openstack-cloud-controller-manager.md
@@ -247,6 +254,17 @@ func getProvider(
 		authInfo.ProjectID = *overwrite.ProjectID
 	}
 
+	var transport http.RoundTripper
+	if caFile != "" {
+		roots, err := certutil.NewPool(caFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		config := &tls.Config{MinVersion: tls.VersionTLS12}
+		config.RootCAs = roots
+		transport = netutil.SetOldTransportDefaults(&http.Transport{TLSClientConfig: config})
+	}
+
 	clientOpts := new(clientconfig.ClientOpts)
 	clientOpts.AuthInfo = &authInfo
 
@@ -258,6 +276,10 @@ func getProvider(
 	provider, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if transport != nil {
+		provider.HTTPClient.Transport = transport
 	}
 
 	actx, acancel := context.WithTimeout(ctx, timeout)
