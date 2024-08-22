@@ -417,5 +417,50 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				return nil
 			}, time.Second*15, time.Millisecond*500).Should(Succeed())
 		})
+
+		It("should keep endpoints of non-terminating nodes if all nodes are not ready", func() {
+			markNodeNotReady := func(name string) {
+				GinkgoHelper()
+				node := &v1.Node{}
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name}, node)).Should(Succeed())
+				node.Status.Conditions = []v1.NodeCondition{
+					{
+						Type:               v1.NodeReady,
+						Status:             v1.ConditionFalse,
+						LastHeartbeatTime:  metav1.Time{},
+						LastTransitionTime: metav1.Time{},
+						Reason:             "notready",
+						Message:            "notready",
+					},
+				}
+				Expect(k8sClient.Status().Update(ctx, node)).To(Succeed())
+			}
+
+			By("marking one node as not ready")
+			markNodeNotReady("node2")
+			assertLBWithOneEndpoint("node1", "10.10.10.10")
+
+			By("marking all nodes as not ready")
+			markNodeNotReady("node1")
+
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "default--node-test1", Namespace: "default"}, &lb)).To(Succeed())
+				g.Expect(lb.Spec.Endpoints).To(HaveLen(2))
+			}, 5*time.Second, 100*time.Millisecond).Should(Succeed(), "expected all nodes to return to the LB endpoints")
+
+			By("marking node1 as terminating")
+			node := &v1.Node{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "node1"}, node)).Should(Succeed())
+			node.Spec.Taints = []v1.Taint{
+				{
+					Key:    ToBeDeletedTaint,
+					Effect: v1.TaintEffectNoSchedule,
+					Value:  "123456789", // unix timestamp
+				},
+			}
+			Expect(k8sClient.Update(ctx, node)).To(Succeed())
+
+			assertLBWithOneEndpoint("node2", "10.10.10.11")
+		})
 	})
 })
