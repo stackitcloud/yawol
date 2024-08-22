@@ -6,7 +6,7 @@ toolchain go1.22.6
 
 require (
 	github.com/cncf/xds/go v0.0.0-20240723142845-024c85f92f20
-	github.com/envoyproxy/go-control-plane v0.12.0
+	github.com/envoyproxy/go-control-plane v0.13.0
 	github.com/go-logr/logr v1.4.2
 	github.com/golang/protobuf v1.5.4
 	github.com/gophercloud/gophercloud v1.13.0
@@ -72,6 +72,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
