@@ -1348,6 +1348,19 @@ func (r *Reconciler) deleteSecGroups(
 	osClient openstack.Client,
 	lb *yawolv1beta1.LoadBalancer,
 ) (bool, error) {
+	// skip deletion and release status when annotated
+	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup]); err == nil && keep {
+		if lb.Status.SecurityGroupID == nil {
+			return false, nil
+		}
+		r.Log.Info("security group was released", "lb", lb.Namespace+"/"+lb.Name)
+		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "security_group_id")
+		if err != nil {
+			return true, fmt.Errorf("failed to remove from lb status: %w", err)
+		}
+		return false, nil
+	}
+
 	var err error
 
 	portClient, err := osClient.PortClient(ctx)
@@ -1363,18 +1376,6 @@ func (r *Reconciler) deleteSecGroups(
 	err = r.findAndDeleteSecGroupUsages(ctx, portClient, lb)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete sec group usages: %w", err)
-	}
-	// skip deletion and release status when annotated
-	if keep, err := strconv.ParseBool(lb.GetAnnotations()[yawolv1beta1.LoadBalancerKeepSecurityGroup]); err == nil && keep {
-		if lb.Status.SecurityGroupID == nil {
-			return false, nil
-		}
-		r.Log.Info("security group was released", "lb", lb.Namespace+"/"+lb.Name)
-		err = helper.RemoveFromLBStatus(ctx, r.Client.Status(), lb, "security_group_id")
-		if err != nil {
-			return true, fmt.Errorf("failed to remove from lb status: %w", err)
-		}
-		return false, nil
 	}
 
 	var requeue bool
