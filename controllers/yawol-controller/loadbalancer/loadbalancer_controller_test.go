@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
@@ -811,12 +812,23 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				}, timeout, interval).Should(Succeed())
 			})
 			It("should not delete the security group", func() {
+				portClient := mockClient.PortClientObj
+				auxiliaryPortName := "auxiliary-port"
+				securityGroupID := ""
+
 				By("checking that secgroup is set")
 				hopefully(nn, func(g Gomega, act LB) error {
 					g.Expect(act.Status.SecurityGroupID).To(Not(BeNil()))
 					g.Expect(*act.Status.SecurityGroupName == nn.String())
+					securityGroupID = *act.Status.SecurityGroupID
 					return nil
 				})
+
+				_, err := portClient.Create(ctx, ports.CreateOpts{
+					Name:           auxiliaryPortName,
+					SecurityGroups: &[]string{securityGroupID},
+				})
+				Expect(err).NotTo(HaveOccurred())
 
 				By("deleting the LB")
 				cleanupLB(nn, timeout)
@@ -829,6 +841,15 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 					g.Expect(err).To(Not(HaveOccurred()))
 					g.Expect(len(groups)).To(Equal(1))
 				}, timeout, interval).Should(Succeed())
+
+				By("checking the security group assignment is still there")
+				portList, err := portClient.List(ctx, ports.ListOpts{})
+				Expect(err).NotTo(HaveOccurred())
+				port := ports.Port{}
+				Expect(portList).To(ContainElement(MatchFields(IgnoreExtras, Fields{
+					"Name": Equal(auxiliaryPortName),
+				}), &port))
+				Expect(port.SecurityGroups).To(ConsistOf(securityGroupID))
 			})
 			It("should not delete the fip", func() {
 				var fipIP *string
