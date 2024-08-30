@@ -813,7 +813,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 			})
 			It("should not delete the security group", func() {
 				portClient := mockClient.PortClientObj
-				auxilaryPortName := "auxilary-port"
+				auxiliaryPortName := "auxiliary-port"
 				securityGroupID := ""
 
 				By("checking that secgroup is set")
@@ -825,7 +825,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				})
 
 				_, err := portClient.Create(ctx, ports.CreateOpts{
-					Name:           auxilaryPortName,
+					Name:           auxiliaryPortName,
 					SecurityGroups: &[]string{securityGroupID},
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -847,7 +847,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 				Expect(err).NotTo(HaveOccurred())
 				port := ports.Port{}
 				Expect(portList).To(ContainElement(MatchFields(IgnoreExtras, Fields{
-					"Name": Equal(auxilaryPortName),
+					"Name": Equal(auxiliaryPortName),
 				}), &port))
 				Expect(port.SecurityGroups).To(ConsistOf(securityGroupID))
 			})
