@@ -63,6 +63,8 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	WorkerCount         int
 	OpenstackTimeout    time.Duration
 	YawolletRequeueTime int
+	NTPServers          []string
+	NTPPool             string
 	DiscoveryClient     *discovery.DiscoveryClient
 	RateLimiter         ratelimiter.RateLimiter
 }
@@ -685,6 +687,8 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		loadBalancerMachine,
 		vip,
 		r.YawolletRequeueTime,
+		r.NTPPool,
+		r.NTPServers,
 	)
 	if err != nil {
 		return err

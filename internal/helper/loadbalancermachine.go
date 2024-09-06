@@ -251,6 +251,8 @@ func GenerateUserData(
 	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
 	yawolletRequeueTime int,
+	ntpPool string,
+	ntpServers []string,
 ) (string, error) {
 	var err error
 	const (
@@ -281,6 +283,11 @@ func GenerateUserData(
 	}
 	promtailConfigBase64 := base64.StdEncoding.EncodeToString([]byte(promtailConfig))
 
+	var chronyConfig string
+	if ntpPool != "" || len(ntpServers) > 0 {
+		chronyConfig = generateChronyConfig(ntpPool, ntpServers)
+	}
+
 	sshOpenRC := openRCDel
 	sshOpenRCState := openRCStop
 	if loadbalancer.Spec.DebugSettings.Enabled {
@@ -300,9 +307,20 @@ func GenerateUserData(
 		yawolletArgs = yawolletArgs + "-requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
 	}
 
-	return `
+	cloudInit := `
 #cloud-config
-write_files:
+write_files:`
+
+	if chronyConfig != "" {
+		cloudInit += `
+- encoding: b64
+content: ` + base64.StdEncoding.EncodeToString([]byte(chronyConfig)) + `
+owner: root:root
+path: /etc/chrony/chrony.conf
+permissions: '0644'`
+	}
+
+	cloudInit += `
 - encoding: b64
   content: ` + kubeconfigBase64 + `
   owner: yawol:yawol
@@ -334,7 +352,26 @@ runcmd:
   - [ /sbin/rc-service, keepalived, restart ]
   - [ /sbin/rc-service, envoy, restart ]
   - [ /sbin/rc-service, yawollet, restart ]
-`, nil
+`
+
+	return cloudInit, nil
+}
+
+func generateChronyConfig(ntpPool string, ntpServers []string) string {
+	var chronyConfig string
+	if len(ntpServers) > 0 {
+		for _, ntpServer := range ntpServers {
+			chronyConfig += fmt.Sprintf("server %s iburst\n", ntpServer)
+		}
+	}
+	if ntpPool != "" {
+		// most likely you use pool or server but as the chrony config is valid with both we just add both.
+		chronyConfig += fmt.Sprintf("pool %s iburst\n", ntpPool)
+	}
+	chronyConfig += `driftfile /var/lib/chrony/chrony.drift
+rtcsync
+cmdport 0`
+	return chronyConfig
 }
 
 func generateKeepalivedConfig(vip string) string {

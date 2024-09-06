@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/stackitcloud/yawol/controllers/yawol-controller/loadbalancer"
@@ -68,6 +69,9 @@ func main() {
 	var yawolletRequeueTime int
 	var lbmDeletionGracePeriod time.Duration
 
+	var ntpServers string
+	var ntpPool string
+
 	var openstackTimeout time.Duration
 
 	// settings for leases
@@ -107,6 +111,9 @@ func main() {
 	flag.DurationVar(&lbmDeletionGracePeriod, "lbm-deletion-grace-period", 2*time.Minute,
 		"Grace period before deleting a load balancer machine AFTER the machine has first been identified as unready.",
 	)
+
+	flag.StringVar(&ntpPool, "ntp-pool", "", "A NTP Pool which is used in LBMs.")
+	flag.StringVar(&ntpServers, "ntp-servers", "", "A comma separated list of NTP Servers which are used in LBMs.")
 
 	flag.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
@@ -288,6 +295,8 @@ func main() {
 			Metrics:             &helpermetrics.LoadBalancerMachineMetrics,
 			OpenstackTimeout:    openstackTimeout,
 			YawolletRequeueTime: yawolletRequeueTime,
+			NTPServers:          strings.Split(ntpServers, ","),
+			NTPPool:             ntpPool,
 			DiscoveryClient:     discoveryClient,
 			RateLimiter:         rateLimiter,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
