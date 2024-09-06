@@ -42,6 +42,15 @@
         regexp: ^PasswordAuthentication.*$
         line: 'PasswordAuthentication no'
 
+    # chrony config
+    - name: upload chrony.conf
+      copy:
+        src: ./chrony.conf
+        dest: /etc/chrony/chrony.conf
+        owner: root
+        group: root
+        mode: 644
+
     # keepalived
     - name: install keepalived
       command: "apk add keepalived"
