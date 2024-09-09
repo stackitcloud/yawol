@@ -88,6 +88,14 @@ resources:
 #openstackTimeout: 20s
 #yawolletRequeueTime: 60
 
+# NTP pools/servers to configure on LoadBalancerMachines.
+# If neither pools nor servers are set, it defaults to using pool.ntp.org.
+ntp:
+  # list of NTP pools
+  pools: []
+  # list of individual NTP servers
+  servers: []
+
 # the name of the Kubernetes secret that contains the .openrc file contents
 # with the correct permissions to connect to the OpenStack API
 #

@@ -122,6 +122,12 @@ spec:
           {{- if .Values.yawolController.errorBackoffMaxDelay }}
           - --error-backoff-max-delay={{ .Values.yawolController.errorBackoffMaxDelay }}
           {{- end }}
+          {{- range .Values.ntp.pools }}
+          - --ntp-pool={{ . }}
+          {{- end }}
+          {{- range .Values.ntp.servers }}
+          - --ntp-server={{ . }}
+          {{- end }}
           {{- include "logFlags" . | indent 10 }}
         env:
           {{- if .Values.namespace }}
