@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/fields"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,18 +69,20 @@ func main() {
 	var requeueTime int
 	var keepalivedStatsFile string
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8080", "The address the probe endpoint binds to.")
+	fs := pflag.NewFlagSet("yawollet", pflag.ExitOnError)
 
-	flag.StringVar(&namespace, "namespace", "", "The namespace from lb und lbm object.")
-	flag.StringVar(&loadbalancerName, "loadbalancer-name", "", "Name of lb object.")
-	flag.StringVar(&loadbalancerMachineName, "loadbalancer-machine-name", "", "Name of lbm object.")
-	flag.StringVar(&listenAddress, "listen-address", "", "Address that envoy should listen.")
-	flag.StringVar(&listenInterface, "listen-interface", "", "Interface that envoy should listen on. Ignored if listen-address is set.")
-	flag.IntVar(&requeueTime, "requeue-time", 30, "Requeue Time in seconds for reconcile if object was successful reconciled. "+
+	fs.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
+	fs.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8080", "The address the probe endpoint binds to.")
+
+	fs.StringVar(&namespace, "namespace", "", "The namespace from lb und lbm object.")
+	fs.StringVar(&loadbalancerName, "loadbalancer-name", "", "Name of lb object.")
+	fs.StringVar(&loadbalancerMachineName, "loadbalancer-machine-name", "", "Name of lbm object.")
+	fs.StringVar(&listenAddress, "listen-address", "", "Address that envoy should listen.")
+	fs.StringVar(&listenInterface, "listen-interface", "", "Interface that envoy should listen on. Ignored if listen-address is set.")
+	fs.IntVar(&requeueTime, "requeue-time", 30, "Requeue Time in seconds for reconcile if object was successful reconciled. "+
 		"Values less than 5 are set to 5 and greater than 170 are set to 170")
 
-	flag.StringVar(&keepalivedStatsFile, "keepalived-stats-file", "/tmp/keepalived.stats",
+	fs.StringVar(&keepalivedStatsFile, "keepalived-stats-file", "/tmp/keepalived.stats",
 		"Stats file for keepalived (default: /tmp/keepalived.stats). "+
 			"If set to empty no keepalived stats will be used for conditions and metrics.")
 
@@ -87,9 +90,14 @@ func main() {
 		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	zapFlagSet := flag.NewFlagSet("zap", flag.ContinueOnError)
+	opts.BindFlags(zapFlagSet)
+	fs.AddGoFlagSet(zapFlagSet)
 
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	ctx := context.Background()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))

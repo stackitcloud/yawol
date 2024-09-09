@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -16,19 +17,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	discovery "k8s.io/client-go/discovery"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
+	"github.com/spf13/pflag"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -79,52 +81,60 @@ func main() {
 	var leasesRenewDeadline time.Duration
 	var leasesRetryPeriod time.Duration
 
-	flag.StringVar(&metricsAddrLb, "metrics-addr-lb", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&metricsAddrLbs, "metrics-addr-lbm", ":8081", "The address the metric endpoint binds to.")
-	flag.StringVar(&metricsAddrLbm, "metrics-addr-lbs", ":8082", "The address the metric endpoint binds to.")
+	fs := pflag.NewFlagSet("yawol-controller", pflag.ExitOnError)
 
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8083", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+	fs.StringVar(&metricsAddrLb, "metrics-addr-lb", ":8080", "The address the metric endpoint binds to.")
+	fs.StringVar(&metricsAddrLbs, "metrics-addr-lbm", ":8081", "The address the metric endpoint binds to.")
+	fs.StringVar(&metricsAddrLbm, "metrics-addr-lbs", ":8082", "The address the metric endpoint binds to.")
+
+	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8083", "The address the probe endpoint binds to.")
+	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	flag.IntVar(&concurrentWorkersPerReconciler, "concurrent-workers", 30, "Defines the amount of concurrent workers per reconciler.")
-	flag.DurationVar(&errorBackoffBaseDelay, "error-backoff-base-delay", 5*time.Millisecond,
+	fs.IntVar(&concurrentWorkersPerReconciler, "concurrent-workers", 30, "Defines the amount of concurrent workers per reconciler.")
+	fs.DurationVar(&errorBackoffBaseDelay, "error-backoff-base-delay", 5*time.Millisecond,
 		"Defines the base delay of reconciles in case of an error.")
-	flag.DurationVar(&errorBackoffMaxDelay, "error-backoff-max-delay", 1000*time.Second,
+	fs.DurationVar(&errorBackoffMaxDelay, "error-backoff-max-delay", 1000*time.Second,
 		"Defines the max delay of reconciles in case of an error.")
-	flag.BoolVar(&lbController, "enable-loadbalancer-controller", false,
+	fs.BoolVar(&lbController, "enable-loadbalancer-controller", false,
 		"Enable loadbalancer controller manager. ")
-	flag.BoolVar(&lbSetController, "enable-loadbalancerset-controller", false,
+	fs.BoolVar(&lbSetController, "enable-loadbalancerset-controller", false,
 		"Enable loadbalancer-set controller manager. ")
-	flag.BoolVar(&lbMachineController, "enable-loadbalancermachine-controller", false,
+	fs.BoolVar(&lbMachineController, "enable-loadbalancermachine-controller", false,
 		"Enable loadbalancer-machine controller manager. ")
 
-	flag.IntVar(&yawolletRequeueTime, "yawollet-requeue-time", 0,
+	fs.IntVar(&yawolletRequeueTime, "yawollet-requeue-time", 0,
 		"yawollet requeue time in seconds for reconcile if object was successful reconciled. "+
 			"Values less than 5 are set to 5 and greater than 170 are set to 170. "+
 			"If unset the default from yawollet is used.")
-	flag.DurationVar(&lbmDeletionGracePeriod, "lbm-deletion-grace-period", 2*time.Minute,
+	fs.DurationVar(&lbmDeletionGracePeriod, "lbm-deletion-grace-period", 2*time.Minute,
 		"Grace period before deleting a load balancer machine AFTER the machine has first been identified as unready.",
 	)
 
-	flag.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
+	fs.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
-	flag.IntVar(&leasesDurationInt, "leases-duration", 60,
+	fs.IntVar(&leasesDurationInt, "leases-duration", 60,
 		"Is the time in seconds a non-leader will wait until forcing to acquire leadership.")
-	flag.IntVar(&leasesRenewDeadlineInt, "leases-renew-deadline", 50,
+	fs.IntVar(&leasesRenewDeadlineInt, "leases-renew-deadline", 50,
 		"Is the time in seconds how long the current controller will retry before giving up.")
-	flag.IntVar(&leasesRetryPeriodInt, "leases-retry-period", 10,
+	fs.IntVar(&leasesRetryPeriodInt, "leases-retry-period", 10,
 		"Is the time in seconds how long the controller waits between lease actions.")
-	flag.StringVar(&leasesLeaderElectionResourceLock, "leases-leader-election-resource-lock", "leases",
+	fs.StringVar(&leasesLeaderElectionResourceLock, "leases-leader-election-resource-lock", "leases",
 		"The resource type which is used for leader election (default 'leases', can be also: 'configmaps' or 'configmapsleases').")
 
 	opts := zap.Options{
 		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	zapFlagSet := flag.NewFlagSet("zap", flag.ContinueOnError)
+	opts.BindFlags(zapFlagSet)
+	fs.AddGoFlagSet(zapFlagSet)
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	leasesDuration = time.Duration(leasesDurationInt) * time.Second
 	leasesRenewDeadline = time.Duration(leasesRenewDeadlineInt) * time.Second

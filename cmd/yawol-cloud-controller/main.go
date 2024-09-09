@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/spf13/pflag"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -16,10 +17,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/controlcontroller"
-	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
-	"github.com/stackitcloud/yawol/internal/helper"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,6 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/controlcontroller"
+	"github.com/stackitcloud/yawol/controllers/yawol-cloud-controller/targetcontroller"
+	"github.com/stackitcloud/yawol/internal/helper"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -35,8 +37,6 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
-
-type loadbalancerClassNames []string
 
 const (
 	// Namespace in for LoadBalancer CRs
@@ -79,7 +79,7 @@ func main() {
 	var targetEnableLeaderElection bool
 	var targetKubeconfig string
 	var controlKubeconfig string
-	var classNames loadbalancerClassNames
+	var classNames []string
 	var emptyClassName bool
 	// settings for leases
 	var leasesDurationInt int
@@ -90,39 +90,47 @@ func main() {
 	var leasesRenewDeadline time.Duration
 	var leasesRetryPeriod time.Duration
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&controlEnableLeaderElection, "leader-elect", false,
+	fs := pflag.NewFlagSet("yawol-cloud-controller", pflag.ExitOnError)
+
+	fs.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	fs.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	fs.BoolVar(&controlEnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&targetEnableLeaderElection, "target-leader-elect", false,
+	fs.BoolVar(&targetEnableLeaderElection, "target-leader-elect", false,
 		"Enable leader election for target manager. "+
 			"Enabling this will ensure there is only one active target manager.")
-	flag.StringVar(&targetKubeconfig, "target-kubeconfig", "",
+	fs.StringVar(&targetKubeconfig, "target-kubeconfig", "",
 		"K8s credentials for watching the Service resources.")
-	flag.StringVar(&controlKubeconfig, "control-kubeconfig", "",
+	fs.StringVar(&controlKubeconfig, "control-kubeconfig", "",
 		"K8s credentials for deploying the LoadBalancer resources.")
-	flag.Var(&classNames, "classname",
+	fs.StringSliceVar(&classNames, "classname", classNames,
 		"Only listen to Services with the given className. Can be set multiple times. "+
-			"If no classname is set it will defaults to "+helper.DefaultLoadbalancerClass+" "+
+			"If no classname is set it will default to "+helper.DefaultLoadbalancerClass+" "+
 			"and services without class. See also --empty-classname.")
-	flag.BoolVar(&emptyClassName, "empty-classname", true,
+	fs.BoolVar(&emptyClassName, "empty-classname", true,
 		"Listen to services without a loadBalancerClass. Default is true.")
-	flag.IntVar(&leasesDurationInt, "leases-duration", 60,
+	fs.IntVar(&leasesDurationInt, "leases-duration", 60,
 		"Is the time in seconds a non-leader will wait until forcing to acquire leadership.")
-	flag.IntVar(&leasesRenewDeadlineInt, "leases-renew-deadline", 50,
+	fs.IntVar(&leasesRenewDeadlineInt, "leases-renew-deadline", 50,
 		"Is the time in seconds how long the current controller will retry before giving up.")
-	flag.IntVar(&leasesRetryPeriodInt, "leases-retry-period", 10,
+	fs.IntVar(&leasesRetryPeriodInt, "leases-retry-period", 10,
 		"Is the time in seconds how long the controller waits between lease actions.")
-	flag.StringVar(&leasesLeaderElectionResourceLock, "leases-leader-election-resource-lock", "leases",
+	fs.StringVar(&leasesLeaderElectionResourceLock, "leases-leader-election-resource-lock", "leases",
 		"The resource type which is used for leader election (default 'leases', can be also: 'configmaps' or 'configmapsleases').")
 
 	opts := zap.Options{
 		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	zapFlagSet := flag.NewFlagSet("zap", flag.ContinueOnError)
+	opts.BindFlags(zapFlagSet)
+	fs.AddGoFlagSet(zapFlagSet)
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	if len(classNames) == 0 {
 		classNames = append(classNames, helper.DefaultLoadbalancerClass)
@@ -380,13 +388,4 @@ func getInfrastructureDefaultsFromEnvOrDie() targetcontroller.InfrastructureDefa
 		AvailabilityZone: ptr.To(availabilityZone),
 		InternalLB:       ptr.To(internalLb),
 	}
-}
-
-func (i *loadbalancerClassNames) String() string {
-	return strings.Join(*i, ",")
-}
-
-func (i *loadbalancerClassNames) Set(value string) error {
-	*i = append(*i, value)
-	return nil
 }
