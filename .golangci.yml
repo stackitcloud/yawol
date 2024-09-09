@@ -6,30 +6,21 @@ linters-settings:
     statements: 50
   gocritic:
     enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
+    - diagnostic
+    - experimental
+    - opinionated
+    - performance
+    - style
     disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-      - hugeParam
+    - dupImport # https://github.com/go-critic/go-critic/issues/845
+    - ifElseChain
+    - octalLiteral
+    - whyNoLint
+    - wrapperFunc
+    - hugeParam
 
   gocyclo:
-    min-complexity:
-      30 # decrease this
-      # gci:
-      #   local-prefixes: insert your package name here
-      # goimports:
-      #   local-prefixes: insert your package name here
-      #revive:
-      #rules:
-      #- name: var-naming
-    #severity: warning
+    min-complexity: 30
   gomnd:
     settings:
       mnd:
@@ -54,31 +45,31 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - bodyclose
-    - dogsled
-    - gocritic
-    - gofmt
-    - goimports
-    - goprintffuncname
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - rowserrcheck
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
-    - revive
-    - dupl
-    - gocyclo
-    - gosec
-    - nolintlint
+  - bodyclose
+  - dogsled
+  - gocritic
+  - gofmt
+  - goimports
+  - goprintffuncname
+  - gosimple
+  - govet
+  - ineffassign
+  - lll
+  - misspell
+  - nakedret
+  - rowserrcheck
+  - staticcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unparam
+  - unused
+  - whitespace
+  - revive
+  - dupl
+  - gocyclo
+  - gosec
+  - nolintlint
 
   # don't enable:
   # - noctx
@@ -107,25 +98,28 @@ linters:
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - gochecknoglobals
-        - gosec
-        - noctx
-        - goerr113
-        - goconst
-        - dupl
-        - unparam
+  - path: _test\.go
+    linters:
+    - gomnd
+    - gochecknoglobals
+    - gosec
+    - noctx
+    - goerr113
+    - goconst
+    - dupl
+    - unparam
 
-    # https://github.com/go-critic/go-critic/issues/926
-    - linters:
-        - gocritic
-      text: "unnecessaryDefer:"
+  # https://github.com/go-critic/go-critic/issues/926
+  - linters:
+    - gocritic
+    text: "unnecessaryDefer:"
+
+  - text: "should not use dot imports"
+    path: _test\.go
 
   # silence stupid linter errors
   exclude:
-    - directive `// nolint.*` should be written without leading space
+  - directive `// nolint.*` should be written without leading space
 
 run:
   timeout: 15m
