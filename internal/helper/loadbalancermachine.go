@@ -289,15 +289,15 @@ func GenerateUserData(
 	}
 
 	var yawolletArgs string
-	yawolletArgs = yawolletArgs + "-namespace=" + loadbalancerMachine.Namespace + " "
-	yawolletArgs = yawolletArgs + "-loadbalancer-name=" + loadbalancer.Name + " "
-	yawolletArgs = yawolletArgs + "-loadbalancer-machine-name=" + loadbalancerMachine.Name + " "
-	yawolletArgs = yawolletArgs + "-listen-address=" + vip + " "
-	yawolletArgs = yawolletArgs + "-health-probe-bind-address=" + probeAddress + " "
-	yawolletArgs = yawolletArgs + "-kubeconfig /etc/yawol/kubeconfig" + " "
+	yawolletArgs = yawolletArgs + "--namespace=" + loadbalancerMachine.Namespace + " "
+	yawolletArgs = yawolletArgs + "--loadbalancer-name=" + loadbalancer.Name + " "
+	yawolletArgs = yawolletArgs + "--loadbalancer-machine-name=" + loadbalancerMachine.Name + " "
+	yawolletArgs = yawolletArgs + "--listen-address=" + vip + " "
+	yawolletArgs = yawolletArgs + "--health-probe-bind-address=" + probeAddress + " "
+	yawolletArgs = yawolletArgs + "--kubeconfig /etc/yawol/kubeconfig" + " "
 
 	if yawolletRequeueTime > 0 {
-		yawolletArgs = yawolletArgs + "-requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
+		yawolletArgs = yawolletArgs + "--requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
 	}
 
 	return `

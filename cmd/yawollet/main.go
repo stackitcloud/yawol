@@ -9,38 +9,32 @@ import (
 	"os"
 	"time"
 
+	discoverygrpcv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
+	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth" // Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 	controllers "github.com/stackitcloud/yawol/controllers/yawollet"
 	yawolhealthz "github.com/stackitcloud/yawol/internal/healthz"
 	"github.com/stackitcloud/yawol/internal/helper"
-
-	"go.uber.org/zap/zapcore"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
-	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
-	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
-	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
-	"google.golang.org/grpc"
-
-	discoverygrpcv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -70,6 +64,11 @@ func main() {
 	var keepalivedStatsFile string
 
 	fs := pflag.NewFlagSet("yawollet", pflag.ExitOnError)
+
+	// register --kubeconfig flag in FlagSet
+	configFlagSet := flag.NewFlagSet("config", flag.ContinueOnError)
+	config.RegisterFlags(configFlagSet)
+	fs.AddGoFlagSet(configFlagSet)
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Default is disabled.")
 	fs.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8080", "The address the probe endpoint binds to.")
