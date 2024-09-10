@@ -63,6 +63,7 @@ earthly +build-packer-environment \
    --OS_PASSWORD="$OS_PASSWORD" \
    --OS_USERNAME="$OS_USERNAME" \
    --OS_REGION_NAME="$OS_REGION_NAME"
+#  --OS_CACERT="$OS_CACERT" # optional, should be the full CA bundle, not a file path
 #  --FLOATING_NETWORK_NAME=floating-net
 ```
 
@@ -79,6 +80,7 @@ earthly +destroy-packer-environment \
    --OS_PASSWORD="$OS_PASSWORD" \
    --OS_USERNAME="$OS_USERNAME" \
    --OS_REGION_NAME="$OS_REGION_NAME"
+#  --OS_CACERT="$OS_CACERT" # optional, should be the full CA bundle, not a file path
 #  --FLOATING_NETWORK_NAME=floating-net
 ```
 
@@ -115,8 +117,9 @@ earthly --platform=linux/amd64 +build-yawollet-image \
    --OS_PASSWORD="$OS_PASSWORD" \
    --OS_USERNAME="$OS_USERNAME" \
    --OS_REGION_NAME="$OS_REGION_NAME"
-#   --MACHINE_FLAVOR=c1.2
-#   --VOLUME_TYPE=storage_premium_perf6
+#  --OS_CACERT="$OS_CACERT" # optional, should be the full CA bundle, not a file path
+#  --MACHINE_FLAVOR=c1.2
+#  --VOLUME_TYPE=storage_premium_perf6
 ```
 
 ### Cluster Installation

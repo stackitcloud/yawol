@@ -125,6 +125,13 @@ build-yawollet-image:
     ARG --required OS_USERNAME
     ARG --required OS_REGION_NAME
 
+    ARG OS_CACERT
+    # packer doesn't accept a raw CA bundle in OS_CACERT so we need to write it to a file
+    IF [ -n "$OS_CACERT" ]
+      RUN echo "$OS_CACERT" > /etc/ssl/certs/openstack.crt
+      LET OS_CACERT=/etc/ssl/certs/openstack.crt
+    END
+
     COPY +get-envoy/envoy out/envoy/envoy
     COPY +get-envoy/envoylibs out/envoy/lib
     COPY (+build/controller --CONTROLLER=yawollet --GOOS=$TARGETOS --GOARCH=$TARGETARCH) out/yawollet
@@ -158,6 +165,8 @@ build-packer-environment:
     ARG --required OS_USERNAME
     ARG --required OS_REGION_NAME
 
+    ARG OS_CACERT
+
     COPY --dir hack/packer-infrastructure .
 
     WORKDIR /packer-infrastructure
@@ -181,6 +190,7 @@ destroy-packer-environment:
     ARG --required OS_PASSWORD
     ARG --required OS_USERNAME
     ARG --required OS_REGION_NAME
+    ARG OS_CACERT
 
     COPY --dir hack/packer-infrastructure .
 
