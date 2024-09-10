@@ -309,15 +309,6 @@
         regexp: "FAST_STARTUP"
         line: "FAST_STARTUP=yes"
 
-    # We customize the chrony config in the cloud-init user-data. Configure chrony to start after cloud-init has written
-    # the config. With this, we don't need to restart the chrony service after writing the file. This should make
-    # clock synchronization more stable during startup.
-    - name: Set chrony to start after cloud-init
-      blockinfile:
-        dest: /etc/init.d/chronyd
-        insertafter: 'depend\(\) {'
-        content: "	need cloud-init"
-
     - name: Set boot to parallel
       lineinfile:
         path: /etc/rc.conf

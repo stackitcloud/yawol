@@ -354,6 +354,7 @@ write_files:
     YAWOLLET_ARGS="` + yawolletArgs + `"
   path: /etc/yawol/env.conf
 runcmd:
+  - [ /sbin/rc-service, chronyd, restart ]
   - [ /sbin/rc-service, promtail, ` + promtailOpenRCState + ` ]
   - [ /sbin/rc-update, ` + promtailOpenRC + `, promtail, default ]
   - [ /sbin/rc-service, sshd, ` + sshOpenRCState + ` ]
