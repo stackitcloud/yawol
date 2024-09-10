@@ -317,6 +317,11 @@ func GenerateUserData(
 		yawolletArgs = yawolletArgs + "--requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
 	}
 
+	// cloud-init also features an NTP module that can configure chrony, see
+	// https://cloudinit.readthedocs.io/en/latest/reference/modules.html#ntp.
+	// We don't use cloud-init's NTP module as we want to set the `cmdport` directive. To do so via the cloud-config,
+	// we would need to write a jinja template for the chrony config file. I.e., we would have gain nothing over
+	// generating the chrony config ourselves and explicitly restarting the service.
 	chronyConfig, err := generateChronyConfig(ntpPools, ntpServers)
 	if err != nil {
 		return "", fmt.Errorf("failed generating chrony config: %w", err)
