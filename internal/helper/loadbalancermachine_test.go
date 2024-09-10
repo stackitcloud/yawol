@@ -160,3 +160,117 @@ var _ = DescribeTable("areRelevantConditionsMet",
 		expect:          false,
 	}),
 )
+
+var _ = Describe("generateChronyConfig", func() {
+	var (
+		pools, servers []string
+	)
+
+	BeforeEach(func() {
+		pools = []string{"pool.a.org", "pool.b.org"}
+		servers = []string{"ntp.a.org", "10.0.10.1"}
+	})
+
+	It("should use pool.ntp.org if neither pools nor servers are specified", func() {
+		Expect(generateChronyConfig(nil, nil)).To(BeEquivalentTo(`pool pool.ntp.org iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+	})
+
+	It("should use the configured pools", func() {
+		Expect(generateChronyConfig(pools[:1], nil)).To(BeEquivalentTo(`pool pool.a.org iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+
+		Expect(generateChronyConfig(pools, nil)).To(BeEquivalentTo(`pool pool.a.org iburst
+pool pool.b.org iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+	})
+
+	It("should use the configured servers", func() {
+		Expect(generateChronyConfig(nil, servers[:1])).To(BeEquivalentTo(`server ntp.a.org iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+
+		Expect(generateChronyConfig(nil, servers)).To(BeEquivalentTo(`server ntp.a.org iburst
+server 10.0.10.1 iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+	})
+
+	It("should use both the configured pools and servers", func() {
+		Expect(generateChronyConfig(pools, servers)).To(BeEquivalentTo(`pool pool.a.org iburst
+pool pool.b.org iburst
+server ntp.a.org iburst
+server 10.0.10.1 iburst
+# Settings from alpine default chrony config
+driftfile /var/lib/chrony/chrony.drift
+rtcsync
+# prevent chrony from opening ports on the LoadBalancer machine
+cmdport 0
+
+# Settings from cloud-init generated chrony config
+# Stop bad estimates upsetting machine clock.
+maxupdateskew 100.0
+# Step the system clock instead of slewing it if the adjustment is larger than
+# one second, but only in the first three clock updates.
+makestep 1 3
+`))
+	})
+})

@@ -63,6 +63,8 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	WorkerCount         int
 	OpenstackTimeout    time.Duration
 	YawolletRequeueTime int
+	NTPPools            []string
+	NTPServers          []string
 	DiscoveryClient     *discovery.DiscoveryClient
 	RateLimiter         ratelimiter.RateLimiter
 }
@@ -429,7 +431,7 @@ func (r *LoadBalancerMachineReconciler) reconcileRoleBinding(
 	return nil
 }
 
-func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO reduce complexity in future
+func (r *LoadBalancerMachineReconciler) reconcilePort( // nolint: gocyclo // TODO reduce complexity in future
 	ctx context.Context,
 	osClient os.Client,
 	req ctrl.Request,
@@ -439,20 +441,20 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 	var err error
 
 	// TODO cleanup after removing deprecated fields
-	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID == nil { //nolint: staticcheck // needed to be backwards compatible
+	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID == nil { // nolint: staticcheck // needed to be backwards compatible
 		if err := helper.PatchLBMStatus(
 			ctx,
 			r.Client.Status(),
 			lbm,
-			yawolv1beta1.LoadBalancerMachineStatus{DefaultPortID: lbm.Status.PortID}, //nolint: staticcheck // needed to be backwards compatible
+			yawolv1beta1.LoadBalancerMachineStatus{DefaultPortID: lbm.Status.PortID}, // nolint: staticcheck // needed to be backwards compatible
 		); err != nil {
 			return err
 		}
 	}
 
 	// TODO cleanup after removing deprecated fields
-	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID != nil && //nolint: staticcheck // needed to be backwards compatible
-		*lbm.Status.PortID == *lbm.Status.DefaultPortID { //nolint: staticcheck // needed to be backwards compatible
+	if lbm.Status.PortID != nil && lbm.Status.DefaultPortID != nil && // nolint: staticcheck // needed to be backwards compatible
+		*lbm.Status.PortID == *lbm.Status.DefaultPortID { // nolint: staticcheck // needed to be backwards compatible
 		if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
 			return err
 		}
@@ -460,8 +462,8 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( //nolint: gocyclo // TODO
 
 	// TODO cleanup after removing deprecated fields
 	var networkID string
-	if lbm.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
-		networkID = lbm.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+	if lbm.Spec.Infrastructure.NetworkID != "" { // nolint: staticcheck // needed to be backwards compatible
+		networkID = lbm.Spec.Infrastructure.NetworkID // nolint: staticcheck // needed to be backwards compatible
 	}
 	if lbm.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
 		networkID = lbm.Spec.Infrastructure.DefaultNetwork.NetworkID
@@ -685,6 +687,8 @@ func (r *LoadBalancerMachineReconciler) reconcileServer(
 		loadBalancerMachine,
 		vip,
 		r.YawolletRequeueTime,
+		r.NTPPools,
+		r.NTPServers,
 	)
 	if err != nil {
 		return err
@@ -766,8 +770,8 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	// TODO cleanup after removing deprecated fields
 	var networkID string
 
-	if loadBalancerMachine.Spec.Infrastructure.NetworkID != "" { //nolint: staticcheck // needed to be backwards compatible
-		networkID = loadBalancerMachine.Spec.Infrastructure.NetworkID //nolint: staticcheck // needed to be backwards compatible
+	if loadBalancerMachine.Spec.Infrastructure.NetworkID != "" { // nolint: staticcheck // needed to be backwards compatible
+		networkID = loadBalancerMachine.Spec.Infrastructure.NetworkID // nolint: staticcheck // needed to be backwards compatible
 	}
 	if loadBalancerMachine.Spec.Infrastructure.DefaultNetwork.NetworkID != "" {
 		networkID = loadBalancerMachine.Spec.Infrastructure.DefaultNetwork.NetworkID
@@ -922,8 +926,8 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 	}
 
 	// TODO cleanup after removing deprecated fields
-	if lbm.Status.PortID != nil { //nolint: staticcheck // needed to be backwards compatible
-		//nolint: staticcheck // needed to be backwards compatible
+	if lbm.Status.PortID != nil { // nolint: staticcheck // needed to be backwards compatible
+		// nolint: staticcheck // needed to be backwards compatible
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.PortID); err != nil {
 			switch err.(type) {
 			case gophercloud.ErrDefault404:
@@ -977,7 +981,7 @@ func (r *LoadBalancerMachineReconciler) deleteSA(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &sa); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
+	if err := r.Client.Delete(ctx, &sa); client.IgnoreNotFound(err) != nil { // nolint: gocritic // ignore of not found is intended
 		return err
 	}
 
@@ -994,7 +998,7 @@ func (r *LoadBalancerMachineReconciler) deleteRoleBinding(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &rb); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
+	if err := r.Client.Delete(ctx, &rb); client.IgnoreNotFound(err) != nil { // nolint: gocritic // ignore of not found is intended
 		return err
 	}
 
@@ -1011,7 +1015,7 @@ func (r *LoadBalancerMachineReconciler) deleteRole(
 			Namespace: lbm.Namespace,
 		},
 	}
-	if err := r.Client.Delete(ctx, &role); client.IgnoreNotFound(err) != nil { //nolint: gocritic // ignore of not found is intended
+	if err := r.Client.Delete(ctx, &role); client.IgnoreNotFound(err) != nil { // nolint: gocritic // ignore of not found is intended
 		return err
 	}
 

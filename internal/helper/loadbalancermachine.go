@@ -3,21 +3,37 @@ package helper
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"text/template"
 	"time"
 
-	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
-	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
-
+	sprig "github.com/go-task/slim-sprig/v3"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
+	helpermetrics "github.com/stackitcloud/yawol/internal/metrics"
 )
+
+var (
+	//go:embed templates/chrony.conf.tpl
+	chronyConfigTemplateRaw string
+	chronyConfigTemplate    *template.Template
+)
+
+func init() {
+	var err error
+	chronyConfigTemplate, err = template.New("chrony.conf").Funcs(sprig.HermeticTxtFuncMap()).Parse(chronyConfigTemplateRaw)
+	utilruntime.Must(err)
+}
 
 // LoadBalancerMachineOpenstackReconcileIsNeeded returns true if an openstack reconcile is needed.
 func LoadBalancerMachineOpenstackReconcileIsNeeded(lbm *yawolv1beta1.LoadBalancerMachine) bool {
@@ -251,6 +267,7 @@ func GenerateUserData(
 	loadbalancerMachine *yawolv1beta1.LoadBalancerMachine,
 	vip string,
 	yawolletRequeueTime int,
+	ntpPools, ntpServers []string,
 ) (string, error) {
 	var err error
 	const (
@@ -300,9 +317,24 @@ func GenerateUserData(
 		yawolletArgs = yawolletArgs + "--requeue-time=" + strconv.Itoa(yawolletRequeueTime) + " "
 	}
 
+	// cloud-init also features an NTP module that can configure chrony, see
+	// https://cloudinit.readthedocs.io/en/latest/reference/modules.html#ntp.
+	// We don't use cloud-init's NTP module as we want to set the `cmdport` directive. To do so via the cloud-config,
+	// we would need to write a jinja template for the chrony config file. I.e., we would have gain nothing over
+	// generating the chrony config ourselves and explicitly restarting the service.
+	chronyConfig, err := generateChronyConfig(ntpPools, ntpServers)
+	if err != nil {
+		return "", fmt.Errorf("failed generating chrony config: %w", err)
+	}
+
 	return `
 #cloud-config
 write_files:
+- encoding: b64
+  content: ` + base64.StdEncoding.EncodeToString(chronyConfig) + `
+  owner: root:root
+  path: /etc/chrony/chrony.conf
+  permissions: '0644'
 - encoding: b64
   content: ` + kubeconfigBase64 + `
   owner: yawol:yawol
@@ -327,6 +359,7 @@ write_files:
     YAWOLLET_ARGS="` + yawolletArgs + `"
   path: /etc/yawol/env.conf
 runcmd:
+  - [ /sbin/rc-service, chronyd, restart ]
   - [ /sbin/rc-service, promtail, ` + promtailOpenRCState + ` ]
   - [ /sbin/rc-update, ` + promtailOpenRC + `, promtail, default ]
   - [ /sbin/rc-service, sshd, ` + sshOpenRCState + ` ]
@@ -335,6 +368,20 @@ runcmd:
   - [ /sbin/rc-service, envoy, restart ]
   - [ /sbin/rc-service, yawollet, restart ]
 `, nil
+}
+
+func generateChronyConfig(pools, servers []string) ([]byte, error) {
+	// If neither --ntp-pool nor --ntp-server is set, default to using pool.ntp.org (resembles the default chrony config).
+	if len(pools) == 0 && len(servers) == 0 {
+		pools = []string{"pool.ntp.org"}
+	}
+
+	conf := &bytes.Buffer{}
+	err := chronyConfigTemplate.Execute(conf, map[string]any{
+		"pools":   pools,
+		"servers": servers,
+	})
+	return conf.Bytes(), err
 }
 
 func generateKeepalivedConfig(vip string) string {

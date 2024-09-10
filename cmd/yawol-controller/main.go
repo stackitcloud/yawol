@@ -67,6 +67,9 @@ func main() {
 	var yawolletRequeueTime int
 	var lbmDeletionGracePeriod time.Duration
 
+	var ntpPools []string
+	var ntpServers []string
+
 	var openstackTimeout time.Duration
 
 	// settings for leases
@@ -113,6 +116,13 @@ func main() {
 	fs.DurationVar(&lbmDeletionGracePeriod, "lbm-deletion-grace-period", 2*time.Minute,
 		"Grace period before deleting a load balancer machine AFTER the machine has first been identified as unready.",
 	)
+
+	fs.StringSliceVar(&ntpPools, "ntp-pool", ntpPools,
+		"List of NTP pools to configure on LoadBalancerMachines. Can be specified multiple times. "+
+			"If neither ntp-pool nor ntp-server is set, it defaults to using pool.ntp.org.")
+	fs.StringSliceVar(&ntpServers, "ntp-server", ntpServers,
+		"List of individual NTP servers to configure on LoadBalancerMachines. Can be specified multiple times. "+
+			"If neither ntp-pool nor ntp-server is set, it defaults to using pool.ntp.org.")
 
 	fs.DurationVar(&openstackTimeout, "openstack-timeout", 20*time.Second, "Timeout for all requests against Openstack.")
 
@@ -300,6 +310,8 @@ func main() {
 			Metrics:             &helpermetrics.LoadBalancerMachineMetrics,
 			OpenstackTimeout:    openstackTimeout,
 			YawolletRequeueTime: yawolletRequeueTime,
+			NTPPools:            ntpPools,
+			NTPServers:          ntpServers,
 			DiscoveryClient:     discoveryClient,
 			RateLimiter:         rateLimiter,
 		}).SetupWithManager(loadBalancerMachineMgr); err != nil {
