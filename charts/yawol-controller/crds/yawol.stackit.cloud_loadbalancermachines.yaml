@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: loadbalancermachines.yawol.stackit.cloud
 spec:
   group: yawol.stackit.cloud
@@ -39,14 +39,19 @@ spec:
           API.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -89,9 +94,9 @@ spec:
                       zone for the LoadBalancer.
                     type: string
                   defaultNetwork:
-                    description: DefaultNetwork defines the default/listener network
-                      for the Loadbalancer. TODO Remove optional when Deprecations
-                      are removed
+                    description: |-
+                      DefaultNetwork defines the default/listener network for the Loadbalancer.
+                      TODO Remove optional when Deprecations are removed
                     properties:
                       floatingNetID:
                         description: FloatingNetID defines an openstack ID for the
@@ -101,8 +106,7 @@ spec:
                         description: NetworkID defines an openstack ID for the network.
                         type: string
                       subnetID:
-                        description: SubnetID defines an openstack ID for the
-                          subnet.
+                        description: SubnetID defines an openstack ID for the subnet.
                         type: string
                     required:
                     - networkID
@@ -124,21 +128,23 @@ spec:
                           virtual machines.
                         type: string
                       flavorName:
-                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorName
-                          is the name of the flavor used for requesting virtual machines.
+                        description: |-
+                          NOT IMPLEMENTED ONLY FlavorID is supported.
+                          FlavorName is the name of the flavor used for requesting virtual machines.
                           FlavorName is only used if FlavorID is not defined.
                         type: string
                       flavorSearch:
-                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorSearch
-                          is a search string to find the flavor used for requesting
-                          virtual machines. Search will be performed in metadata of
-                          the flavors. FlavorSearch is only used if FlavorName and
-                          FlavorID are not defined.
+                        description: |-
+                          NOT IMPLEMENTED ONLY FlavorID is supported.
+                          FlavorSearch is a search string to find the flavor used for requesting virtual machines.
+                          Search will be performed in metadata of the flavors.
+                          FlavorSearch is only used if FlavorName and FlavorID are not defined.
                         type: string
                     type: object
                   floatingNetID:
-                    description: 'Deprecated: use defaultNetwork instead FloatingNetID
-                      defines a openstack ID for the floatingNet.'
+                    description: |-
+                      Deprecated: use defaultNetwork instead
+                      FloatingNetID defines a openstack ID for the floatingNet.
                     type: string
                   image:
                     description: Image defines openstack image for the LoadBalancer.
@@ -157,26 +163,28 @@ spec:
                           machines.
                         type: string
                       imageName:
-                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageName
-                          is the name of the image used for requesting virtual machines.
+                        description: |-
+                          NOT IMPLEMENTED ONLY ImageID is supported.
+                          ImageName is the name of the image used for requesting virtual machines.
                           ImageName is only used if ImageID is not defined.
                         type: string
                       imageSearch:
-                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageSearch
-                          is a search string to find the image used for requesting
-                          virtual machines. Search will be performed in metadata of
-                          the images. ImageSearch is only used if ImageName and ImageID
-                          are not defined.
+                        description: |-
+                          NOT IMPLEMENTED ONLY ImageID is supported.
+                          ImageSearch is a search string to find the image used for requesting virtual machines.
+                          Search will be performed in metadata of the images.
+                          ImageSearch is only used if ImageName and ImageID are not defined.
                         type: string
                     type: object
                   networkID:
-                    description: 'Deprecated: use defaultNetwork instead NetworkID
-                      defines a openstack ID for the network.'
+                    description: |-
+                      Deprecated: use defaultNetwork instead
+                      NetworkID defines a openstack ID for the network.
                     type: string
                   projectID:
-                    description: ProjectID defines an openstack project ID which will
-                      be used instead of the project from the secret ref. If not set
-                      the project from the secret ref will be used.
+                    description: |-
+                      ProjectID defines an openstack project ID which will be used instead of the project from the secret ref.
+                      If not set the project from the secret ref will be used.
                     type: string
                 required:
                 - authSecretRef
@@ -292,8 +300,9 @@ spec:
                   type: object
                 type: array
               portID:
-                description: 'Deprecated: use defaultPortID instead PortID contains
-                  the openstack port ID for a LoadBalancerMachine.'
+                description: |-
+                  Deprecated: use defaultPortID instead
+                  PortID contains the openstack port ID for a LoadBalancerMachine.
                 type: string
               roleBindingName:
                 description: RoleBindingName contains the namespacedName from the

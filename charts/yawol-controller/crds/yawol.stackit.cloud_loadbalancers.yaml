@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: loadbalancers.yawol.stackit.cloud
 spec:
   group: yawol.stackit.cloud
@@ -38,14 +38,19 @@ spec:
         description: LoadBalancer is the Schema for the YAWOL LoadBalancer API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -120,9 +125,9 @@ spec:
                       zone for the LoadBalancer.
                     type: string
                   defaultNetwork:
-                    description: DefaultNetwork defines the default/listener network
-                      for the Loadbalancer. TODO Remove optional when Deprecations
-                      are removed
+                    description: |-
+                      DefaultNetwork defines the default/listener network for the Loadbalancer.
+                      TODO Remove optional when Deprecations are removed
                     properties:
                       floatingNetID:
                         description: FloatingNetID defines an openstack ID for the
@@ -132,8 +137,7 @@ spec:
                         description: NetworkID defines an openstack ID for the network.
                         type: string
                       subnetID:
-                        description: SubnetID defines an openstack ID for the
-                          subnet.
+                        description: SubnetID defines an openstack ID for the subnet.
                         type: string
                     required:
                     - networkID
@@ -155,21 +159,23 @@ spec:
                           virtual machines.
                         type: string
                       flavorName:
-                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorName
-                          is the name of the flavor used for requesting virtual machines.
+                        description: |-
+                          NOT IMPLEMENTED ONLY FlavorID is supported.
+                          FlavorName is the name of the flavor used for requesting virtual machines.
                           FlavorName is only used if FlavorID is not defined.
                         type: string
                       flavorSearch:
-                        description: NOT IMPLEMENTED ONLY FlavorID is supported. FlavorSearch
-                          is a search string to find the flavor used for requesting
-                          virtual machines. Search will be performed in metadata of
-                          the flavors. FlavorSearch is only used if FlavorName and
-                          FlavorID are not defined.
+                        description: |-
+                          NOT IMPLEMENTED ONLY FlavorID is supported.
+                          FlavorSearch is a search string to find the flavor used for requesting virtual machines.
+                          Search will be performed in metadata of the flavors.
+                          FlavorSearch is only used if FlavorName and FlavorID are not defined.
                         type: string
                     type: object
                   floatingNetID:
-                    description: 'Deprecated: use defaultNetwork instead FloatingNetID
-                      defines a openstack ID for the floatingNet.'
+                    description: |-
+                      Deprecated: use defaultNetwork instead
+                      FloatingNetID defines a openstack ID for the floatingNet.
                     type: string
                   image:
                     description: Image defines openstack image for the LoadBalancer.
@@ -188,26 +194,28 @@ spec:
                           machines.
                         type: string
                       imageName:
-                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageName
-                          is the name of the image used for requesting virtual machines.
+                        description: |-
+                          NOT IMPLEMENTED ONLY ImageID is supported.
+                          ImageName is the name of the image used for requesting virtual machines.
                           ImageName is only used if ImageID is not defined.
                         type: string
                       imageSearch:
-                        description: NOT IMPLEMENTED ONLY ImageID is supported. ImageSearch
-                          is a search string to find the image used for requesting
-                          virtual machines. Search will be performed in metadata of
-                          the images. ImageSearch is only used if ImageName and ImageID
-                          are not defined.
+                        description: |-
+                          NOT IMPLEMENTED ONLY ImageID is supported.
+                          ImageSearch is a search string to find the image used for requesting virtual machines.
+                          Search will be performed in metadata of the images.
+                          ImageSearch is only used if ImageName and ImageID are not defined.
                         type: string
                     type: object
                   networkID:
-                    description: 'Deprecated: use defaultNetwork instead NetworkID
-                      defines a openstack ID for the network.'
+                    description: |-
+                      Deprecated: use defaultNetwork instead
+                      NetworkID defines a openstack ID for the network.
                     type: string
                   projectID:
-                    description: ProjectID defines an openstack project ID which will
-                      be used instead of the project from the secret ref. If not set
-                      the project from the secret ref will be used.
+                    description: |-
+                      ProjectID defines an openstack project ID which will be used instead of the project from the secret ref.
+                      If not set the project from the secret ref will be used.
                     type: string
                 required:
                 - authSecretRef
@@ -246,34 +254,33 @@ spec:
                         type: string
                     type: object
                   serverGroupPolicy:
-                    description: ServerGroupPolicy creates a server group with that
-                      policy. Can be 'affinity', 'anti-affinity' 'soft-affinity',
-                      'soft-anti-affinity' depending on the OpenStack Infrastructure.
-                      If empty Openstack server group will not be used. Default is
-                      disabled
+                    description: |-
+                      ServerGroupPolicy creates a server group with that policy.
+                      Can be 'affinity', 'anti-affinity' 'soft-affinity', 'soft-anti-affinity' depending on the OpenStack Infrastructure.
+                      If empty Openstack server group will not be used. Default is disabled
                     type: string
                   tcpIdleTimeout:
-                    description: TCPIdleTimeout sets TCP idle Timeout for all TCP
-                      connections from this LoadBalancer. Value is in Seconds. With
-                      0 you disable the idle timeout, be careful this can lead to
-                      side effects. Default is 1h.
+                    description: |-
+                      TCPIdleTimeout sets TCP idle Timeout for all TCP connections from this LoadBalancer.
+                      Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
+                      Default is 1h.
                     type: string
                   tcpProxyProtocol:
                     description: TCPProxyProtocol enables HAProxy TCP Proxy Protocol
                     type: boolean
                   tcpProxyProtocolPortFilter:
-                    description: TCPProxyProtocolPortList enables HAProxy TCP Proxy
-                      Protocol for specified ports. If empty it is enabled for all
-                      ports. Only has an affect if TCPProxyProtocol is enabled.
+                    description: |-
+                      TCPProxyProtocolPortList enables HAProxy TCP Proxy Protocol for specified ports.
+                      If empty it is enabled for all ports. Only has an affect if TCPProxyProtocol is enabled.
                     items:
                       format: int32
                       type: integer
                     type: array
                   udpIdleTimeout:
-                    description: UDPIdleTimeout sets UDP idle Timeout for all UDP
-                      connections from this LoadBalancer. Value is in Seconds. With
-                      0 you disable the idle timeout, be careful this can lead to
-                      side effects. Default is 1m.
+                    description: |-
+                      UDPIdleTimeout sets UDP idle Timeout for all UDP connections from this LoadBalancer.
+                      Value is in Seconds. With 0 you disable the idle timeout, be careful this can lead to side effects.
+                      Default is 1m.
                     type: string
                 type: object
               ports:
@@ -283,37 +290,45 @@ spec:
                   description: ServicePort contains information on service's port.
                   properties:
                     appProtocol:
-                      description: "The application protocol for this port. This is
-                        used as a hint for implementations to offer richer behavior
-                        for protocols that they understand. This field follows standard
-                        Kubernetes label syntax. Valid values are either: \n * Un-prefixed
-                        protocol names - reserved for IANA standard service names
-                        (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                        \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
-                        - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
-                        * 'kubernetes.io/ws'  - WebSocket over cleartext as described
-                        in https://www.rfc-editor.org/rfc/rfc6455 * 'kubernetes.io/wss'
-                        - WebSocket over TLS as described in https://www.rfc-editor.org/rfc/rfc6455
-                        \n * Other protocols should use implementation-defined prefixed
-                        names such as mycompany.com/my-custom-protocol."
+                      description: |-
+                        The application protocol for this port.
+                        This is used as a hint for implementations to offer richer behavior for protocols that they understand.
+                        This field follows standard Kubernetes label syntax.
+                        Valid values are either:
+
+
+                        * Un-prefixed protocol names - reserved for IANA standard service names (as per
+                        RFC-6335 and https://www.iana.org/assignments/service-names).
+
+
+                        * Kubernetes-defined prefixed names:
+                          * 'kubernetes.io/h2c' - HTTP/2 prior knowledge over cleartext as described in https://www.rfc-editor.org/rfc/rfc9113.html#name-starting-http-2-with-prior-
+                          * 'kubernetes.io/ws'  - WebSocket over cleartext as described in https://www.rfc-editor.org/rfc/rfc6455
+                          * 'kubernetes.io/wss' - WebSocket over TLS as described in https://www.rfc-editor.org/rfc/rfc6455
+
+
+                        * Other protocols should use implementation-defined prefixed names such as
+                        mycompany.com/my-custom-protocol.
                       type: string
                     name:
-                      description: The name of this port within the service. This
-                        must be a DNS_LABEL. All ports within a ServiceSpec must have
-                        unique names. When considering the endpoints for a Service,
-                        this must match the 'name' field in the EndpointPort. Optional
-                        if only one ServicePort is defined on this service.
+                      description: |-
+                        The name of this port within the service. This must be a DNS_LABEL.
+                        All ports within a ServiceSpec must have unique names. When considering
+                        the endpoints for a Service, this must match the 'name' field in the
+                        EndpointPort.
+                        Optional if only one ServicePort is defined on this service.
                       type: string
                     nodePort:
-                      description: 'The port on each node on which this service is
-                        exposed when type is NodePort or LoadBalancer.  Usually assigned
-                        by the system. If a value is specified, in-range, and not
-                        in use it will be used, otherwise the operation will fail.  If
-                        not specified, a port will be allocated if this Service requires
-                        one.  If this field is specified when creating a Service which
-                        does not need it, creation will fail. This field will be wiped
-                        when updating a Service to no longer need it (e.g. changing
-                        type from NodePort to ClusterIP). More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                      description: |-
+                        The port on each node on which this service is exposed when type is
+                        NodePort or LoadBalancer.  Usually assigned by the system. If a value is
+                        specified, in-range, and not in use it will be used, otherwise the
+                        operation will fail.  If not specified, a port will be allocated if this
+                        Service requires one.  If this field is specified when creating a
+                        Service which does not need it, creation will fail. This field will be
+                        wiped when updating a Service to no longer need it (e.g. changing type
+                        from NodePort to ClusterIP).
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
                       format: int32
                       type: integer
                     port:
@@ -322,21 +337,23 @@ spec:
                       type: integer
                     protocol:
                       default: TCP
-                      description: The IP protocol for this port. Supports "TCP",
-                        "UDP", and "SCTP". Default is TCP.
+                      description: |-
+                        The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
+                        Default is TCP.
                       type: string
                     targetPort:
                       anyOf:
                       - type: integer
                       - type: string
-                      description: 'Number or name of the port to access on the pods
-                        targeted by the service. Number must be in the range 1 to
-                        65535. Name must be an IANA_SVC_NAME. If this is a string,
-                        it will be looked up as a named port in the target Pod''s
-                        container ports. If this is not specified, the value of the
-                        ''port'' field is used (an identity map). This field is ignored
-                        for services with clusterIP=None, and should be omitted or
-                        set equal to the ''port'' field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
+                      description: |-
+                        Number or name of the port to access on the pods targeted by the service.
+                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+                        If this is a string, it will be looked up as a named port in the
+                        target Pod's container ports. If this is not specified, the value
+                        of the 'port' field is used (an identity map).
+                        This field is ignored for services with clusterIP=None, and should be
+                        omitted or set equal to the 'port' field.
+                        More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
                       x-kubernetes-int-or-string: true
                   required:
                   - port
@@ -356,41 +373,42 @@ spec:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
                           type: array
+                          x-kubernetes-list-type: atomic
                       required:
                       - key
                       - operator
                       type: object
                     type: array
+                    x-kubernetes-list-type: atomic
                   matchLabels:
                     additionalProperties:
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
