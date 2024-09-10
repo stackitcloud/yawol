@@ -337,6 +337,10 @@ golangci-lint:
 
 packer:
     FROM hashicorp/packer:$PACKER_VERSION
+
+    # set this env var to get higher GitHub API requests
+    ARG PACKER_GITHUB_API_TOKEN
+
     RUN packer plugins install github.com/hashicorp/openstack
     RUN apk add ansible
     RUN apk add openssh-client
