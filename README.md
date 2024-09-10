@@ -103,7 +103,7 @@ earthly +validate-yawollet-image
 ```
 
 ```shell
-earthly +build-yawollet-image \
+earthly --platform=linux/amd64 +build-yawollet-image \
    --OS_NETWORK_ID="$OS_NETWORK_ID" \
    --OS_FLOATING_NETWORK_ID="$OS_FLOATING_NETWORK_ID" \
    --OS_SECURITY_GROUP_ID="$OS_SECURITY_GROUP_ID" \

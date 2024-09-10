@@ -105,8 +105,8 @@ validate-yawollet-image:
 build-yawollet-image:
     FROM +packer
 
-    ARG USEROS
-    ARG USERARCH
+    ARG TARGETOS
+    ARG TARGETARCH
 
     ARG MACHINE_FLAVOR=c1.2
     ARG VOLUME_TYPE=storage_premium_perf6
@@ -127,7 +127,7 @@ build-yawollet-image:
 
     COPY +get-envoy/envoy out/envoy/envoy
     COPY +get-envoy/envoylibs out/envoy/lib
-    COPY (+build/controller --CONTROLLER=yawollet --GOOS=$USEROS --GOARCH=$USERARCH) out/yawollet
+    COPY (+build/controller --CONTROLLER=yawollet --GOOS=$TARGETOS --GOARCH=$TARGETARCH) out/yawollet
     COPY +set-version/VERSION .
 
     COPY image image
