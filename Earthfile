@@ -1,14 +1,14 @@
-VERSION 0.6
+VERSION 0.8
 FROM golang:1.22
-ARG DOCKER_REPO=ghcr.io/stackitcloud/yawol/
-ARG BINPATH=/usr/local/bin/
-ARG GOCACHE=/go-cache
+ARG --global DOCKER_REPO=ghcr.io/stackitcloud/yawol/
+ARG --global BINPATH=/usr/local/bin/
+ARG --global GOCACHE=/go-cache
 
-ARG ENVOY_VERSION=v1.27.0
-ARG HELM_VERSION=3.12.3
-ARG GOLANGCI_LINT_VERSION=v1.54.2
-ARG PACKER_VERSION=1.9
-ARG TERRAFORM_VERSION=1.4.6
+ARG --global ENVOY_VERSION=v1.27.0
+ARG --global HELM_VERSION=3.12.3
+ARG --global GOLANGCI_LINT_VERSION=v1.54.2
+ARG --global PACKER_VERSION=1.9
+ARG --global TERRAFORM_VERSION=1.4.6
 
 local-setup:
     LOCALLY
