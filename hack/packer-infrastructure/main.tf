@@ -13,6 +13,4 @@ terraform {
   }
 }
 
-provider "openstack" {
-  use_octavia = false
-}
+provider "openstack" {}
