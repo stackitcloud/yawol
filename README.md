@@ -87,9 +87,8 @@ earthly +destroy-packer-environment \
 Before running our `Earthly` targets, set the needed environment variables:
 
 ```shell
-export OS_NETWORK_ID=<from your openstack environment>
-export OS_FLOATING_NETWORK_ID=<from your openstack environment>
-export OS_SECURITY_GROUP_ID=<from your openstack environment>
+# set OS_NETWORK_ID, OS_FLOATING_NETWORK_ID, OS_SECURITY_GROUP_ID from terraform state
+source <(jq -r '.outputs | del(.OS_SOURCE_IMAGE) | keys[] as $k | "export \($k)=\(.[$k].value)"' hack/packer-infrastructure/terraform.tfstate)
 export OS_SOURCE_IMAGE=<from your openstack environment>
 export IMAGE_VISIBILITY=<private or public> 
 ```
