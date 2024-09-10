@@ -8,12 +8,15 @@ require (
 	github.com/cncf/xds/go v0.0.0-20240723142845-024c85f92f20
 	github.com/envoyproxy/go-control-plane v0.13.0
 	github.com/go-logr/logr v1.4.2
+	github.com/go-task/slim-sprig/v3 v3.0.0
 	github.com/golang/protobuf v1.5.4
 	github.com/gophercloud/gophercloud v1.13.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	github.com/prometheus/client_golang v1.20.1
+	github.com/shirou/gopsutil/v4 v4.24.7
+	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.6.0
 	google.golang.org/grpc v1.65.0
@@ -28,8 +31,6 @@ require (
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231204011133-c2179ec349ec // controller-runtime v0.15.0
 	sigs.k8s.io/controller-tools v0.15.0
 )
-
-require github.com/shirou/gopsutil/v4 v4.24.7
 
 require (
 	cel.dev/expr v0.15.0 // indirect
@@ -48,7 +49,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -80,7 +80,6 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
