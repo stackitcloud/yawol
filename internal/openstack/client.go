@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -254,7 +255,16 @@ func getProvider(
 		authInfo.ProjectID = *overwrite.ProjectID
 	}
 
+	// construct transport that trusts the configured CA bundle
 	var transport http.RoundTripper
+
+	// If OS_CACERT env var is set it takes precedence over the configuration.
+	// This is useful for running yawol-controller locally where the configured file name in the cloud-provider config
+	// might not match with the local environment.
+	if caFileEnv := os.Getenv("OS_CACERT"); caFileEnv != "" {
+		caFile = caFileEnv
+	}
+
 	if caFile != "" {
 		roots, err := certutil.NewPool(caFile)
 		if err != nil {
