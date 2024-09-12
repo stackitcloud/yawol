@@ -218,7 +218,10 @@ func getProvider(
 	overwrite OSClientOverwrite,
 	timeout time.Duration,
 ) (*gophercloud.ProviderClient, *gophercloud.EndpointOpts, error) {
-	cfg, err := ini.Load(iniData)
+	cfg, err := ini.LoadSources(
+		ini.LoadOptions{IgnoreInlineComment: true},
+		iniData,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
