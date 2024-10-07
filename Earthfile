@@ -4,11 +4,11 @@ ARG --global DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG --global BINPATH=/usr/local/bin/
 ARG --global GOCACHE=/go-cache
 
-ARG --global ENVOY_VERSION=v1.27.0
-ARG --global HELM_VERSION=3.12.3
-ARG --global GOLANGCI_LINT_VERSION=v1.54.2
-ARG --global PACKER_VERSION=1.9
-ARG --global TERRAFORM_VERSION=1.4.6
+ARG --global ENVOY_VERSION=v1.28.7
+ARG --global HELM_VERSION=3.16.1
+ARG --global GOLANGCI_LINT_VERSION=v1.61.0
+ARG --global PACKER_VERSION=1.11.2
+ARG --global TERRAFORM_VERSION=1.9.7
 
 local-setup:
     LOCALLY
