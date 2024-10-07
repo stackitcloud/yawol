@@ -352,6 +352,7 @@ packer:
     ARG PACKER_GITHUB_API_TOKEN
 
     RUN packer plugins install github.com/hashicorp/openstack
+    RUN packer plugins install github.com/hashicorp/ansible
     RUN apk add ansible
     RUN apk add openssh-client
 
