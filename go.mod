@@ -18,7 +18,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.24.8
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.27.0
-	golang.org/x/time v0.6.0
+	golang.org/x/time v0.7.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/ini.v1 v1.67.0
