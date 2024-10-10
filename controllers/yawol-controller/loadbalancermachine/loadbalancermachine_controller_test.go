@@ -194,7 +194,7 @@ var _ = Describe("load balancer machine", Serial, Ordered, func() {
 	When("openstack is not working", func() {
 		BeforeEach(func() {
 			client.ServerClientObj = &testing.CallbackServerClient{
-				CreateFunc: func(ctx context.Context, opts servers.CreateOptsBuilder) (*servers.Server, error) {
+				CreateFunc: func(_ context.Context, _ servers.CreateOptsBuilder) (*servers.Server, error) {
 					return &servers.Server{}, gophercloud.ErrDefault403{
 						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
 							BaseError:      gophercloud.BaseError{},
@@ -207,13 +207,13 @@ var _ = Describe("load balancer machine", Serial, Ordered, func() {
 						},
 					}
 				},
-				ListFunc: func(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
+				ListFunc: func(_ context.Context, _ servers.ListOptsBuilder) ([]servers.Server, error) {
 					return []servers.Server{{}}, nil
 				},
-				GetFunc: func(ctx context.Context, id string) (*servers.Server, error) {
+				GetFunc: func(_ context.Context, _ string) (*servers.Server, error) {
 					return &servers.Server{}, nil
 				},
-				DeleteFunc: func(ctx context.Context, id string) error {
+				DeleteFunc: func(_ context.Context, _ string) error {
 					return nil
 				},
 			}

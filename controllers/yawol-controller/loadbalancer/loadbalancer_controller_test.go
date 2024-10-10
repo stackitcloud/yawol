@@ -446,7 +446,7 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 
 		It("should up- and downscale loadbalancer machines", func() {
 			By("waiting for lb and lbset creation")
-			hopefully(lbNN, func(g Gomega, act LB) error {
+			hopefully(lbNN, func(g Gomega, _ LB) error {
 				var lbsetList yawolv1beta1.LoadBalancerSetList
 				g.Expect(k8sClient.List(ctx, &lbsetList, client.MatchingLabels(lb.Spec.Selector.MatchLabels))).Should(Succeed())
 				g.Expect(len(lbsetList.Items)).Should(Equal(1))
@@ -703,29 +703,29 @@ var _ = Describe("loadbalancer controller", Serial, Ordered, func() {
 	When("openstack is not working", func() {
 		BeforeEach(func() {
 			mockClient.GroupClientObj = &testing.CallbackGroupClient{
-				ListFunc: func(ctx context.Context, opts groups.ListOpts) ([]groups.SecGroup, error) {
+				ListFunc: func(_ context.Context, _ groups.ListOpts) ([]groups.SecGroup, error) {
 					return []groups.SecGroup{}, gophercloud.ErrDefault401{
 						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
 							Body: []byte("Auth failed"),
 						},
 					}
 				},
-				GetFunc: func(ctx context.Context, id string) (*groups.SecGroup, error) {
+				GetFunc: func(_ context.Context, _ string) (*groups.SecGroup, error) {
 					return nil, gophercloud.ErrDefault401{
 						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
 							Body: []byte("Auth failed"),
 						},
 					}
 				},
-				CreateFunc: func(ctx context.Context, opts groups.CreateOptsBuilder) (*groups.SecGroup, error) {
+				CreateFunc: func(_ context.Context, _ groups.CreateOptsBuilder) (*groups.SecGroup, error) {
 					return nil, gophercloud.ErrDefault401{}
 				},
-				DeleteFunc: func(ctx context.Context, id string) error {
+				DeleteFunc: func(_ context.Context, _ string) error {
 					return gophercloud.ErrDefault401{}
 				},
 			}
 			mockClient.FipClientObj = &testing.CallbackFipClient{
-				GetFunc: func(ctx context.Context, id string) (*floatingips.FloatingIP, error) {
+				GetFunc: func(_ context.Context, _ string) (*floatingips.FloatingIP, error) {
 					return nil, gophercloud.ErrDefault403{}
 				},
 			}

@@ -139,7 +139,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				if err != nil {
 					return err
 				}
-				if lb.Spec.Endpoints == nil || len(lb.Spec.Endpoints) == 0 {
+				if len(lb.Spec.Endpoints) == 0 {
 					return nil
 				}
 				return helper.ErrEndpointsFound

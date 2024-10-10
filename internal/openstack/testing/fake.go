@@ -219,7 +219,7 @@ func GetFakeClient() *MockClient {
 	}
 
 	client.PortClientObj = &CallbackPortClient{
-		ListFunc: func(ctx context.Context, optsBuilder ports.ListOptsBuilder) ([]ports.Port, error) {
+		ListFunc: func(_ context.Context, optsBuilder ports.ListOptsBuilder) ([]ports.Port, error) {
 			opts := optsBuilder.(ports.ListOpts)
 			prts := client.StoredValues["ports"].(map[string]*ports.Port)
 
@@ -235,7 +235,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(ctx context.Context, optsBuilder ports.CreateOptsBuilder) (*ports.Port, error) {
+		CreateFunc: func(_ context.Context, optsBuilder ports.CreateOptsBuilder) (*ports.Port, error) {
 			opts := optsBuilder.(ports.CreateOpts)
 			var fixedIPs []ports.IP
 			if opts.FixedIPs != nil {
@@ -262,7 +262,7 @@ func GetFakeClient() *MockClient {
 
 			return port, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*ports.Port, error) {
+		GetFunc: func(_ context.Context, id string) (*ports.Port, error) {
 			prts := client.StoredValues["ports"]
 			port, found := prts.(map[string]*ports.Port)[id]
 			if !found {
@@ -271,7 +271,7 @@ func GetFakeClient() *MockClient {
 
 			return port, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			prts := client.StoredValues["ports"]
 			_, found := prts.(map[string]*ports.Port)[id]
 			if !found {
@@ -299,7 +299,7 @@ func GetFakeClient() *MockClient {
 	}
 
 	client.ServerClientObj = &CallbackServerClient{
-		ListFunc: func(ctx context.Context, optsBuilder servers.ListOptsBuilder) ([]servers.Server, error) {
+		ListFunc: func(_ context.Context, optsBuilder servers.ListOptsBuilder) ([]servers.Server, error) {
 			opts := optsBuilder.(servers.ListOpts)
 			srvs := client.StoredValues["servers"].(map[string]*servers.Server)
 
@@ -315,7 +315,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(ctx context.Context, optsBuilder servers.CreateOptsBuilder) (*servers.Server, error) {
+		CreateFunc: func(_ context.Context, optsBuilder servers.CreateOptsBuilder) (*servers.Server, error) {
 			opts := optsBuilder.(*servers.CreateOpts)
 
 			addresses := make(map[string]interface{})
@@ -338,7 +338,7 @@ func GetFakeClient() *MockClient {
 
 			return server, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*servers.Server, error) {
+		GetFunc: func(_ context.Context, id string) (*servers.Server, error) {
 			srvs := client.StoredValues["servers"]
 			server, found := srvs.(map[string]*servers.Server)[id]
 			if !found {
@@ -347,19 +347,19 @@ func GetFakeClient() *MockClient {
 
 			return server, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			srvs := client.StoredValues["servers"]
 			delete(srvs.(map[string]*servers.Server), id)
 			return nil
 		},
-		UpdateFunc: func(ctx context.Context, id string, optsBuilder servers.UpdateOptsBuilder) (*servers.Server, error) {
+		UpdateFunc: func(_ context.Context, _ string, _ servers.UpdateOptsBuilder) (*servers.Server, error) {
 			// TODO we do not use it yet
 			return nil, nil
 		},
 	}
 
 	client.ServerGroupClientObj = &CallbackServerGroupClient{
-		ListFunc: func(ctx context.Context, optsBuilder servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error) {
+		ListFunc: func(_ context.Context, optsBuilder servergroups.ListOptsBuilder) ([]servergroups.ServerGroup, error) {
 			_ = optsBuilder.(servergroups.ListOpts)
 
 			srvs := client.StoredValues["servergroup"].(map[string]*servergroups.ServerGroup)
@@ -371,7 +371,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(ctx context.Context, optsBuilder servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error) {
+		CreateFunc: func(_ context.Context, optsBuilder servergroups.CreateOptsBuilder) (*servergroups.ServerGroup, error) {
 			opts := optsBuilder.(servergroups.CreateOpts)
 
 			servergroup := &servergroups.ServerGroup{
@@ -385,7 +385,7 @@ func GetFakeClient() *MockClient {
 
 			return servergroup, nil
 		},
-		GetFunc: func(ctx context.Context, id string) (*servergroups.ServerGroup, error) {
+		GetFunc: func(_ context.Context, id string) (*servergroups.ServerGroup, error) {
 			srvs := client.StoredValues["servergroup"]
 			server, found := srvs.(map[string]*servergroups.ServerGroup)[id]
 			if !found {
@@ -394,7 +394,7 @@ func GetFakeClient() *MockClient {
 
 			return server, nil
 		},
-		DeleteFunc: func(ctx context.Context, id string) error {
+		DeleteFunc: func(_ context.Context, id string) error {
 			srvs := client.StoredValues["servergroup"]
 			delete(srvs.(map[string]*servergroups.ServerGroup), id)
 			return nil
@@ -411,9 +411,9 @@ func getID(client *MockClient) string {
 }
 
 func generateIP() string {
-	min, max := 0, 255
+	minimum, maximum := 0, 255
 	gen := func() string {
-		return strconv.Itoa(rand.Intn(max-min) + min) //nolint:gosec // do not need to be secure
+		return strconv.Itoa(rand.Intn(maximum-minimum) + minimum) //nolint:gosec // do not need to be secure
 	}
 
 	return strings.Join([]string{gen(), gen(), gen(), gen()}, ".")
