@@ -242,6 +242,7 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 										Protocol: protocol,
 										Address:  address,
 										PortSpecifier: &envoycore.SocketAddress_PortValue{
+											//nolint:gosec // both types are given
 											PortValue: uint32(port.NodePort),
 										},
 									},
@@ -275,9 +276,12 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 			CircuitBreakers: &envoycluster.CircuitBreakers{
 				Thresholds: []*envoycluster.CircuitBreakers_Thresholds{
 					{
-						Priority:           envoycore.RoutingPriority_DEFAULT,
-						MaxConnections:     wrapperspb.UInt32(uint32(10000 * hostmetrics.GetCPUNum())),
-						MaxRequests:        wrapperspb.UInt32(uint32(8000 * hostmetrics.GetCPUNum())),
+						Priority: envoycore.RoutingPriority_DEFAULT,
+						//nolint:gosec // both types are given
+						MaxConnections: wrapperspb.UInt32(uint32(10000 * hostmetrics.GetCPUNum())),
+						//nolint:gosec // both types are given
+						MaxRequests: wrapperspb.UInt32(uint32(8000 * hostmetrics.GetCPUNum())),
+						//nolint:gosec // both types are given
 						MaxPendingRequests: wrapperspb.UInt32(uint32(2000 * hostmetrics.GetCPUNum())),
 					},
 				},
@@ -333,7 +337,7 @@ func createEnvoyTCPListener(
 	var filters []*envoylistener.Filter
 
 	// ip whitelisting via RBAC according to loadBalancerSourceRanges
-	if lb.Spec.Options.LoadBalancerSourceRanges != nil && len(lb.Spec.Options.LoadBalancerSourceRanges) > 0 {
+	if len(lb.Spec.Options.LoadBalancerSourceRanges) > 0 {
 		lbSourceRangeFilter := createEnvoyRBACRules(r, lb)
 		if lbSourceRangeFilter != nil {
 			filters = append(filters, &envoylistener.Filter{
@@ -353,6 +357,7 @@ func createEnvoyTCPListener(
 					Protocol: envoycore.SocketAddress_TCP,
 					Address:  listenAddress,
 					PortSpecifier: &envoycore.SocketAddress_PortValue{
+						//nolint:gosec // both types are given
 						PortValue: uint32(port.Port),
 					},
 				},
@@ -421,6 +426,7 @@ func createEnvoyUDPListener(
 					Protocol: envoycore.SocketAddress_UDP,
 					Address:  listenAddress,
 					PortSpecifier: &envoycore.SocketAddress_PortValue{
+						//nolint:gosec // both types are given
 						PortValue: uint32(port.Port),
 					},
 				},
