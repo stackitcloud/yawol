@@ -31,12 +31,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/strings/slices"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -66,7 +67,7 @@ type LoadBalancerMachineReconciler struct { //nolint:revive // naming from kubeb
 	NTPPools            []string
 	NTPServers          []string
 	DiscoveryClient     *discovery.DiscoveryClient
-	RateLimiter         ratelimiter.RateLimiter
+	RateLimiter         workqueue.TypedRateLimiter[reconcile.Request]
 }
 
 // Reconcile Reconciles a LoadBalancerMachine

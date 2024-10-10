@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // LoadBalancerReconciler reconciles service Objects with type LoadBalancer
@@ -187,9 +188,9 @@ func (r *LoadBalancerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// After an API Server outage this should ensure the status is
 			// updated fast enough, before the LoadBalancerMachine is considered
 			// stale/broken.
-			RateLimiter: workqueue.NewMaxOfRateLimiter(
-				workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, r.RequeueDuration),
-				&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+			RateLimiter: workqueue.NewTypedMaxOfRateLimiter(
+				workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](1*time.Second, r.RequeueDuration),
+				&workqueue.TypedBucketRateLimiter[reconcile.Request]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 			),
 		}).
 		Complete(r)

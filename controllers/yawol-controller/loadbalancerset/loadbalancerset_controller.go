@@ -20,13 +20,14 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/ratelimiter"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const FINALIZER = "stackit.cloud/loadbalancermachine"
@@ -39,7 +40,7 @@ type LoadBalancerSetReconciler struct { //nolint:revive // naming from kubebuild
 	Recorder    record.EventRecorder
 	Metrics     *helpermetrics.LoadBalancerSetMetricList
 	WorkerCount int
-	RateLimiter ratelimiter.RateLimiter
+	RateLimiter workqueue.TypedRateLimiter[reconcile.Request]
 }
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
