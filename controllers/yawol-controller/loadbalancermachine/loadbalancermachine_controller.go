@@ -230,6 +230,7 @@ func (r *LoadBalancerMachineReconciler) SetupWithManager(mgr ctrl.Manager) error
 			RateLimiter:             r.RateLimiter,
 		}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		Named("LBM").
 		Complete(r)
 }
 

@@ -106,6 +106,6 @@ func (r *LBMStatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,
-		}).
+		}).Named("LBMStatus").
 		Complete(r)
 }
