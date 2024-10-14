@@ -218,8 +218,8 @@ func GetDesiredSecGroupRulesForLoadBalancer(r record.EventRecorder, lb *yawolv1b
 				EtherType:    string(etherType),
 				Direction:    string(rules.DirIngress),
 				Protocol:     string(icmpProtocol),
-				PortRangeMin: 1,
-				PortRangeMax: 8,
+				PortRangeMin: 8, // icmp_type
+				PortRangeMax: 0, // icmp_code
 			})
 	}
 
