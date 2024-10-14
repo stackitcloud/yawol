@@ -153,6 +153,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,
 		}).
+		Named("LB").
 		Complete(r)
 }
 

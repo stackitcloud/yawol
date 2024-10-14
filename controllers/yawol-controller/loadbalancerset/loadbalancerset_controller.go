@@ -359,7 +359,7 @@ func (r *LoadBalancerSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.WorkerCount,
 			RateLimiter:             r.RateLimiter,
-		}).
+		}).Named("LBS").
 		Complete(r)
 }
 
