@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -94,6 +95,14 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	if err := r.Client.Status().Patch(ctx, lbm, patch); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// Return error if relevant condition is not as expected, to reconcile with a backoff.
+	// This is needed to prevent unnecessary keepalived switches due to unhealthy conditions.
+	// It happens with the EnvoyUpToDate condition on a config change if envoy is taking "longer" to set the new snapshot.
+	ok, reason := helper.AreRelevantConditionsMet(lbm, metav1.Time{Time: time.Now().Add(-2 * r.RequeueDuration)}, false)
+	if !ok {
+		return ctrl.Result{}, fmt.Errorf("not all relevant conditions are met: %s", reason)
 	}
 
 	return ctrl.Result{RequeueAfter: r.RequeueDuration}, reconcileError
