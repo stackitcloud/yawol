@@ -52,6 +52,41 @@ scrape_configs:
 				Expect(config).To(Equal(expected))
 			})
 		})
+		When("proxy url is set", func() {
+			It("should render it in the promtail config", func() {
+				logForward := yawolv1beta1.LoadBalancerLogForward{
+					LokiURL:  "localhost",
+					ProxyURL: "proxy-url",
+				}
+
+				config, err := generatePromtailConfig("some-lb", "some-lbm", logForward)
+				Expect(err).ToNot(HaveOccurred())
+
+				expected := `server:
+  disable: true
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: 'localhost'
+    proxy_url: 'proxy-url'
+
+scrape_configs:
+  - job_name: messages
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          __path__: /var/log/messages
+          application: messages
+          job: yawol-logs
+          lb: some-lb
+          lbm: some-lbm
+          `
+				Expect(config).To(Equal(expected))
+			})
+		})
 	})
 })
 

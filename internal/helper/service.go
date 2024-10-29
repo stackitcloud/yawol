@@ -75,6 +75,9 @@ func GetOptions(svc *coreV1.Service, recorder record.EventRecorder) yawolv1beta1
 		if svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL] != "" {
 			options.LogForward.LokiURL = svc.Annotations[yawolv1beta1.ServiceLogForwardLokiURL]
 		}
+		if svc.Annotations[yawolv1beta1.ServiceLogForwardProxyURL] != "" {
+			options.LogForward.ProxyURL = svc.Annotations[yawolv1beta1.ServiceLogForwardProxyURL]
+		}
 
 		labels := map[string]string{}
 		for annotation := range svc.Annotations {

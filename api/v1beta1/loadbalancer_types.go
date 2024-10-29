@@ -55,6 +55,8 @@ const (
 	ServiceLogForward = "yawol.stackit.cloud/logForward"
 	// ServiceLogForwardLokiURL set loki url into LoadBalancer
 	ServiceLogForwardLokiURL = "yawol.stackit.cloud/logForwardLokiURL"
+	// ServiceLogForwardProxyURL set proxy url to connect to loki
+	ServiceLogForwardProxyURL = "yawol.stackit.cloud/logForwardProxyURL"
 	// ServiceServerGroupPolicy set openstack server group policy for a LoadBalancer
 	ServiceServerGroupPolicy = "yawol.stackit.cloud/serverGroupPolicy"
 	// ServiceAdditionalNetworks adds additional openstack networks for the loadbalancer (comma separated list)
@@ -179,6 +181,9 @@ type LoadBalancerLogForward struct {
 	// LokiUrl defines the loki push url (Example: http://example.com:3100/loki/api/v1/push).
 	// +optional
 	LokiURL string `json:"lokiUrl"`
+	// ProxyUrl defines the http proxy url to use for connection to loki
+	// +optional
+	ProxyURL string `json:"proxyUrl"`
 	// Labels define extra labels for loki.
 	// +optional
 	Labels map[string]string `json:"labels"`
