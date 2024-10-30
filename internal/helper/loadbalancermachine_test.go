@@ -34,7 +34,7 @@ positions:
 
 clients:
   - url: 'localhost'
-
+    proxy_url: ''
 
 scrape_configs:
   - job_name: messages

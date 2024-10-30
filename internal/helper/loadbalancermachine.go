@@ -487,11 +487,6 @@ func generatePromtailConfig(
 		return "", err
 	}
 
-	proxy := ""
-	if logForward.ProxyURL != "" {
-		proxy = "    proxy_url: '" + logForward.ProxyURL + "'"
-	}
-
 	return `server:
   disable: true
 
@@ -500,7 +495,7 @@ positions:
 
 clients:
   - url: '` + logForward.LokiURL + `'
-` + proxy + `
+    proxy_url: '` + logForward.ProxyURL + `'
 
 scrape_configs:
   - job_name: messages
