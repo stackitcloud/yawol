@@ -35,6 +35,7 @@ positions:
 clients:
   - url: 'localhost'
 
+
 scrape_configs:
   - job_name: messages
     static_configs:
