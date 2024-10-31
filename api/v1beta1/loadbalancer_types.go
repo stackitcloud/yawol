@@ -183,7 +183,7 @@ type LoadBalancerLogForward struct {
 	LokiURL string `json:"lokiUrl"`
 	// ProxyUrl defines the http proxy url to use for connection to loki
 	// +optional
-	ProxyURL string `json:"proxyUrl"`
+	ProxyURL string `json:"proxyUrl,omitempty"`
 	// Labels define extra labels for loki.
 	// +optional
 	Labels map[string]string `json:"labels"`
