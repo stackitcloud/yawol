@@ -251,6 +251,10 @@ spec:
                         description: 'LokiUrl defines the loki push url (Example:
                           http://example.com:3100/loki/api/v1/push).'
                         type: string
+                      proxyUrl:
+                        description: ProxyUrl defines the http proxy url to use for
+                          connection to loki
+                        type: string
                     type: object
                   serverGroupPolicy:
                     description: |-

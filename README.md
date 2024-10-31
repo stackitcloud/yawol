@@ -279,6 +279,8 @@ metadata:
     yawol.stackit.cloud/logForward: "true"
     # Defines loki URL for the log forwarding.
     yawol.stackit.cloud/logForwardLokiURL: "http://example.com:3100/loki/api/v1/push"
+    # Defines proxy URL for the log forwarding.
+    yawol.stackit.cloud/logForwardProxyURL: "http://proxy.example.com:8000"
     # Defines labels that are added when forwarding logs
     # The prefix "logging.yawol.stackit.cloud/" will be trimmed
     # and only "foo": "bar" will be added as a label

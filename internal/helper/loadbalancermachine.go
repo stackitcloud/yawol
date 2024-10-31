@@ -495,6 +495,7 @@ positions:
 
 clients:
   - url: '` + logForward.LokiURL + `'
+    proxy_url: '` + logForward.ProxyURL + `'
 
 scrape_configs:
   - job_name: messages
