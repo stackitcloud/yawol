@@ -4,6 +4,11 @@
     "config:base"
   ],
   "dependencyDashboard": true,
+  additionalReviewers: [
+    'Kumm-Kai',
+    'dergeberl',
+    'maboehm',
+  ],
   "postUpdateOptions": [
     "gomodTidy"
   ],
