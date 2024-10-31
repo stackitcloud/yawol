@@ -6,8 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
 )
 
 // The OSRuleClient is a implementation for RuleClient. When you want to use this struct be sure to call
@@ -39,12 +39,8 @@ func (r *OSRuleClient) List(ctx context.Context, opts rules.ListOpts) ([]rules.S
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	page, err := rules.List(r.networkV2, opts).AllPages()
+	page, err := rules.List(r.networkV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +53,8 @@ func (r *OSRuleClient) Create(ctx context.Context, opts rules.CreateOptsBuilder)
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	rule, err := rules.Create(r.networkV2, opts).Extract()
+	rule, err := rules.Create(tctx, r.networkV2, opts).Extract()
 	return rule, err
 }
 
@@ -72,12 +64,8 @@ func (r *OSRuleClient) Get(ctx context.Context, id string) (*rules.SecGroupRule,
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	rule, err := rules.Get(r.networkV2, id).Extract()
+	rule, err := rules.Get(tctx, r.networkV2, id).Extract()
 	return rule, err
 }
 
@@ -87,11 +75,7 @@ func (r *OSRuleClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectRule, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	err := rules.Delete(r.networkV2, id).ExtractErr()
+	err := rules.Delete(tctx, r.networkV2, id).ExtractErr()
 	return err
 }

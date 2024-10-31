@@ -7,8 +7,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
 )
 
 // The OSGroupClient is a implementation for GroupClient. When you want to use this struct be sure to call
@@ -40,12 +40,8 @@ func (r *OSGroupClient) List(ctx context.Context, opts groups.ListOpts) ([]group
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationList)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	pages, err := groups.List(r.networkV2, opts).AllPages()
+	pages, err := groups.List(r.networkV2, opts).AllPages(tctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +53,8 @@ func (r *OSGroupClient) Create(ctx context.Context, opts groups.CreateOptsBuilde
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationCreate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	group, err := groups.Create(r.networkV2, opts).Extract()
+	group, err := groups.Create(tctx, r.networkV2, opts).Extract()
 	return group, err
 }
 
@@ -71,12 +63,8 @@ func (r *OSGroupClient) Update(ctx context.Context, id string, opts groups.Updat
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationUpdate)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	group, err := groups.Update(r.networkV2, id, opts).Extract()
+	group, err := groups.Update(tctx, r.networkV2, id, opts).Extract()
 	return group, err
 }
 
@@ -85,12 +73,8 @@ func (r *OSGroupClient) Get(ctx context.Context, id string) (*groups.SecGroup, e
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationGet)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	group, err := groups.Get(r.networkV2, id).Extract()
+	group, err := groups.Get(tctx, r.networkV2, id).Extract()
 	return group, err
 }
 
@@ -99,11 +83,7 @@ func (r *OSGroupClient) Delete(ctx context.Context, id string) error {
 	increasePromCounter(r.promCounter, MetricAPINeutron, MetricObjectGroup, MetricOperationDelete)
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
-	r.networkV2.Context = tctx
-	defer func() {
-		r.networkV2.Context = nil
-	}()
 
-	err := groups.Delete(r.networkV2, id).ExtractErr()
+	err := groups.Delete(tctx, r.networkV2, id).ExtractErr()
 	return err
 }

@@ -15,11 +15,10 @@ import (
 	os "github.com/stackitcloud/yawol/internal/openstack"
 
 	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/keypairs"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -558,7 +557,7 @@ func (r *LoadBalancerMachineReconciler) reconcilePort( // nolint: gocyclo // TOD
 	if lbm.Status.DefaultPortID != nil {
 		if port, err = openstackhelper.GetPortByID(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrUnexpectedResponseCode:
 				r.Log.Info("lbm port not found in openstack", "defaultPortID", *lbm.Status.DefaultPortID)
 				// remove port from LB status so a new one gets created next reconcile
 				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
@@ -803,6 +802,8 @@ func (r *LoadBalancerMachineReconciler) createServer(
 		Metadata:         nil,
 	}
 
+	var hintOpts servers.SchedulerHintOptsBuilder
+
 	if loadBalancer.Spec.DebugSettings.Enabled {
 		createOpts = &keypairs.CreateOptsExt{
 			CreateOptsBuilder: createOpts,
@@ -811,16 +812,13 @@ func (r *LoadBalancerMachineReconciler) createServer(
 	}
 
 	if loadBalancerMachine.Spec.ServerGroupID != "" {
-		createOpts = &schedulerhints.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			SchedulerHints: schedulerhints.SchedulerHints{
-				Group: loadBalancerMachine.Spec.ServerGroupID,
-			},
+		hintOpts = &servers.SchedulerHintOpts{
+			Group: loadBalancerMachine.Spec.ServerGroupID,
 		}
 	}
 
 	var server *servers.Server
-	server, err = openstackhelper.CreateServer(ctx, serverClient, createOpts)
+	server, err = openstackhelper.CreateServer(ctx, serverClient, createOpts, hintOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -837,7 +835,7 @@ func (r *LoadBalancerMachineReconciler) deleteServerAndWait(
 ) error {
 	if err := openstackhelper.DeleteServer(ctx, serverClient, serverID); err != nil {
 		switch err.(type) {
-		case gophercloud.ErrDefault404:
+		case gophercloud.ErrUnexpectedResponseCode:
 			r.Log.Info("error deleting server, already deleted", "lbm", lbm.Name)
 		default:
 			r.Log.Info("an unexpected error occurred deleting server", "lbm", lbm.Name)
@@ -914,7 +912,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 	if lbm.Status.DefaultPortID != nil {
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.DefaultPortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrUnexpectedResponseCode:
 				_ = helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortIP")
 				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "defaultPortID"); err != nil {
 					return false, err
@@ -932,7 +930,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 		// nolint: staticcheck // needed to be backwards compatible
 		if err = openstackhelper.DeletePort(ctx, portClient, *lbm.Status.PortID); err != nil {
 			switch err.(type) {
-			case gophercloud.ErrDefault404:
+			case gophercloud.ErrUnexpectedResponseCode:
 				if err := helper.RemoveFromLBMStatus(ctx, r.Client.Status(), lbm, "portID"); err != nil {
 					return false, err
 				}
@@ -956,7 +954,7 @@ func (r *LoadBalancerMachineReconciler) deletePort(
 		if port != nil && port.ID != "" {
 			if err = openstackhelper.DeletePort(ctx, portClient, port.ID); err != nil {
 				switch err.(type) {
-				case gophercloud.ErrDefault404:
+				case gophercloud.ErrUnexpectedResponseCode:
 				default:
 					r.Log.Info("an unexpected error occurred deleting port", "lbm", lbm.Name)
 					return false, kubernetes.SendErrorAsEvent(r.Recorder, err, lbm)
@@ -1032,10 +1030,13 @@ func (r *LoadBalancerMachineReconciler) waitForServerStatus(
 	target []string,
 	secs int,
 ) error {
-	return gophercloud.WaitFor(secs, func() (bool, error) {
+	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(secs)*time.Second)
+	defer cancel()
+
+	return gophercloud.WaitFor(timeoutContext, func(context.Context) (bool, error) {
 		current, err := openstackhelper.GetServerByID(ctx, serverClient, id)
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); ok && slices.Contains(target, "DELETED") {
+			if _, ok := err.(gophercloud.ErrUnexpectedResponseCode); ok && slices.Contains(target, "DELETED") {
 				return true, nil
 			}
 			return false, err

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/v2"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -194,17 +194,16 @@ var _ = Describe("load balancer machine", Serial, Ordered, func() {
 	When("openstack is not working", func() {
 		BeforeEach(func() {
 			client.ServerClientObj = &testing.CallbackServerClient{
-				CreateFunc: func(_ context.Context, _ servers.CreateOptsBuilder) (*servers.Server, error) {
-					return &servers.Server{}, gophercloud.ErrDefault403{
-						ErrUnexpectedResponseCode: gophercloud.ErrUnexpectedResponseCode{
-							BaseError:      gophercloud.BaseError{},
-							URL:            "",
-							Method:         "",
-							Expected:       nil,
-							Actual:         0,
-							Body:           []byte("Quota exceeded"),
-							ResponseHeader: nil,
-						},
+				CreateFunc: func(_ context.Context, _ servers.CreateOptsBuilder, _ servers.SchedulerHintOptsBuilder,
+				) (*servers.Server, error) {
+					return &servers.Server{}, gophercloud.ErrUnexpectedResponseCode{
+						BaseError:      gophercloud.BaseError{},
+						URL:            "",
+						Method:         "",
+						Expected:       nil,
+						Actual:         0,
+						Body:           []byte("Quota exceeded"),
+						ResponseHeader: nil,
 					}
 				},
 				ListFunc: func(_ context.Context, _ servers.ListOptsBuilder) ([]servers.Server, error) {
@@ -410,7 +409,7 @@ var _ = Describe("load balancer machine", Serial, Ordered, func() {
 				lbmNN := runtimeClient.ObjectKeyFromObject(lbm)
 				c, _ := client.ServerClient(ctx)
 				for i := 0; i < count; i++ {
-					_, err := c.Create(ctx, &servers.CreateOpts{Name: lbmNN.Name})
+					_, err := c.Create(ctx, &servers.CreateOpts{Name: lbmNN.Name}, &servers.SchedulerHintOpts{})
 					Expect(err).To(Not(HaveOccurred()))
 				}
 

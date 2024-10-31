@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servergroups"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/layer3/floatingips"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 )
 
 //nolint:gocyclo // complicated test function
@@ -62,7 +62,7 @@ func GetFakeClient() *MockClient {
 
 			group, found := grps.(map[string]*groups.SecGroup)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return group, nil
@@ -136,7 +136,7 @@ func GetFakeClient() *MockClient {
 			rls := client.StoredValues["rules"]
 			rule, found := rls.(map[string]*rules.SecGroupRule)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return rule, nil
@@ -194,7 +194,7 @@ func GetFakeClient() *MockClient {
 			fips := client.StoredValues["fips"]
 			fip, found := fips.(map[string]*floatingips.FloatingIP)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return fip, nil
@@ -266,7 +266,7 @@ func GetFakeClient() *MockClient {
 			prts := client.StoredValues["ports"]
 			port, found := prts.(map[string]*ports.Port)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return port, nil
@@ -275,7 +275,7 @@ func GetFakeClient() *MockClient {
 			prts := client.StoredValues["ports"]
 			_, found := prts.(map[string]*ports.Port)[id]
 			if !found {
-				return gophercloud.ErrDefault404{}
+				return gophercloud.ErrUnexpectedResponseCode{}
 			}
 			delete(prts.(map[string]*ports.Port), id)
 			return nil
@@ -315,7 +315,7 @@ func GetFakeClient() *MockClient {
 
 			return items, nil
 		},
-		CreateFunc: func(_ context.Context, optsBuilder servers.CreateOptsBuilder) (*servers.Server, error) {
+		CreateFunc: func(_ context.Context, optsBuilder servers.CreateOptsBuilder, _ servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
 			opts := optsBuilder.(*servers.CreateOpts)
 
 			addresses := make(map[string]interface{})
@@ -342,7 +342,7 @@ func GetFakeClient() *MockClient {
 			srvs := client.StoredValues["servers"]
 			server, found := srvs.(map[string]*servers.Server)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return server, nil
@@ -389,7 +389,7 @@ func GetFakeClient() *MockClient {
 			srvs := client.StoredValues["servergroup"]
 			server, found := srvs.(map[string]*servergroups.ServerGroup)[id]
 			if !found {
-				return nil, gophercloud.ErrDefault404{}
+				return nil, gophercloud.ErrUnexpectedResponseCode{}
 			}
 
 			return server, nil

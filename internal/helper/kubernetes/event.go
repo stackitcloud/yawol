@@ -1,7 +1,7 @@
 package kubernetes
 
 import (
-	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/v2"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -15,13 +15,7 @@ func SendErrorAsEvent(r record.EventRecorder, err error, objects ...runtime.Obje
 	}
 	var body []byte
 	switch casted := err.(type) {
-	case gophercloud.ErrDefault401:
-		body = casted.Body
-	case gophercloud.ErrDefault403:
-		body = casted.Body
-	case gophercloud.ErrDefault404:
-		body = casted.Body
-	case gophercloud.ErrDefault409:
+	case gophercloud.ErrUnexpectedResponseCode:
 		body = casted.Body
 	default:
 		body = []byte(err.Error())

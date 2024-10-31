@@ -3,7 +3,7 @@ package openstack
 import (
 	"context"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 	"github.com/stackitcloud/yawol/internal/openstack"
 )
 
@@ -55,6 +55,7 @@ func CreateServer(
 	ctx context.Context,
 	serverClient openstack.ServerClient,
 	opts servers.CreateOptsBuilder,
+	hintOpts servers.SchedulerHintOptsBuilder,
 ) (*servers.Server, error) {
-	return serverClient.Create(ctx, opts)
+	return serverClient.Create(ctx, opts, hintOpts)
 }

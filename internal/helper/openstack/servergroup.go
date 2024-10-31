@@ -3,7 +3,7 @@ package openstack
 import (
 	"context"
 
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servergroups"
 	"github.com/stackitcloud/yawol/internal/openstack"
 )
 
