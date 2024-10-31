@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
 )
@@ -310,3 +311,61 @@ makestep 1 3
 `))
 	})
 })
+
+var _ = DescribeTable("GetHashForLoadBalancerMachineSet",
+	func(lb *yawolv1beta1.LoadBalancer, expectedHash string) {
+		hash, err := GetHashForLoadBalancerMachineSet(lb)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(hash).To(Equal(expectedHash))
+	},
+	Entry("empty config", &yawolv1beta1.LoadBalancer{}, "ogwzb3hasmo2o2tj"),
+	Entry("basic config", &yawolv1beta1.LoadBalancer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "testspace",
+		},
+		Spec: yawolv1beta1.LoadBalancerSpec{
+			DebugSettings: yawolv1beta1.LoadBalancerDebugSettings{
+				Enabled:    true,
+				SshkeyName: "key",
+			},
+			Options: yawolv1beta1.LoadBalancerOptions{
+				LogForward: yawolv1beta1.LoadBalancerLogForward{
+					Enabled: true,
+					LokiURL: "url",
+				},
+				ServerGroupPolicy: "affinity",
+			},
+		},
+		Status: yawolv1beta1.LoadBalancerStatus{
+			PortID:          ptr.To("port"),
+			ServerGroupName: ptr.To("group-name"),
+		},
+	}, "5h3dhrkdncr5csa7"),
+	Entry("basic config with extra fields but same hash", &yawolv1beta1.LoadBalancer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "testspace",
+		},
+		Spec: yawolv1beta1.LoadBalancerSpec{
+			DebugSettings: yawolv1beta1.LoadBalancerDebugSettings{
+				Enabled:    true,
+				SshkeyName: "key",
+			},
+			Options: yawolv1beta1.LoadBalancerOptions{
+				LogForward: yawolv1beta1.LoadBalancerLogForward{
+					Enabled: true,
+					LokiURL: "url",
+				},
+				ServerGroupPolicy: "affinity",
+				InternalLB:        true, // extra
+			},
+			Replicas: 3, // extra
+		},
+		Status: yawolv1beta1.LoadBalancerStatus{
+			PortID:          ptr.To("port"),
+			ServerGroupName: ptr.To("group-name"),
+			ExternalIP:      ptr.To("1.2.3.4"), // extra
+		},
+	}, "5h3dhrkdncr5csa7"),
+)
