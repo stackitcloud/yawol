@@ -49,11 +49,17 @@ echo "test"  | nc -u $(kubectl get services udp-timeout --output jsonpath='{.sta
 
 ## tcp-timeout
 
-This command should be closed in 10 sec
+This command should be closed with no output in approximately 10 sec
+
+Bash:
 ```
-time nc $(kubectl get services tcp-timeout --output jsonpath='{.status.loadBalancer.ingress[0].ip}') 80
+time nc $(kubectl get services tcp-timeout --output jsonpath='{.status.loadBalancer.ingress[0].ip}') 80 < <( sleep 11; echo "test" )
 ```
 
+Zsh:
+```
+{ sleep 11; echo "test" } | time nc $(kubectl get services tcp-timeout --output jsonpath='{.status.loadBalancer.ingress[0].ip}') 80
+```
 
 ## cleanup 
 
