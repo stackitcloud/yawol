@@ -422,13 +422,11 @@ func (r *Reconciler) reconcileFIP(
 	var fip *floatingips.FloatingIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch err.(type) {
-		case gophercloud.ErrUnexpectedResponseCode, gophercloud.ErrResourceNotFound:
+		case gophercloud.ErrResourceNotFound:
 			r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
-			// fip not found by ID, remove it from status and trigger reconcile
-			if err := helper.RemoveFromLBStatus(ctx, r.Status(), lb, "floatingID"); err != nil {
-				return false, fmt.Errorf("failed to remove FIP from lb status: %w", err)
-			}
-			return true, err
+			// FIP not found by ID. Unable to determine if is's due to an OpenStack API outage or a legitimate issue.
+			// legitimate issue.
+			return false, err
 		default:
 			r.Log.Info("unexpected error occurred")
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
@@ -497,7 +495,10 @@ func (r *Reconciler) assignOrCreateFIP(
 	}
 
 	// try to find FIP by name
-	fip, _ = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+	fip, err = openstackhelper.GetFIPByName(ctx, fipClient, *lb.Status.FloatingName)
+	if err != nil {
+		r.Log.Error(err, "retrieving FIP by Name failed")
+	}
 	if fip != nil {
 		r.Log.Info("Found FloatingIP by Name", "lb", lb.Name)
 		return helper.PatchLBStatus(
