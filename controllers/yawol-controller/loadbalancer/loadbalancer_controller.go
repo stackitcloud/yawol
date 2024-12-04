@@ -42,7 +42,6 @@ import (
 const (
 	DefaultRequeueTime = 10 * time.Millisecond
 	ServiceFinalizer   = "yawol.stackit.cloud/controller2"
-	HTTP_NOT_FOUND int	= 404
 )
 
 // LoadBalancerReconciler reconciles service Objects with type LoadBalancer
@@ -423,19 +422,16 @@ func (r *Reconciler) reconcileFIP(
 	var fip *floatingips.FloatingIP
 	if fip, err = openstackhelper.GetFIPByID(ctx, fipClient, *lb.Status.FloatingID); err != nil {
 		switch e := err.(type) {
-			case gophercloud.ErrUnexpectedResponseCode:
-				code := e.GetStatusCode()
-				if code == 404 {
-					// FIP not found by ID. Unable to determine if is's due to an OpenStack API outage or a legitimate issue.
-					// legitimate issue.
-					r.Log.Info("fip not found in openstack", "fip", *lb.Status.FloatingID)
-				} else {
-					r.Log.Info("unexpected gophercloud error occurred", "error: ", err)
-				}
-				return false, err
-			default:
-				r.Log.Info("unexpected go error occurred", "error: ", err)
-				return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
+		case gophercloud.ErrUnexpectedResponseCode:
+			code := e.GetStatusCode()
+			if code == 404 {
+				return false, fmt.Errorf("fip not found: %w", err)
+			} else {
+				return false, fmt.Errorf("unexpected gophercloud error occurred: %w", err)
+			}
+		default:
+			r.Log.Info("unexpected go error occurred", "error: ", err)
+			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)
 		}
 	}
 
