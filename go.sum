@@ -68,8 +68,8 @@ github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad h1:a6HEuzUHeKH6hwfN/Z
 github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad/go.mod h1:vavhavw2zAxS5dIdcRluK6cSGGPlZynqzFM8NdvU144=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/gophercloud/gophercloud/v2 v2.2.0 h1:STqqnSXuhcg1OPBOZ14z6JDm8fKIN13H2bJg6bBuHp8=
-github.com/gophercloud/gophercloud/v2 v2.2.0/go.mod h1:f2hMRC7Kakbv5vM7wSGHrIPZh6JZR60GVHryJlF/K44=
+github.com/gophercloud/gophercloud/v2 v2.4.0 h1:XhP5tVEH3ni66NSNK1+0iSO6kaGPH/6srtx6Cr+8eCg=
+github.com/gophercloud/gophercloud/v2 v2.4.0/go.mod h1:uJWNpTgJPSl2gyzJqcU/pIAhFUWvIkp8eE8M15n9rs4=
 github.com/gophercloud/utils/v2 v2.0.0-20241108144456-f4302a5ad8c6 h1:NPpHSXdkl9OWs9W46zmFBADEDIkY+r+W71vuiHo3se4=
 github.com/gophercloud/utils/v2 v2.0.0-20241108144456-f4302a5ad8c6/go.mod h1:Uvv82D3uPdyOormmJ9fZbQyf7q7CHo6By55QIT+0l+0=
 github.com/imdario/mergo v0.3.12 h1:b6R2BslTbIEToALKP7LxUvijTsNI9TAe80pLWN2g/HU=
