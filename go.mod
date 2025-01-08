@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	github.com/cncf/xds/go v0.0.0-20241223141626-cff3c89139a3
-	github.com/envoyproxy/go-control-plane v0.13.1
+	github.com/envoyproxy/go-control-plane v0.13.4
 	github.com/go-logr/logr v1.4.2
 	github.com/go-task/slim-sprig/v3 v3.0.0
 	github.com/golang/protobuf v1.5.4
@@ -30,14 +30,16 @@ require (
 	sigs.k8s.io/controller-tools v0.16.5
 )
 
+require github.com/envoyproxy/go-control-plane/envoy v1.32.3
+
 require (
 	cel.dev/expr v0.16.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ebitengine/purego v0.8.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
+	github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
