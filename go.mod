@@ -17,7 +17,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
-	google.golang.org/grpc v1.69.2
+	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.2
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
