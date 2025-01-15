@@ -18,7 +18,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.32.0
