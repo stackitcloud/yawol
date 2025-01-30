@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v1.36.2
 	github.com/prometheus/client_golang v1.20.5
 	github.com/shirou/gopsutil/v4 v4.24.12
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.70.0
