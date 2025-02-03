@@ -30,7 +30,7 @@ require (
 	sigs.k8s.io/controller-tools v0.17.1
 )
 
-require github.com/envoyproxy/go-control-plane/envoy v1.32.3
+require github.com/envoyproxy/go-control-plane/envoy v1.32.4
 
 require (
 	cel.dev/expr v0.19.0 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 // indirect
-	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
+	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
