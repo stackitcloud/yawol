@@ -273,8 +273,8 @@ sigs.k8s.io/controller-runtime v0.20.2 h1:/439OZVxoEc02psi1h4QO3bHzTgu49bb347Xp4
 sigs.k8s.io/controller-runtime v0.20.2/go.mod h1:xg2XB0K5ShQzAgsoujxuKN4LNXR2LfwwHsPj7Iaw+XY=
 sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231204011133-c2179ec349ec h1:H6DFglDdFZPFpUJ0LSxqRLRKMHNnJ+0F/xBlGQfbDhk=
 sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231204011133-c2179ec349ec/go.mod h1:TF/lVLWS+JNNaVqJuDDictY2hZSXSsIHCx4FClMvqFg=
-sigs.k8s.io/controller-tools v0.17.1 h1:bQ+dKCS7jY9AgpefenBDtm6geJZCHVKbegpLynxgyus=
-sigs.k8s.io/controller-tools v0.17.1/go.mod h1:3QXAdrmdxYuQ4MifvbCAFD9wLXn7jylnfBPYS4yVDdc=
+sigs.k8s.io/controller-tools v0.17.2 h1:jNFOKps8WnaRKZU2R+4vRCHnXyJanVmXBWqkuUPFyFg=
+sigs.k8s.io/controller-tools v0.17.2/go.mod h1:4q5tZG2JniS5M5bkiXY2/potOiXyhoZVw/U48vLkXk0=
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 h1:/Rv+M11QRah1itp8VhT6HoVx1Ray9eB4DBr+K+/sCJ8=
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3/go.mod h1:18nIHnGi6636UCz6m8i4DhaJ65T6EruyzmoQqI2BVDo=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.2 h1:MdmvkGuXi/8io6ixD5wud3vOLwc1rj0aNqRlpuvjmwA=
