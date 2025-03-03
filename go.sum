@@ -72,8 +72,8 @@ github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad h1:a6HEuzUHeKH6hwfN/Z
 github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad/go.mod h1:vavhavw2zAxS5dIdcRluK6cSGGPlZynqzFM8NdvU144=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/gophercloud/gophercloud/v2 v2.5.0 h1:DubPfC43gsZiGZ9LT1IJflVMm+0rck0ejoPsH8D5rqk=
-github.com/gophercloud/gophercloud/v2 v2.5.0/go.mod h1:Ki/ILhYZr/5EPebrPL9Ej+tUg4lqx71/YH2JWVeU+Qk=
+github.com/gophercloud/gophercloud/v2 v2.6.0 h1:XJKQ0in3iHOZHVAFMXq/OhjCuvvG+BKR0unOqRfG1EI=
+github.com/gophercloud/gophercloud/v2 v2.6.0/go.mod h1:Ki/ILhYZr/5EPebrPL9Ej+tUg4lqx71/YH2JWVeU+Qk=
 github.com/gophercloud/utils/v2 v2.0.0-20250212084022-725b94822eeb h1:TQTXVYXL3d0zRAybRUKKboO0z/XAsXEfU6Oax8n00kc=
 github.com/gophercloud/utils/v2 v2.0.0-20250212084022-725b94822eeb/go.mod h1:tIUw/gFHOB6lFV9LhzNZg5jfCLYMxI2lC1dZUa7NlHM=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
