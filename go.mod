@@ -12,7 +12,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20250212084022-725b94822eeb
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/spf13/pflag v1.0.6
 	go.uber.org/zap v1.27.0
