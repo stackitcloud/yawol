@@ -3,7 +3,7 @@ module github.com/stackitcloud/yawol
 go 1.23.2
 
 require (
-	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42
+	github.com/cncf/xds/go v0.0.0-20250326154945-ae57f3c0d45f
 	github.com/envoyproxy/go-control-plane v0.13.4
 	github.com/go-logr/logr v1.4.2
 	github.com/go-task/slim-sprig/v3 v3.0.0
