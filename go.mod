@@ -11,7 +11,7 @@ require (
 	github.com/gophercloud/gophercloud/v2 v2.7.0
 	github.com/gophercloud/utils/v2 v2.0.0-20250404104721-4c0f6d93d3a9
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/spf13/pflag v1.0.6
