@@ -24,7 +24,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     - uses: azure/setup-helm@v4.3.0
     - name: Push artifacts
-      run: hack/push-artifacts.sh ghcr.io/stackitcloud/yawol/yawol-controller
+      run: PUSH=true hack/push-artifacts.sh ghcr.io/stackitcloud/yawol/yawol-controller
   build:
     runs-on: ubuntu-latest
     permissions:
