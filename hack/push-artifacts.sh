@@ -29,7 +29,7 @@ yq -i "\
 " "$helm_artifacts/${chart_name}/values.yaml"
 
 # push to registry
-if [ "$PUSH" != "true" ] ; then
+if [ "${PUSH:=}" != "true" ] ; then
   echo "Skip pushing artifacts because PUSH is not set to 'true'"
   exit 0
 fi
