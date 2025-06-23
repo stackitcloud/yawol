@@ -8,6 +8,23 @@ on:
     - v*
 
 jobs:
+  helm-oci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: azure/setup-helm@v4.3.0
+    - name: Push artifacts
+      run: PUSH=true hack/push-artifacts.sh ghcr.io/stackitcloud/yawol/yawol-controller
   build:
     runs-on: ubuntu-latest
     permissions:
