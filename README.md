@@ -95,7 +95,7 @@ export OS_SOURCE_IMAGE=<from your openstack environment>
 export IMAGE_VISIBILITY=<private or public> 
 ```
 
-Like in the step above, to be able to log in to OpenStack make sure you source your OpenStack Credentials. To specify the machine flavor and volume type the `Earthly` arguments `MACHINE_FLAVOR` and `VOLUME_TYPE` can be used (default is `MACHINE_FLAVOR=c1.2` and `VOLUME_TYPE=storage_premium_perf6`).
+Like in the step above, to be able to log in to OpenStack make sure you source your OpenStack Credentials. To specify the machine flavor and volume type the `Earthly` arguments `MACHINE_FLAVOR` and `VOLUME_TYPE` can be used (default is `MACHINE_FLAVOR=c2i.2` and `VOLUME_TYPE=storage_premium_perf6`).
 
 Then validate and build the image:
 
@@ -118,7 +118,7 @@ earthly --platform=linux/amd64 +build-yawollet-image \
    --OS_USERNAME="$OS_USERNAME" \
    --OS_REGION_NAME="$OS_REGION_NAME"
 #  --OS_CACERT="$OS_CACERT" # optional, should be the full CA bundle, not a file path
-#  --MACHINE_FLAVOR=c1.2
+#  --MACHINE_FLAVOR=c2i.2
 #  --VOLUME_TYPE=storage_premium_perf6
 ```
 
