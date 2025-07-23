@@ -108,7 +108,7 @@ build-yawollet-image:
     ARG TARGETOS
     ARG TARGETARCH
 
-    ARG MACHINE_FLAVOR=c1.2
+    ARG MACHINE_FLAVOR=c2i.2
     ARG VOLUME_TYPE=storage_premium_perf6
 
     ARG --required IMAGE_VISIBILITY
