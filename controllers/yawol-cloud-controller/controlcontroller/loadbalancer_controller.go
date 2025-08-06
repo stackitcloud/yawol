@@ -51,7 +51,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// update externalIP in service if lb has ready replicas
-	if lb.Status.ExternalIP != nil && lb.Status.ReadyReplicas != nil && *lb.Status.ReadyReplicas > 0 {
+	if lb.Status.ExternalIP != nil && (lb.Spec.Replicas == 0 || lb.Status.ReadyReplicas != nil && *lb.Status.ReadyReplicas > 0) {
 		loadBalancerStatus := v1.LoadBalancerStatus{
 			Ingress: []v1.LoadBalancerIngress{
 				{
