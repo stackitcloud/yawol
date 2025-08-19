@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: gha-runner-scale-set
     permissions:
       contents: read
     env:
