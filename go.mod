@@ -27,7 +27,7 @@ require (
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231204011133-c2179ec349ec // controller-runtime v0.15.0
-	sigs.k8s.io/controller-tools v0.17.2
+	sigs.k8s.io/controller-tools v0.19.0
 )
 
 require github.com/envoyproxy/go-control-plane/envoy v1.32.4
