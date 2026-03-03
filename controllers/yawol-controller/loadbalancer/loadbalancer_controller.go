@@ -426,9 +426,8 @@ func (r *Reconciler) reconcileFIP(
 			code := e.GetStatusCode()
 			if code == 404 {
 				return false, fmt.Errorf("fip not found: %w", err)
-			} else {
-				return false, fmt.Errorf("unexpected gophercloud error occurred: %w", err)
 			}
+			return false, fmt.Errorf("unexpected gophercloud error occurred: %w", err)
 		default:
 			r.Log.Info("unexpected go error occurred", "error: ", err)
 			return false, kubernetes.SendErrorAsEvent(r.RecorderLB, err, lb)

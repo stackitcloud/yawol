@@ -525,6 +525,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Name:      "class-name-service-test1",
 					Namespace: "default",
 					Annotations: map[string]string{
+						// nolint: staticcheck // this tests the deprecated feature
 						yawolv1beta1.ServiceClassName: "foo",
 					},
 				},
@@ -559,6 +560,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Name:      "class-name-service-test2",
 					Namespace: "default",
 					Annotations: map[string]string{
+						// nolint: staticcheck // this tests the deprecated feature
 						yawolv1beta1.ServiceClassName: "",
 					},
 				},

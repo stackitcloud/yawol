@@ -169,6 +169,7 @@ func GetLoadBalancerNameFromService(service *coreV1.Service) string {
 }
 
 func getLoadBalancerClass(service *coreV1.Service) string {
+	// nolint: staticcheck // this tests the deprecated feature
 	if className := service.Annotations[yawolv1beta1.ServiceClassName]; className != "" {
 		return className
 	}
