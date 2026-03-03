@@ -1110,7 +1110,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				},
 				Spec: v1.ServiceSpec{
 					IPFamilies:     []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol},
-					IPFamilyPolicy: (*v1.IPFamilyPolicyType)(ptr.To(string(v1.IPFamilyPolicyRequireDualStack))),
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(ptr.To(string(v1.IPFamilyPolicyRequireDualStack))),
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",
