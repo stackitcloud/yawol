@@ -125,6 +125,10 @@ linters:
         text: should not use dot imports
       - path: (.+)\.go$
         text: directive `// nolint.*` should be written without leading space
+        # TODO: GetEventRecorderFor is deprecated
+      - linters:
+          - staticcheck
+        text: "GetEventRecorderFor is deprecated"
     paths:
       - third_party$
       - builtin$

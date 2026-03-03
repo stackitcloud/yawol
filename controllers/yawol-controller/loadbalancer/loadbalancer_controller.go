@@ -93,7 +93,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// handle deletion
 	if lb.GetDeletionTimestamp() != nil {
-		if res, err := r.deletionRoutine(ctx, &lb, osClient); err != nil || res.Requeue || res.RequeueAfter != 0 {
+		if res, err := r.deletionRoutine(ctx, &lb, osClient); err != nil || res.RequeueAfter != 0 {
 			if err != nil {
 				return res, fmt.Errorf("failed to run deletion routine: %w", err)
 			}
@@ -1040,7 +1040,7 @@ func (r *Reconciler) reconcileLoadBalancerSet(
 			requeueAfter = 5 * time.Minute
 		}
 		log.V(1).Info("Current LoadBalancerSet has no keepalived master yet", "forceCheckAfter", requeueAfter)
-		return ctrl.Result{RequeueAfter: requeueAfter, Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: requeueAfter}, nil
 	}
 
 	log.Info("Current LoadBalancerSet has keepalived master")

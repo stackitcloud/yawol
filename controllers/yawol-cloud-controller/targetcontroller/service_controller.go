@@ -113,14 +113,14 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		r.Recorder.Event(svc, coreV1.EventTypeNormal, "creation", "LoadBalancer is in creation")
 
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
 	}
 
 	if loadBalancer.ObjectMeta.Annotations[ServiceAnnotation] != svc.Namespace+"/"+svc.Name {
 		if err := r.addAnnotation(ctx, loadBalancer, ServiceAnnotation, svc.Namespace+"/"+svc.Name); err != nil {
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{RequeueAfter: 1 * time.Second}, err
 	}
 
 	// if port specs differ, patch svc => lb

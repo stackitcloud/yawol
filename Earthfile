@@ -391,7 +391,7 @@ gotools:
     FROM +deps
     # tool versions tracked in go.mod through tools.go
     RUN go install \
-        sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22
+        sigs.k8s.io/controller-runtime/tools/setup-envtest
     SAVE ARTIFACT /go/bin
 
 controller-gen:

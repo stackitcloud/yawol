@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	yawolv1beta1 "github.com/stackitcloud/yawol/api/v1beta1"
@@ -68,7 +69,7 @@ func (r *LoadBalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				v1.EventTypeNormal,
 				"creation",
 				fmt.Sprintf("LoadBalancer is successfully created with IP %v", *lb.Status.ExternalIP))
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
 		}
 	}
 
