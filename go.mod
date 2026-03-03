@@ -12,7 +12,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.2
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/zap v1.27.1
@@ -72,8 +72,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/common v0.66.1 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.8.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
