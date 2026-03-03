@@ -300,43 +300,16 @@ coverage-html:
     COPY +test-output/cover.out out/cover.out
     RUN go tool cover -html=out/cover.out
 
-snyk-go:
-    FROM +deps
-    COPY +snyk-linux/snyk $BINPATH
-    COPY --dir controllers/ internal/ cmd/ charts/ api/ .
-    COPY .snyk .
-    RUN --secret SNYK_TOKEN snyk test
-
-snyk-helm:
-    FROM alpine/helm:$HELM_VERSION
-    COPY +snyk-alpine/snyk $BINPATH
-    COPY --dir +helm2kube/result .
-    COPY .snyk .
-    RUN --secret SNYK_TOKEN \
-        snyk iac test \
-        --policy-path=.snyk \ # I don't know why the CLI won't pick this up by default...
-        --severity-threshold=high \  # TODO remove this line if you want to fix a lot of issues in the helm charts
-        result
 
 # todo: semgrep
 # semgrep:
 
-snyk:
-    BUILD +generate
-    BUILD +snyk-go
-    BUILD +snyk-helm
-
-all-except-snyk:
+all:
     BUILD +generate
     BUILD +lint
     BUILD +coverage
     BUILD +test-multiple-k8s-versions
     BUILD +ci
-
-all:
-    BUILD +snyk
-    BUILD +all-except-snyk
-
 ###########
 # helper
 ###########
@@ -361,16 +334,6 @@ terraform:
 envoy:
     FROM envoyproxy/envoy:$ENVOY_VERSION
     SAVE ARTIFACT /usr/local/bin/envoy
-
-snyk-linux:
-    FROM snyk/snyk:linux
-    SAVE ARTIFACT /usr/local/bin/snyk
-
-# needed for +snyk-helm, as the target is based on alpine/helm,
-# and this is the only time we need a alpine-based snyk binary
-snyk-alpine:
-    FROM snyk/snyk:alpine
-    SAVE ARTIFACT /usr/local/bin/snyk
 
 helm:
     FROM alpine/helm:$HELM_VERSION

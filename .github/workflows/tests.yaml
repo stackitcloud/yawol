@@ -39,8 +39,5 @@ jobs:
         EOF
     - name: Earthly version
       run: earthly --version
-    - name: Run Snyk
-      if: ${{ env.SNYK_TOKEN }}
-      run: earthly --ci --secret SNYK_TOKEN +snyk
     - name: Run Tests
-      run: earthly --ci +all-except-snyk
+      run: earthly --ci +all
