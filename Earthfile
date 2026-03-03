@@ -261,7 +261,7 @@ lint:
 
 test:
     FROM +deps
-    ARG KUBERNETES_VERSION=1.26.x
+    ARG KUBERNETES_VERSION=1.35.x
     COPY +gotools/bin/setup-envtest $BINPATH
     COPY +envoy/envoy $BINPATH
     # install envtest in its own layer
@@ -276,9 +276,9 @@ test:
         eval "$GO_TEST ./..."
 
 test-multiple-k8s-versions:
-    BUILD +test --KUBERNETES_VERSION=1.25.x
-    BUILD +test --KUBERNETES_VERSION=1.26.x
-    BUILD +test --KUBERNETES_VERSION=1.27.x
+    BUILD +test --KUBERNETES_VERSION=1.33.x
+    BUILD +test --KUBERNETES_VERSION=1.34.x
+    BUILD +test --KUBERNETES_VERSION=1.35.x
 
 list-available-k8s-envtest-versions:
     FROM +deps
@@ -391,7 +391,7 @@ gotools:
     FROM +deps
     # tool versions tracked in go.mod through tools.go
     RUN go install \
-        sigs.k8s.io/controller-runtime/tools/setup-envtest
+        sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22
     SAVE ARTIFACT /go/bin
 
 controller-gen:
