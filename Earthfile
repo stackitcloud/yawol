@@ -4,11 +4,11 @@ ARG --global DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG --global BINPATH=/usr/local/bin/
 ARG --global GOCACHE=/go-cache
 
-ARG --global ENVOY_VERSION=v1.27.0
-ARG --global HELM_VERSION=3.12.3
+ARG --global ENVOY_VERSION=v1.37.0
+ARG --global HELM_VERSION=4.1.1
 ARG --global GOLANGCI_LINT_VERSION=v2.10.1
-ARG --global PACKER_VERSION=1.9
-ARG --global TERRAFORM_VERSION=1.4.6
+ARG --global PACKER_VERSION=1.15.0
+ARG --global TERRAFORM_VERSION=1.14.6
 
 local-setup:
     LOCALLY
@@ -73,15 +73,10 @@ get-envoy:
     FROM +envoy
     SAVE ARTIFACT /usr/local/bin/envoy
     SAVE ARTIFACT /lib/x86_64-linux-gnu/ld-* /envoylibs/
-    SAVE ARTIFACT /lib/x86_64-linux-gnu/libm-* /envoylibs/
     SAVE ARTIFACT /lib/x86_64-linux-gnu/libm.* /envoylibs/
-    SAVE ARTIFACT /lib/x86_64-linux-gnu/librt-* /envoylibs/
     SAVE ARTIFACT /lib/x86_64-linux-gnu/librt.* /envoylibs/
-    SAVE ARTIFACT /lib/x86_64-linux-gnu/libdl-* /envoylibs/
     SAVE ARTIFACT /lib/x86_64-linux-gnu/libdl.* /envoylibs/
-    SAVE ARTIFACT /lib/x86_64-linux-gnu/libpthread-* /envoylibs/
     SAVE ARTIFACT /lib/x86_64-linux-gnu/libpthread.* /envoylibs/
-    SAVE ARTIFACT /lib/x86_64-linux-gnu/libc-* /envoylibs/
     SAVE ARTIFACT /lib/x86_64-linux-gnu/libc.* /envoylibs/
 
 validate-yawollet-image:
