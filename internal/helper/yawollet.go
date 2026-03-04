@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -189,10 +187,10 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 		if string(port.Protocol) == protocolTCP {
 			protocol = envoycore.SocketAddress_TCP
 			healthChecks = []*envoycore.HealthCheck{{
-				Timeout:            &duration.Duration{Seconds: envoyHealthCheckTimeout},
-				Interval:           &duration.Duration{Seconds: envoyHealthCheckInterval},
-				UnhealthyThreshold: &wrappers.UInt32Value{Value: envoyHealthCheckUnhealthyThreshold},
-				HealthyThreshold:   &wrappers.UInt32Value{Value: envoyHealthCheckHealthyThreshold},
+				Timeout:            &durationpb.Duration{Seconds: envoyHealthCheckTimeout},
+				Interval:           &durationpb.Duration{Seconds: envoyHealthCheckInterval},
+				UnhealthyThreshold: &wrapperspb.UInt32Value{Value: envoyHealthCheckUnhealthyThreshold},
+				HealthyThreshold:   &wrapperspb.UInt32Value{Value: envoyHealthCheckHealthyThreshold},
 				HealthChecker: &envoycore.HealthCheck_TcpHealthCheck_{
 					TcpHealthCheck: &envoycore.HealthCheck_TcpHealthCheck{
 						Send:    nil,
@@ -259,7 +257,7 @@ func createEnvoyCluster(lb *yawolv1beta1.LoadBalancer) []envoytypes.Resource {
 		}
 		clusterPort := &envoycluster.Cluster{
 			Name:                 fmt.Sprintf("%v-%v", port.Protocol, port.Port),
-			ConnectTimeout:       &duration.Duration{Seconds: 5},
+			ConnectTimeout:       &durationpb.Duration{Seconds: 5},
 			ClusterDiscoveryType: &envoycluster.Cluster_Type{Type: envoycluster.Cluster_STATIC},
 			CommonLbConfig: &envoycluster.Cluster_CommonLbConfig{
 				HealthyPanicThreshold: &envoytypev3.Percent{Value: 0},
@@ -318,7 +316,7 @@ func createEnvoyTCPListener(
 	listenAddress string,
 	port corev1.ServicePort,
 ) *envoylistener.Listener {
-	var idleTimeout *duration.Duration
+	var idleTimeout *durationpb.Duration
 
 	if lb.Spec.Options.TCPIdleTimeout != nil {
 		idleTimeout = durationpb.New(lb.Spec.Options.TCPIdleTimeout.Duration)
@@ -390,7 +388,7 @@ func createEnvoyUDPListener(
 		panic(err)
 	}
 
-	var idleTimeout *duration.Duration
+	var idleTimeout *durationpb.Duration
 	if lb.Spec.Options.UDPIdleTimeout != nil {
 		idleTimeout = durationpb.New(lb.Spec.Options.UDPIdleTimeout.Duration)
 	}
@@ -505,7 +503,7 @@ func createEnvoyRBACRules(
 			Identifier: &envoyrbacconfig.Principal_DirectRemoteIp{
 				DirectRemoteIp: &envoycore.CidrRange{
 					AddressPrefix: split[0],
-					PrefixLen:     &wrappers.UInt32Value{Value: uint32(prefix)},
+					PrefixLen:     &wrapperspb.UInt32Value{Value: uint32(prefix)},
 				},
 			},
 		})

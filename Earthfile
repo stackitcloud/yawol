@@ -1,12 +1,12 @@
 VERSION 0.8
-FROM golang:1.23
+FROM golang:1.25
 ARG --global DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG --global BINPATH=/usr/local/bin/
 ARG --global GOCACHE=/go-cache
 
 ARG --global ENVOY_VERSION=v1.27.0
 ARG --global HELM_VERSION=3.12.3
-ARG --global GOLANGCI_LINT_VERSION=v1.61.0
+ARG --global GOLANGCI_LINT_VERSION=v2.10.1
 ARG --global PACKER_VERSION=1.9
 ARG --global TERRAFORM_VERSION=1.4.6
 
@@ -261,7 +261,7 @@ lint:
 
 test:
     FROM +deps
-    ARG KUBERNETES_VERSION=1.26.x
+    ARG KUBERNETES_VERSION=1.35.x
     COPY +gotools/bin/setup-envtest $BINPATH
     COPY +envoy/envoy $BINPATH
     # install envtest in its own layer
@@ -276,9 +276,9 @@ test:
         eval "$GO_TEST ./..."
 
 test-multiple-k8s-versions:
-    BUILD +test --KUBERNETES_VERSION=1.25.x
-    BUILD +test --KUBERNETES_VERSION=1.26.x
-    BUILD +test --KUBERNETES_VERSION=1.27.x
+    BUILD +test --KUBERNETES_VERSION=1.33.x
+    BUILD +test --KUBERNETES_VERSION=1.34.x
+    BUILD +test --KUBERNETES_VERSION=1.35.x
 
 list-available-k8s-envtest-versions:
     FROM +deps

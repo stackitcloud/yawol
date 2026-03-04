@@ -1,159 +1,145 @@
-linters-settings:
-  dupl:
-    threshold: 100
-  funlen:
-    lines: 100
-    statements: 50
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-      - hugeParam
-
-  gocyclo:
-    min-complexity: 30
-  mnd:
-    # don't include the "operation" and "assign"
-    checks: [argument, case, condition, return]
-
-  revive:
-    enable-all-rules: false
-    rules:
-      # enable (taken from https://github.com/mgechev/revive/blob/master/defaults.toml)
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: redefines-builtin-id
-      - name: superfluous-else
-      - name: time-naming
-      - name: unexported-return
-      - name: unreachable-code
-      - name: unused-parameter
-      - name: var-declaration
-      - name: var-naming
-      # tweaks
-      - name: dot-imports
-        exclude: [TEST]
-      - name: unused-parameter
-        exclude: [TEST]
-
-  govet:
-    disable:
-      - shadow
-  lll:
-    line-length: 140
-  misspell:
-    locale: US
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    require-explanation: true # require an explanation for nolint directives
-    require-specific: true # require nolint directives to be specific about which linter is being skipped
-  stylecheck:
-    # ST1003 underscore in package names and var-naming
-    checks: ["all", "-ST1003"]
-
+version: "2"
+run:
+  issues-exit-code: 1
+  tests: true
 linters:
-  # please, do not use `enable-all`: it's deprecated and will be removed soon.
-  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
-  disable-all: true
+  default: none
   enable:
     - bodyclose
     - dogsled
+    - dupl
     - gocritic
-    - gofmt
-    - goimports
+    - gocyclo
     - goprintffuncname
-    - gosimple
+    - gosec
     - govet
     - ineffassign
     - lll
     - misspell
     - nakedret
+    - nolintlint
+    - revive
     - rowserrcheck
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-    - revive
-    - dupl
-    - gocyclo
-    - gosec
-    - nolintlint
-
-  # don't enable:
-  # - noctx
-  # - funlen # TODO reconcile functions are way too large
-  # - prealloc
-  # - exportloopref
-  # - gomnd # magic number detected -> sometimes useful
-  # - golint # is deprecated
-  # - goerr113 # we have some dynamic errors
-  # - exhaustive # missing switch case statements
-  # - asciicheck
-  # - depguard
-  # - errcheck # Disabled since it detects defers that do not check errors. This is a standard pattern.
-  #              see https://github.com/kisielk/errcheck/issues/55
-  # - scopelint
-  # - gochecknoinits
-  # - gochecknoglobals
-  # - gocognit
-  # - godot
-  # - godox
-  # - interfacer
-  # - nestif
-  # - testpackage
-  # - wsl
-
-issues:
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - gochecknoglobals
-        - gosec
-        - noctx
-        - goerr113
-        - goconst
-        - dupl
-        - unparam
-
-    # https://github.com/go-critic/go-critic/issues/926
-    - linters:
-        - gocritic
-      text: "unnecessaryDefer:"
-
-    - text: "should not use dot imports"
-      path: _test\.go
-
-  exclude:
-    - directive `// nolint.*` should be written without leading space
-
-run:
-  timeout: 15m
-  issues-exit-code: 1
-  tests: true
+  settings:
+    dupl:
+      threshold: 100
+    funlen:
+      lines: 100
+      statements: 50
+    gocritic:
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - wrapperFunc
+        - hugeParam
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    gocyclo:
+      min-complexity: 30
+    govet:
+      disable:
+        - shadow
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - return
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: dot-imports
+          exclude:
+            - TEST
+        - name: unused-parameter
+          exclude:
+            - TEST
+    staticcheck:
+      checks:
+        - all
+        - -ST1003
+        - -QF1008
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - err113
+          - gochecknoglobals
+          - goconst
+          - gosec
+          - mnd
+          - noctx
+          - unparam
+        path: _test\.go
+      - linters:
+          - gocritic
+        text: 'unnecessaryDefer:'
+      - path: _test\.go
+        text: should not use dot imports
+      - path: (.+)\.go$
+        text: directive `// nolint.*` should be written without leading space
+        # TODO: GetEventRecorderFor is deprecated
+      - linters:
+          - staticcheck
+        text: "GetEventRecorderFor is deprecated"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

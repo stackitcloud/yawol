@@ -525,6 +525,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Name:      "class-name-service-test1",
 					Namespace: "default",
 					Annotations: map[string]string{
+						// nolint: staticcheck // this tests the deprecated feature
 						yawolv1beta1.ServiceClassName: "foo",
 					},
 				},
@@ -559,6 +560,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 					Name:      "class-name-service-test2",
 					Namespace: "default",
 					Annotations: map[string]string{
+						// nolint: staticcheck // this tests the deprecated feature
 						yawolv1beta1.ServiceClassName: "",
 					},
 				},
@@ -1108,7 +1110,7 @@ var _ = Describe("Check loadbalancer reconcile", Serial, Ordered, func() {
 				},
 				Spec: v1.ServiceSpec{
 					IPFamilies:     []v1.IPFamily{v1.IPv4Protocol, v1.IPv6Protocol},
-					IPFamilyPolicy: (*v1.IPFamilyPolicyType)(ptr.To(string(v1.IPFamilyPolicyRequireDualStack))),
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(ptr.To(string(v1.IPFamilyPolicyRequireDualStack))),
 					Ports: []v1.ServicePort{
 						{
 							Name:       "port1",

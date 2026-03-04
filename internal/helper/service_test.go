@@ -22,6 +22,7 @@ var _ = Describe("loadbalancerClasses", Serial, Ordered, func() {
 	It("should return correct loadbalancerClass from annotation", func() {
 		s := svc.DeepCopy()
 		s.Annotations = map[string]string{
+			// nolint: staticcheck // this tests the deprecated feature
 			yawolv1beta1.ServiceClassName: "foo",
 		}
 		expected := "foo"
@@ -38,6 +39,7 @@ var _ = Describe("loadbalancerClasses", Serial, Ordered, func() {
 	It("should return correct loadbalancerClass from annotation if also set in spec", func() {
 		s := svc.DeepCopy()
 		s.Annotations = map[string]string{
+			// nolint: staticcheck // this tests the deprecated feature
 			yawolv1beta1.ServiceClassName: "foo",
 		}
 		s.Spec.LoadBalancerClass = ptr.To("bar")
