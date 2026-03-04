@@ -22,7 +22,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: azure/setup-helm@v4.3.0
+    - uses: azure/setup-helm@v4.3.1
     - name: Push artifacts
       run: PUSH=true hack/push-artifacts.sh ghcr.io/stackitcloud/yawol/yawol-controller
   build:
