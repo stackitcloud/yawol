@@ -14,7 +14,7 @@ jobs:
       contents: read
       packages: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
     - uses: docker/login-action@v4
@@ -33,7 +33,7 @@ jobs:
     env:
       FORCE_COLOR: 1
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Put back the git branch into git (Earthly uses it for tagging)
       run: |
         branch=""
