@@ -1,6 +1,6 @@
 module github.com/stackitcloud/yawol
 
-go 1.25.0
+go 1.25.7
 
 toolchain go1.26.0
 
@@ -10,7 +10,7 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-task/slim-sprig/v3 v3.0.0
-	github.com/gophercloud/gophercloud/v2 v2.10.0
+	github.com/gophercloud/gophercloud/v2 v2.11.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
