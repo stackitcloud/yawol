@@ -247,6 +247,9 @@
     - name: enable keepalivedstats
       command: "rc-update add keepalivedstats default"
 
+    - name: enable localmount
+      command: "rc-update add localmount boot"
+
     - name: add cloud-init config
       copy:
         src: ./cloud-init-10_openstack.cfg
@@ -268,13 +271,6 @@
         path: /etc/cloud/cloud.cfg
         regexp: '^(#)?\s- resizefs.*'
         line: '# - resizefs'
-
-    - name: enable cloud-config
-      command: "rc-update add cloud-config default"
-    - name: enable cloud-init-local
-      command: "rc-update add cloud-init-local default"
-    - name: enable cloud-final
-      command: "rc-update add cloud-final default"
 
     - name: add sysctl file
       copy:
