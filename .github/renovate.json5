@@ -5,9 +5,7 @@
   ],
   "dependencyDashboard": true,
   additionalReviewers: [
-    'Kumm-Kai',
-    'dergeberl',
-    'maboehm',
+    'team:ske-networking',
   ],
   "postUpdateOptions": [
     "gomodTidy"
