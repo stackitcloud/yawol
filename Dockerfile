@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.22-labs
+# syntax=docker/dockerfile:1.23-labs
 ARG GO_VERSION=1.26
 
 # get modules, if they don't change the cache can be used for faster builds
