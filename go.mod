@@ -10,8 +10,8 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-task/slim-sprig/v3 v3.0.0
-	github.com/gophercloud/gophercloud/v2 v2.12.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260424064311-2eeed4ceb3e9
+	github.com/gophercloud/gophercloud/v2 v2.14.0
+	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.40.0
 	github.com/prometheus/client_golang v1.23.2
@@ -53,7 +53,7 @@ require (
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
-	github.com/gofrs/uuid/v5 v5.4.0 // indirect
+	github.com/gofrs/uuid/v5 v5.5.1 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -88,7 +88,7 @@ require (
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
