@@ -1,34 +1,33 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:base"
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
   ],
-  "dependencyDashboard": true,
+  dependencyDashboard: true,
   additionalReviewers: [
     'team:ske-networking',
   ],
-  "postUpdateOptions": [
-    "gomodTidy"
+  postUpdateOptions: [
+    'gomodTidy',
   ],
-  "labels": [
-    "kind/upgrade"
+  labels: [
+    'kind/upgrade',
   ],
-  "ignoreDeps": [
-    "sigs.k8s.io/controller-runtime/tools/setup-envtest",
-    // this repo is already a v2 package, but gophercloud/v2 is not released yet
-    "github.com/gophercloud/utils"
+  ignoreDeps: [
+    'sigs.k8s.io/controller-runtime/tools/setup-envtest',
+    'github.com/gophercloud/utils',
   ],
-  "packageRules": [
+  packageRules: [
     {
-      "matchPackageNames": [
-        "github.com/onsi/gomega",
-        "github.com/onsi/ginkgo/v2"
+      matchPackageNames: [
+        'github.com/onsi/gomega',
+        'github.com/onsi/ginkgo/v2',
       ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
+      matchUpdateTypes: [
+        'minor',
+        'patch',
       ],
-      "automerge": true
-    }
-  ]
+      automerge: true,
+    },
+  ],
 }
