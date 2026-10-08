@@ -59,7 +59,3 @@ type LoadBalancerSetStatus struct {
 	// +optional
 	Replicas *int `json:"replicas,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&LoadBalancerSet{}, &LoadBalancerSetList{})
-}

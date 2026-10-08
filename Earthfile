@@ -1,12 +1,12 @@
 VERSION 0.8
-FROM golang:1.25
+FROM golang:1.27
 ARG --global DOCKER_REPO=ghcr.io/stackitcloud/yawol/
 ARG --global BINPATH=/usr/local/bin/
 ARG --global GOCACHE=/go-cache
 
 ARG --global ENVOY_VERSION=v1.37.0
 ARG --global HELM_VERSION=4.1.1
-ARG --global GOLANGCI_LINT_VERSION=v2.10.1
+ARG --global GOLANGCI_LINT_VERSION=v2.14.0
 ARG --global PACKER_VERSION=1.15.0
 ARG --global TERRAFORM_VERSION=1.14.6
 

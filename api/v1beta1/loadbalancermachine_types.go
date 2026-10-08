@@ -112,7 +112,3 @@ type LoadBalancerMachineMetric struct {
 	// Time is the timestamp if the metric
 	Time metav1.Time `json:"timestamp"`
 }
-
-func init() {
-	SchemeBuilder.Register(&LoadBalancerMachine{}, &LoadBalancerMachineList{})
-}
