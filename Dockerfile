@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.27-labs
-ARG GO_VERSION=1.26
+ARG GO_VERSION=1.27
 
 # get modules, if they don't change the cache can be used for faster builds
 FROM golang:${GO_VERSION} AS base
