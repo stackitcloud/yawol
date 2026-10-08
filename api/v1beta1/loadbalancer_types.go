@@ -374,7 +374,3 @@ type LoadBalancerStatus struct {
 	// +optional
 	OpenstackReconcileHash *string `json:"openstackReconcileHash,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&LoadBalancer{}, &LoadBalancerList{})
-}
