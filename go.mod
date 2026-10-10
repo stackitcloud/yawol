@@ -12,7 +12,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0
 	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
-	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.40.0
 	github.com/prometheus/client_golang v1.24.0
 	github.com/shirou/gopsutil/v4 v4.26.4
