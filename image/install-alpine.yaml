@@ -6,6 +6,10 @@
     # alpine updates
     - name: update alpine
       command: "apk upgrade --update-cache --available"
+      register: apk_result
+      until: apk_result.rc == 0
+      retries: 12
+      delay: 5
 
     # use dhcpcd instead of udhcpd (for ipv6)
     - name: install dhcpcd
