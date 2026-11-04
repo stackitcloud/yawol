@@ -237,3 +237,45 @@ Now you can run ansible:
 ```
 ansible-playbook -i <IP-Address>, --private-key=~/.ssh/ske-key --user alpine install-alpine.yaml
 ```
+
+## Packer Debugging
+
+Build the necessary binaries and dependencies.
+
+```
+earthly +get-envoy-local
+earthly +get-envoy-libs-local
+earthly +get-promtail-local
+earthly +build-local
+cat "v0.34" > VERSION
+```
+
+Source the necessary openstack credentials and set the following environment variables
+`OS_SECURITY_GROUP_ID`, `OS_SOURCE_IMAGE=yawol-alpine-base`, `OS_NETWORK_ID`, `OS_FLOATING_NETWORK_ID`
+and `IMAGE_VISIBILITY=private`.
+
+Check the `Earthfile` for `packer plugins install` calls and run those. Then get the
+`packer build ...` command from the `build-yawollet-image` target in the `Earthfile`.
+Add a `--debug` flag to it before running it. packer will now ask for confirmation
+after each step and also create a ssh keyfile `os_yawollet.pem` that you can use to
+connect to the OS build VM:
+
+```
+ssh -i os_yawollet.pem alpine@<IP from packer output>
+```
+
+Once the image build is complete, you can test it using the following command. Make sure
+to fill in the values marked as `<placeholder>`.
+
+```
+stackit -p <projectId> \
+	server create \
+	--network-id $OS_NETWORK_ID \
+	--security-groups $OS_SECURITY_GROUP_ID \
+	--keypair-name <keypairName> \
+	--name <vnname> \
+	--machine-type c2i.2 \
+	--boot-volume-source-id <idOfNewImage> \
+	--boot-volume-source-type image
+	--boot-volume-size 1
+```
