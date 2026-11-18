@@ -10,7 +10,7 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.40.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-task/slim-sprig/v3 v3.0.0
-	github.com/gophercloud/gophercloud/v2 v2.15.0
+	github.com/gophercloud/gophercloud/v2 v2.16.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.40.0
