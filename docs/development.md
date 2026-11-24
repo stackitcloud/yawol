@@ -214,7 +214,7 @@ and enable/start sshd on the fly.
 This can only be enabled with annotations on the `LoadBalancer`: `yawol.stackit.cloud/adHocDebug` and `yawol.stackit.cloud/adHocDebugSSHKey`
 
 This will not recreate the `LoadBalancerMachine`. Be aware that the `yawol.stackit.cloud/adHocDebugSSHKey` has to contain the complete
-SSH public key.
+SSH public key. The SSH key has to be an RSA key and must **not** include a comment (e.g. `user@host`).
 
 > You can login with the user: `yawoldebug`
 
